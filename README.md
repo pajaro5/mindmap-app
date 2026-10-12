@@ -14,7 +14,7 @@ Aplicación web local para crear y editar mapas mentales. Los mapas se guardan a
 
 ## Requisitos
 
-- [Node.js](https://nodejs.org/) 18 o superior.
+- [Node.js](https://nodejs.org/) 22 o superior (requerido por better-sqlite3).
 
 ## Instalación y uso
 
