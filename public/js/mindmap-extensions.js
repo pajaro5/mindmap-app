@@ -78,9 +78,32 @@ function setActiveNodesStyle(mindMap, styleFor) {
   })
 }
 
+// Igual que setActiveNodesStyle pero para datos que no son estilo (hipervínculo, nota,
+// imagen, adjunto). `undefined` elimina el dato. Una sola entrada de historial.
+function setActiveNodesData(mindMap, dataFor) {
+  const renderer = mindMap.renderer
+  renderer.activeNodeList.forEach(node => {
+    const data = typeof dataFor === 'function' ? dataFor(node) : dataFor
+    if (data && Object.keys(data).length) renderer.setNodeDataRender(node, data)
+  })
+}
+
+// Apertura segura de hipervínculos: la librería pinta <a href> con el valor tal cual; aquí
+// se vuelve a validar el esquema en el momento del clic (defensa en profundidad) y se abre
+// sin dar acceso a window.opener.
+function openHyperlinkSafely(url) {
+  if (!isSafeHyperlink(url)) {
+    console.warn('Vínculo bloqueado por esquema no permitido:', url)
+    return false
+  }
+  window.open(url, '_blank', 'noopener,noreferrer')
+  return true
+}
+
 function extendMindMap(mindMap) {
   mindMap.command.add('INSERT_NODE_BEFORE', () => insertNodeBefore(mindMap))
   mindMap.command.add('SET_ACTIVE_NODES_STYLE', styleFor => setActiveNodesStyle(mindMap, styleFor))
+  mindMap.command.add('SET_ACTIVE_NODES_DATA', dataFor => setActiveNodesData(mindMap, dataFor))
   mindMap.keyCommand.addShortcut('Shift+Enter', () => mindMap.execCommand('INSERT_NODE_BEFORE'))
   makePainterOneShot(mindMap)
 }
@@ -92,4 +115,5 @@ function bindFormatShortcuts(mindMap, runCommand) {
   mindMap.keyCommand.addShortcut('Control+b', () => runCommand('format.bold'))
   mindMap.keyCommand.addShortcut('Control+i', () => runCommand('format.italic'))
   mindMap.keyCommand.addShortcut('Control+u', () => runCommand('format.underline'))
+  mindMap.keyCommand.addShortcut('Control+k', () => runCommand('element.hyperlink'))
 }

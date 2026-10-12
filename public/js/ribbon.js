@@ -33,6 +33,15 @@ const RIBBON_TABS = [
       },
       { label: 'Marcadores', items: [{ cmd: 'markers.icons' }] },
       {
+        label: 'Elementos del tema',
+        items: [
+          { cmd: 'element.hyperlink' },
+          { cmd: 'element.attachment', size: 'small', menu: ['element.attachment', 'element.attachment.open', 'element.attachment.remove'] },
+          { cmd: 'element.notes', size: 'small' },
+          { cmd: 'element.image', size: 'small', menu: ['element.image', 'element.image.remove'] }
+        ]
+      },
+      {
         label: 'Formato',
         rows: [
           [{ cmd: 'format.fontFamily', width: 128 }, { cmd: 'format.fontSize', width: 54 }, { cmd: 'format.growFont' }, { cmd: 'format.shrinkFont' }],
@@ -61,7 +70,7 @@ const RIBBON_TABS = [
     label: 'Vista',
     groups: [
       { label: 'Zoom', items: [{ cmd: 'view.zoomIn' }, { cmd: 'view.zoomOut' }, { cmd: 'view.fit' }, { cmd: 'view.actualSize' }] },
-      { label: 'Paneles', items: [{ cmd: 'pane.maps' }, { cmd: 'pane.markers' }] }
+      { label: 'Paneles', items: [{ cmd: 'pane.maps' }, { cmd: 'pane.markers' }, { cmd: 'pane.notes' }] }
     ]
   },
   {

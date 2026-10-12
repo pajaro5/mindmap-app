@@ -204,8 +204,8 @@
 
       <aside class="task-pane" x-show="pane">
         <div class="task-pane-header">
-          <span x-text="pane === 'maps' ? 'Mis mapas' : 'Marcadores'"></span>
-          <button class="task-pane-close" title="Cerrar panel" @click="pane = null">✕</button>
+          <span x-text="{ maps: 'Mis mapas', markers: 'Marcadores', notes: 'Notas' }[pane] || ''"></span>
+          <button class="task-pane-close" title="Cerrar panel" @click="togglePane(pane)">✕</button>
         </div>
 
         <div class="task-pane-body" x-show="pane === 'maps'">
@@ -244,10 +244,23 @@
             </div>
           </template>
         </div>
+
+        <!-- Notas del tema seleccionado (texto plano; se guarda al pausar la escritura) -->
+        <div class="task-pane-body notes-pane" x-show="pane === 'notes'">
+          <template x-if="activeNodeList.length === 1">
+            <div class="notes-wrap">
+              <div class="notes-topic" x-text="activeNodeList[0] ? activeNodeList[0].getData('text').replace(/<[^>]+>/g, '') : ''"></div>
+              <textarea class="notes-editor" x-model="noteDraft" @input="onNoteInput()" @blur="flushNote()"
+                        placeholder="Escribe aquí las notas de este tema…" aria-label="Notas del tema"></textarea>
+            </div>
+          </template>
+          <div class="icon-sidebar-hint" x-show="activeNodeList.length !== 1"
+               x-text="activeNodeList.length > 1 ? 'Selecciona un solo tema para ver o editar sus notas.' : 'Selecciona un tema para ver o editar sus notas.'"></div>
+        </div>
       </aside>
 
       <nav class="task-strip" aria-label="Paneles">
-        <template x-for="id in ['pane.maps', 'pane.markers']" :key="id">
+        <template x-for="id in ['pane.maps', 'pane.markers', 'pane.notes']" :key="id">
           <button class="task-strip-tab" :data-cmd="id" :class="{ active: isPressed(id) }"
                   :title="tooltipOf(id)" @click="runCommand(id)">
             <span class="strip-icon" x-html="iconOf(id)"></span>
@@ -256,6 +269,31 @@
         </template>
       </nav>
     </div>
+
+    <!-- Diálogo modal (nativo: atrapa el foco y se cierra con Esc) -->
+    <dialog id="appDialog" class="app-dialog" @close="dialog = null" aria-labelledby="appDialogTitle">
+      <template x-if="dialog && dialog.kind === 'hyperlink'">
+        <form class="dialog-form" @submit.prevent="saveHyperlink()" novalidate>
+          <h2 id="appDialogTitle" class="dialog-title">Hipervínculo</h2>
+          <label class="dialog-field">
+            <span>Dirección</span>
+            <input name="url" type="text" x-model="dialog.url" placeholder="https://ejemplo.com" autocomplete="off"
+                   :aria-invalid="!!dialog.error" @input="dialog.error = ''" />
+          </label>
+          <label class="dialog-field">
+            <span>Texto que se muestra al pasar el ratón <em>(opcional)</em></span>
+            <input name="title" type="text" x-model="dialog.title" maxlength="200" autocomplete="off" />
+          </label>
+          <p class="dialog-error" role="alert" x-show="dialog.error" x-text="dialog.error"></p>
+          <div class="dialog-actions">
+            <button type="button" class="btn dialog-remove" x-show="dialog.canRemove" @click="removeHyperlink()">Quitar vínculo</button>
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary">Aceptar</button>
+            <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+      </template>
+    </dialog>
 
     <!-- Barra de estado -->
     <footer class="statusbar">
@@ -274,6 +312,7 @@
 
   <script src="/js/icons.js"></script>
   <script src="/js/format.js"></script>
+  <script src="/js/elements.js"></script>
   <script src="/js/mindmap-extensions.js"></script>
   <script src="/js/commands.js"></script>
   <script src="/js/ribbon.js"></script>

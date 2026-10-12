@@ -400,6 +400,69 @@ button { font-family: inherit; }
 }
 .ribbon-menu-item:disabled { opacity: .45; cursor: default; }
 
+/* ---------- Diálogo modal ---------- */
+.app-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid #8a9fbf;
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3);
+  color: var(--text);
+  font-family: var(--font);
+}
+.app-dialog::backdrop { background: rgba(20, 35, 60, .35); }
+.dialog-form { display: flex; flex-direction: column; gap: 12px; padding: 0 18px 16px; }
+.dialog-title {
+  margin: 0 -18px;
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(#5b93d6, var(--title-1) 45%, var(--title-2));
+  border-radius: 5px 5px 0 0;
+}
+.dialog-field { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; }
+.dialog-field em { color: var(--muted); font-style: normal; }
+.dialog-field input {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid #a9c3e4;
+  border-radius: 3px;
+}
+.dialog-field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.dialog-field input[aria-invalid="true"] { border-color: #c0392b; }
+.dialog-error { margin: -4px 0 0; color: #b3261e; font-size: 12.5px; }
+.dialog-actions { display: flex; align-items: center; gap: 6px; }
+.dialog-spacer { flex: 1; }
+.dialog-remove { color: #b3261e; }
+
+/* ---------- Panel de notas ---------- */
+.notes-pane { display: flex; flex-direction: column; }
+.notes-wrap { flex: 1; display: flex; flex-direction: column; gap: 6px; min-height: 0; height: 100%; }
+.notes-topic {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--group-label);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notes-editor {
+  flex: 1;
+  min-height: 200px;
+  resize: none;
+  padding: 8px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  background: #fffdf3;
+  border: 1px solid #e3d9a8;
+  border-radius: 3px;
+}
+.notes-editor:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
 /* Cursor de "copiar formato" mientras está activo */
 body.painter-active #mindMapContainer { cursor: copy; }
 

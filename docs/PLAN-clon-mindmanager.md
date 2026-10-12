@@ -61,10 +61,10 @@ Soporte en simple-mind-map: **Nativo** (comando/plugin existente) · **Parcial**
 ### 2.4 Elementos del tema
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
 |---|---|---|---|---|
-| Hipervínculo | URL o vínculo a otro tema o mapa | ❌ | Nativo (`SET_NODE_HYPERLINK`) | S |
-| Adjunto | Archivo adjunto al tema | ❌ | Nativo (`SET_NODE_ATTACHMENT`); falta guardar archivos en el backend | M |
-| Notas | Texto enriquecido largo asociado al tema | ❌ | Nativo (`SET_NODE_NOTE`); falta el editor | M |
-| Imagen | Imagen dentro del tema, redimensionable | ❌ | Nativo (`SET_NODE_IMAGE`, `nodeImgAdjust`, `nodeBase64ImageStorage`) | M |
+| Hipervínculo | URL o vínculo a otro tema o mapa | ✅ URL (Ctrl+K), solo http/https/mailto · ❌ vínculo a otro tema o mapa | Nativo (`SET_NODE_HYPERLINK`) | S |
+| Adjunto | Archivo adjunto al tema | ✅ API de archivos, descarga segura | Nativo (`SET_NODE_ATTACHMENT`); falta guardar archivos en el backend | M |
+| Notas | Texto enriquecido largo asociado al tema | 🟡 panel Notas con texto plano · ❌ texto enriquecido | Nativo (`SET_NODE_NOTE`); falta el editor | M |
+| Imagen | Imagen dentro del tema, redimensionable | ✅ PNG/JPEG/GIF/WebP, se reducen a 1024 px | Nativo (`SET_NODE_IMAGE`, `nodeImgAdjust`, `nodeBase64ImageStorage`) | M |
 
 ### 2.5 Formato
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
@@ -111,7 +111,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | **0. Cimientos** ✅ | Registro de comandos, cinta declarativa, estado de selección, migración a `@playwright/test` + CI. Reorganizar la pestaña Inicio con los grupos de MindManager. Sustituir el logo (cerebro estilizado). | M |
 | **1. Portapapeles e Insertar básico** ✅ | Pegar/Cortar/Copiar, Copiar formato, desplegable de Tema (antes, después, padre). Pendiente: pegado especial. | S–M |
 | **2. Formato y Estilo** ✅ | Fuente, tamaño, B/I/U/S, colores, alineación, galería de formas. Pendiente: sombra y estilos predefinidos de tema. | M |
-| **3. Elementos del tema** | Hipervínculo, Notas (editor + panel), Imagen; Adjunto con la API de archivos | M–L |
+| **3. Elementos del tema** ✅ | Hipervínculo, Notas (panel), Imagen, Adjunto con API de archivos; saneado de mapas al abrirlos. Pendiente: notas con formato y vínculos a temas. | M–L |
 | **4. Relación y Límite** | Plugins `associativeLine` y `outerFrame` con sus desplegables | M |
 | **5. Marcadores** | Desplegable de iconos en la cinta, marcadores de texto con categorías | M |
 | **6. Edición** | Dividir, Seleccionar (por nivel, hermanos, marcador), Limpiar | M |
@@ -124,6 +124,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | `vendor/simple-mind-map.umd.min.js` pesa 6,7 MB y **no está minificado**: es un build de desarrollo de webpack con `eval()`, y así viene publicado en npm. | Carga y parseo lentos en cada visita. | El paquete incluye `simpleMindMap.esm.min.js` (1,5 MB) con los mismos 21 plugins. Medir con rigor el tiempo de carga antes de cambiar, porque la primera medición fue ruidosa. |
 | La instancia de `mindMap` vive dentro del proxy reactivo de Alpine. | Cada acceso interno de la librería pasa por el seguimiento de dependencias de Alpine; posible sobrecoste en mapas grandes. | Guardarla fuera de la reactividad (variable de cierre + `getMindMap()`) y medir antes y después. |
 | ~~Alpine.js se cargaba desde un CDN~~ ✅ resuelto en la Fase 2 | La app no funcionaba sin conexión y las pruebas fallaban si el CDN tardaba. | Servido en local (public/vendor/alpine-3.14.3.min.js); una prueba impide volver a depender de dominios externos. |
+| Adjuntos huérfanos: al quitar un adjunto de un tema el archivo sigue en disco hasta que se borra el mapa (no se borra al momento para que Deshacer funcione). | Espacio en disco. | Limpieza periódica: borrar archivos que ningún tema del mapa referencia desde hace N días. |
 | Firefox + Playwright 1.63 es inestable en paralelo en Windows. | Pruebas lentas e intermitentes. | Mitigado con `workers: 1` en el proyecto Firefox. Revisar al actualizar Playwright. |
 
 **Siguientes pestañas (fuera de este plan, por definir):**

@@ -43,10 +43,10 @@ class AppPage {
     return this.nodes.locator('.smm-richtext-node-wrap, .smm-text-node-wrap').allTextContents()
   }
 
-  // Tema cuyo texto es exactamente `text`
+  // Tema cuyo texto visible es exactamente `text`. Se mira solo el texto del tema (el
+  // foreignObject), no el <title> de vínculos o adjuntos, que también aporta texto al nodo.
   node(text) {
-    const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    return this.nodes.filter({ hasText: new RegExp(`^\\s*${escaped}\\s*$`) })
+    return this.nodes.filter({ has: this.page.locator('foreignObject').getByText(text, { exact: true }) })
   }
 
   async selectNode(text) {
@@ -70,10 +70,25 @@ class AppPage {
   nodeData(text, prop) {
     return this.page.evaluate(({ text, prop }) => {
       const strip = s => String(s).replace(/<[^>]+>/g, '').trim()
-      const find = n => strip(n.getData('text')) === text ? n : (n.children || []).map(find).find(Boolean)
+      const find = n => !n ? null : strip(n.getData('text')) === text ? n : (n.children || []).map(find).find(Boolean)
       const node = find(window.Alpine.$data(document.body).mindMap.renderer.root)
       return node ? node.getData(prop) : undefined
     }, { text, prop })
+  }
+
+  // Imagen de un tema resuelta a su data URL (el plugin nodeBase64ImageStorage guarda una
+  // clave en el tema y la imagen en root.data.imgMap)
+  nodeImage(text) {
+    return this.page.evaluate(text => {
+      const strip = s => String(s).replace(/<[^>]+>/g, '').trim()
+      const mm = window.Alpine.$data(document.body).mindMap
+      const find = n => !n ? null : strip(n.getData('text')) === text ? n : (n.children || []).map(find).find(Boolean)
+      const node = find(mm.renderer.root)
+      const value = node && node.getData('image')
+      if (!value) return undefined
+      const imgMap = mm.renderer.root.getData('imgMap') || {}
+      return imgMap[value] || value
+    }, text)
   }
 
   // Aplica un estilo a un tema a través del comando de la librería (queda en el historial)
@@ -81,7 +96,7 @@ class AppPage {
     return this.page.evaluate(({ text, prop, value }) => {
       const strip = s => String(s).replace(/<[^>]+>/g, '').trim()
       const mm = window.Alpine.$data(document.body).mindMap
-      const find = n => strip(n.getData('text')) === text ? n : (n.children || []).map(find).find(Boolean)
+      const find = n => !n ? null : strip(n.getData('text')) === text ? n : (n.children || []).map(find).find(Boolean)
       mm.execCommand('SET_NODE_STYLE', find(mm.renderer.root), prop, value)
     }, { text, prop, value })
   }
@@ -95,8 +110,11 @@ class AppPage {
     return this.page.evaluate(text => {
       const strip = s => String(s).replace(/<[^>]+>/g, '').trim()
       const mm = window.Alpine.$data(document.body).mindMap
-      const find = n => strip(n.getData('text')) === text ? n : (n.children || []).map(find).find(Boolean)
-      const node = Alpine.raw(find(mm.renderer.root))
+      const find = n => !n ? null : strip(n.getData('text')) === text ? n : (n.children || []).map(find).find(Boolean)
+      const found = find(mm.renderer.root)
+      // A mitad de un render la librería deja huecos: devolver null para que expect.poll reintente
+      if (!found || !found.group || !found.shapeNode) return null
+      const node = Alpine.raw(found)
       const fo = node.group.node.querySelector('foreignObject')
       const cs = getComputedStyle(fo)
       return {
@@ -128,6 +146,28 @@ class AppPage {
     await expect(this.menu).toBeVisible()
     await this.menu.locator(`[data-color="${color}"]`).click()
     await expect(this.menu).toBeHidden()
+  }
+
+  // Ejecuta `trigger` (que abre el selector de archivos) y entrega el archivo indicado
+  async chooseFile(trigger, file) {
+    const [chooser] = await Promise.all([this.page.waitForEvent('filechooser'), trigger()])
+    await chooser.setFiles(file)
+  }
+
+  // Genera en el navegador un PNG de w×h y lo devuelve como Buffer
+  async makePng(w, h) {
+    const b64 = await this.page.evaluate(([w, h]) => {
+      const c = document.createElement('canvas')
+      c.width = w
+      c.height = h
+      const ctx = c.getContext('2d')
+      ctx.fillStyle = '#3d8fd8'
+      ctx.fillRect(0, 0, w, h)
+      ctx.fillStyle = '#7dc142'
+      ctx.fillRect(0, 0, w / 2, h / 2)
+      return c.toDataURL('image/png').split(',')[1]
+    }, [w, h])
+    return Buffer.from(b64, 'base64')
   }
 
   historyIndex() {

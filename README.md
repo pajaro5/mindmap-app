@@ -12,6 +12,7 @@ Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista,
 - Insertar subtemas y temas (después, antes con Shift+Enter, o tema padre), eliminar, deshacer y rehacer desde la cinta o con el teclado.
 - Portapapeles: cortar, copiar, pegar (también texto de otras aplicaciones) y copiar formato.
 - Formato de los temas: fuente, tamaño, negrita/cursiva/subrayado/tachado (Ctrl+B/I/U), colores de relleno, línea y fuente, alineación y forma del tema.
+- Elementos del tema: hipervínculos (Ctrl+K), notas (panel Notas), imágenes y archivos adjuntos.
 - Funciona sin conexión: todas las librerías se sirven en local.
 - Panel **Marcadores** para asignar iconos de prioridad, progreso, emojis y marcas a los temas.
 - Zoom con botones, slider y "ajustar a la ventana".
@@ -78,7 +79,11 @@ data/             Base de datos SQLite (ignorada por git)
 | `POST`   | `/api/maps`     | Crea un mapa. Body opcional: `{ "title" }`    |
 | `GET`    | `/api/maps/:id` | Obtiene un mapa completo                      |
 | `PUT`    | `/api/maps/:id` | Actualiza `title` y/o `data`                  |
-| `DELETE` | `/api/maps/:id` | Elimina un mapa                               |
+| `DELETE` | `/api/maps/:id` | Elimina un mapa y sus adjuntos                |
+| `POST`   | `/api/maps/:id/files` | Sube un adjunto (cuerpo binario; nombre en la cabecera `X-File-Name`) |
+| `GET`    | `/api/files/:fileId`  | Descarga un adjunto (siempre como descarga, nunca se muestra en el navegador) |
+
+Los adjuntos se guardan en `data/files/` (configurable con `FILES_DIR`; tamaño máximo con `MAX_FILE_BYTES`, 25 MB por defecto).
 
 ## Pruebas
 

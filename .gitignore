@@ -3,6 +3,7 @@ data/*.db
 data/*.db-journal
 data/*.db-wal
 data/*.db-shm
+data/files/
 tests/downloads/
 tests/screenshots/
 test-results/

@@ -1,10 +1,13 @@
 const express = require('express')
 const crypto = require('crypto')
 const db = require('./db')
+const files = require('./files')
 
 const app = express()
 const PORT = process.env.PORT || 3001
 
+// Adjuntos: van antes de express.json porque su cuerpo es binario
+app.use(files.router)
 app.use(express.json({ limit: '20mb' }))
 app.use(express.static(require('path').join(__dirname, '..', 'public')))
 
@@ -62,6 +65,7 @@ app.put('/api/maps/:id', (req, res) => {
 // Borrar mapa
 app.delete('/api/maps/:id', (req, res) => {
   db.prepare('DELETE FROM maps WHERE id = ?').run(req.params.id)
+  files.deleteFilesOfMap(req.params.id)
   res.status(204).end()
 })
 

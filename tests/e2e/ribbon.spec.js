@@ -57,7 +57,7 @@ test.describe('Registro de comandos y cinta', () => {
 
   test('Inicio tiene los grupos de MindManager en orden', async ({ app, page }) => {
     const groups = await app.ribbonPanel('home').locator('.ribbon-group-label').allTextContents()
-    expect(groups).toEqual(['Portapapeles', 'Insertar', 'Marcadores', 'Formato', 'Estilo', 'Edición'])
+    expect(groups).toEqual(['Portapapeles', 'Insertar', 'Marcadores', 'Elementos del tema', 'Formato', 'Estilo', 'Edición'])
   })
 
   test('los tooltips incluyen el atajo de teclado', async ({ app }) => {

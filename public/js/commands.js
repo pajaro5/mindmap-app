@@ -171,6 +171,39 @@ const COMMANDS = {
     run: (app, shape) => app.applyStyle({ shape })
   },
 
+  // ---- Elementos del tema ----
+  'element.hyperlink': {
+    label: 'Hipervínculo', tooltip: 'Insertar o editar un hipervínculo', shortcut: 'Ctrl+K', icon: 'hyperlink', enabled: hasActiveNode,
+    run: app => app.openHyperlinkDialog()
+  },
+  'element.attachment': {
+    label: 'Adjunto', menuLabel: 'Adjuntar archivo…', tooltip: 'Adjuntar un archivo al tema', icon: 'attachment', enabled: hasActiveNode,
+    run: app => app.addAttachment()
+  },
+  'element.attachment.open': {
+    label: 'Abrir adjunto', tooltip: 'Descargar el archivo adjunto', icon: 'attachment',
+    enabled: s => s.elements.hasAttachment,
+    run: app => app.openAttachment()
+  },
+  'element.attachment.remove': {
+    label: 'Quitar adjunto', icon: 'removeElement', enabled: s => s.elements.anyAttachment,
+    run: app => app.setElementData({ attachmentUrl: undefined, attachmentName: undefined })
+  },
+  'element.notes': {
+    // Sin atajo: el de MindManager (Ctrl+T) abre una pestaña nueva y el navegador no deja interceptarlo
+    label: 'Notas', tooltip: 'Escribir notas del tema', icon: 'notes', enabled: s => s.activeCount === 1,
+    pressed: s => s.pane === 'notes',
+    run: app => app.openNotes()
+  },
+  'element.image': {
+    label: 'Imagen', menuLabel: 'Insertar imagen…', tooltip: 'Insertar una imagen en el tema', icon: 'image', enabled: hasActiveNode,
+    run: app => app.addImage()
+  },
+  'element.image.remove': {
+    label: 'Quitar imagen', icon: 'removeElement', enabled: s => s.elements.anyImage,
+    run: app => app.setElementData({ image: undefined, imageTitle: undefined, imageSize: undefined })
+  },
+
   // ---- Marcadores ----
   'markers.icons': {
     label: 'Marcadores de icono', tooltip: 'Mostrar los marcadores de icono', icon: 'iconMarkers',
@@ -213,6 +246,11 @@ const COMMANDS = {
     label: 'Mis mapas', tooltip: 'Mostrar u ocultar Mis mapas', icon: 'paneMaps',
     pressed: s => s.pane === 'maps',
     run: app => app.togglePane('maps')
+  },
+  'pane.notes': {
+    label: 'Notas', tooltip: 'Mostrar u ocultar las Notas del tema', icon: 'notes',
+    pressed: s => s.pane === 'notes',
+    run: app => app.togglePane('notes')
   },
   'pane.markers': {
     label: 'Marcadores', tooltip: 'Mostrar u ocultar Marcadores', icon: 'iconMarkers',

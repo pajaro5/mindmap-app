@@ -61,7 +61,7 @@ test.describe('Formato: negrita, cursiva, subrayado, tachado', () => {
     await bold.click()
     await expect.poll(() => app.nodeData('Beta', 'fontWeight')).toBe('normal')
     await expect(bold).toHaveAttribute('aria-pressed', 'false')
-    expect((await app.nodeRender('Beta')).fontWeight).toBe('400')
+    expect(((await app.nodeRender('Beta')) || {}).fontWeight).toBe('400')
 
     await page.keyboard.press('ControlOrMeta+b')
     await expect.poll(() => app.nodeData('Beta', 'fontWeight')).toBe('bold')
@@ -75,7 +75,7 @@ test.describe('Formato: negrita, cursiva, subrayado, tachado', () => {
     await page.keyboard.press('ControlOrMeta+i')
     await expect.poll(() => app.nodeData('Gamma', 'fontStyle')).toBe('italic')
     expect(await app.scale()).toBe(scale)
-    expect((await app.nodeRender('Gamma')).fontStyle).toBe('italic')
+    expect(((await app.nodeRender('Gamma')) || {}).fontStyle).toBe('italic')
     await expect(cmd(app, 'format.italic')).toHaveAttribute('aria-pressed', 'true')
   })
 
@@ -86,7 +86,7 @@ test.describe('Formato: negrita, cursiva, subrayado, tachado', () => {
     await expect.poll(() => app.nodeData('Gamma', 'textDecoration')).toBe('underline')
     await cmd(app, 'format.strike').click()
     await expect.poll(() => app.nodeData('Gamma', 'textDecoration')).toBe('underline line-through')
-    expect((await app.nodeRender('Gamma')).textDecoration).toContain('line-through')
+    expect(((await app.nodeRender('Gamma')) || {}).textDecoration).toContain('line-through')
 
     await cmd(app, 'format.underline').click()
     await expect.poll(() => app.nodeData('Gamma', 'textDecoration')).toBe('line-through')
@@ -99,10 +99,10 @@ test.describe('Formato: colores', () => {
   test('el relleno elegido en la paleta se ve (desactiva el degradado del tema)', async ({ page, maps }) => {
     const { app } = await setupMap(page, maps)
     await app.selectNode('Beta')
-    expect((await app.nodeRender('Beta')).fill).toMatch(/^url\(/) // degradado del tema
+    expect(((await app.nodeRender('Beta')) || {}).fill).toMatch(/^url\(/) // degradado del tema
 
     await app.pickColor('format.fillColor', '#ffc000')
-    await expect.poll(async () => (await app.nodeRender('Beta')).fill).toBe('#ffc000')
+    await expect.poll(async () => ((await app.nodeRender('Beta')) || {}).fill).toBe('#ffc000')
     expect(await app.nodeData('Beta', 'gradientStyle')).toBe(false)
   })
 
@@ -112,11 +112,11 @@ test.describe('Formato: colores', () => {
     await app.pickColor('format.fillColor', '#00b0f0')
     await app.selectNode('Gamma')
     await cmd(app, 'format.fillColor').click()
-    await expect.poll(async () => (await app.nodeRender('Gamma')).fill).toBe('#00b0f0')
+    await expect.poll(async () => ((await app.nodeRender('Gamma')) || {}).fill).toBe('#00b0f0')
 
     await app.ribbonPanel('home').locator('[data-menu-for="format.fillColor"]').click()
     await app.menu.locator('[data-color="auto"]').click()
-    await expect.poll(async () => (await app.nodeRender('Gamma')).fill).toMatch(/^url\(/)
+    await expect.poll(async () => ((await app.nodeRender('Gamma')) || {}).fill).toMatch(/^url\(/)
     expect(await app.nodeData('Gamma', 'fillColor')).toBeUndefined()
   })
 
@@ -125,14 +125,14 @@ test.describe('Formato: colores', () => {
     await app.selectNode('Beta')
     await app.ribbonPanel('home').locator('[data-menu-for="format.fillColor"]').click()
     await app.menu.locator('[data-color-custom]').fill('#123abc')
-    await expect.poll(async () => (await app.nodeRender('Beta')).fill).toBe('#123abc')
+    await expect.poll(async () => ((await app.nodeRender('Beta')) || {}).fill).toBe('#123abc')
   })
 
   test('color de línea en un subtema sin borde le da grosor visible', async ({ page, maps }) => {
     const { app } = await setupMap(page, maps)
     await app.selectNode('Alfa uno') // nivel 3: sin borde en el tema
     await app.pickColor('format.borderColor', '#c00000')
-    await expect.poll(async () => (await app.nodeRender('Alfa uno')).stroke).toBe('#c00000')
+    await expect.poll(async () => ((await app.nodeRender('Alfa uno')) || {}).stroke).toBe('#c00000')
     expect(await app.nodeData('Alfa uno', 'borderWidth')).toBe(1)
   })
 
@@ -140,7 +140,7 @@ test.describe('Formato: colores', () => {
     const { app } = await setupMap(page, maps)
     await app.selectNode('Alfa uno')
     await app.pickColor('format.fontColor', '#7030a0')
-    await expect.poll(async () => (await app.nodeRender('Alfa uno')).color).toBe('rgb(112, 48, 160)')
+    await expect.poll(async () => ((await app.nodeRender('Alfa uno')) || {}).color).toBe('rgb(112, 48, 160)')
   })
 
   test('la paleta marca el color actual del tema', async ({ page, maps }) => {

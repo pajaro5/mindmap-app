@@ -135,9 +135,31 @@ function mindMapApp() {
     // Cambia en cada render del mapa; `selection` lo lee para recalcular el estilo del tema
     // activo (los estilos viven en simple-mind-map, fuera de la reactividad de Alpine)
     renderTick: 0,
+    // Diálogo modal abierto: { kind: 'hyperlink', url, title, error, canRemove } o null
+    dialog: null,
+    // Texto de la nota del tema seleccionado en el panel Notas
+    noteDraft: '',
+    noteNodeUid: null,
+    noteTimer: null,
 
     get hasActiveNode() {
       return this.activeNodeList.length > 0
+    },
+
+    // Elementos del tema (vínculo, adjunto, imagen, nota) de los temas seleccionados
+    get activeElements() {
+      void this.renderTick
+      const nodes = this.activeNodeList.map(n => Alpine.raw(n))
+      const first = nodes[0]
+      const has = (node, key) => !!(node && node.getData(key))
+      return {
+        hasHyperlink: has(first, 'hyperlink'),
+        hasAttachment: has(first, 'attachmentUrl'),
+        hasImage: has(first, 'image'),
+        hasNote: has(first, 'note'),
+        anyAttachment: nodes.some(n => has(n, 'attachmentUrl')),
+        anyImage: nodes.some(n => has(n, 'image'))
+      }
     },
 
     // Estilo efectivo (propio o heredado del tema) del primer tema seleccionado
@@ -172,6 +194,7 @@ function mindMapApp() {
         hasNonRootActiveNode: this.activeNodeList.some(node => !node.isRoot),
         activeCount: this.activeNodeList.length,
         style: this.activeStyle,
+        elements: this.activeElements,
         painterActive: this.painterActive,
         layout: this.currentLayout,
         pane: this.pane
@@ -202,8 +225,21 @@ function mindMapApp() {
       return options.join('')
     },
 
+    // La librería avisa de los cambios de selección (node_active) en un setTimeout(0), así que
+    // activeNodeList va un instante por detrás de la selección real. Si un comando se lanza
+    // justo después de un clic (p. ej. clic + Ctrl+K), actuaría sobre el tema anterior.
+    // Antes de ejecutar cualquier comando se copia la selección real de la librería.
+    syncSelection() {
+      if (!this.mindMap) return
+      const live = this.mindMap.renderer.activeNodeList
+      const same = live.length === this.activeNodeList.length &&
+        live.every((node, i) => Alpine.raw(this.activeNodeList[i]) === node)
+      if (!same) this.activeNodeList = [...live]
+    },
+
     runCommand(id, value) {
       this.menu = null
+      this.syncSelection()
       try {
         const result = CommandRegistry.run(id, this, value)
         // Algunos comandos son asíncronos (p. ej. Pegar lee el portapapeles)
@@ -257,6 +293,130 @@ function mindMapApp() {
 
     toggleDecoration(part) {
       this.applyStyle({ textDecoration: toggleDecorationValue(this.selection.style.textDecoration, part) })
+    },
+
+    // ---- Elementos del tema ----
+    setElementData(data) {
+      if (!this.mindMap || !this.hasActiveNode) return
+      this.mindMap.execCommand('SET_ACTIVE_NODES_DATA', data)
+    },
+
+    openHyperlinkDialog() {
+      const node = Alpine.raw(this.activeNodeList[0])
+      if (!node) return
+      this.dialog = {
+        kind: 'hyperlink',
+        url: node.getData('hyperlink') || '',
+        title: unescapeXml(node.getData('hyperlinkTitle') || ''),
+        error: '',
+        canRemove: this.activeNodeList.some(n => !!Alpine.raw(n).getData('hyperlink'))
+      }
+      this.$nextTick(() => {
+        const dlg = document.getElementById('appDialog')
+        if (dlg && !dlg.open) dlg.showModal()
+        const input = document.querySelector('#appDialog [name="url"]')
+        if (input) input.select()
+      })
+    },
+
+    closeDialog() {
+      const dlg = document.getElementById('appDialog')
+      if (dlg && dlg.open) dlg.close()
+      this.dialog = null
+    },
+
+    saveHyperlink() {
+      const result = normalizeHyperlink(this.dialog.url)
+      if (!result.ok) {
+        this.dialog.error = result.error
+        return
+      }
+      const title = this.dialog.title.trim()
+      this.setElementData({ hyperlink: result.url, hyperlinkTitle: title ? escapeXml(title) : undefined })
+      this.closeDialog()
+    },
+
+    removeHyperlink() {
+      this.setElementData({ hyperlink: undefined, hyperlinkTitle: undefined })
+      this.closeDialog()
+    },
+
+    async addAttachment() {
+      const file = await pickFile()
+      if (!file) return
+      this.saveStatus = 'Subiendo adjunto…'
+      try {
+        const uploaded = await uploadAttachment(this.currentId, file)
+        this.setElementData({ attachmentUrl: uploaded.url, attachmentName: escapeXml(uploaded.name) })
+        this.saveStatus = ''
+      } catch (err) {
+        this.saveStatus = ''
+        this.errorMsg = err.message
+      }
+    },
+
+    openAttachment(node) {
+      const target = Alpine.raw(node || this.activeNodeList[0])
+      const url = target && target.getData('attachmentUrl')
+      if (!url || !isAttachmentUrl(url)) return
+      const a = document.createElement('a')
+      a.href = url
+      a.download = unescapeXml(target.getData('attachmentName') || '')
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+    },
+
+    async addImage() {
+      const file = await pickFile(ALLOWED_IMAGE_TYPES.join(','))
+      if (!file) return
+      try {
+        const img = await readImageFile(file)
+        this.setElementData({
+          image: img.url,
+          imageTitle: escapeXml(file.name),
+          imageSize: { width: img.width, height: img.height, custom: false }
+        })
+      } catch (err) {
+        this.errorMsg = err.message
+      }
+    },
+
+    // ---- Notas ----
+    openNotes() {
+      this.pane = 'notes'
+      this.loadNoteDraft()
+      this.$nextTick(() => {
+        const area = document.querySelector('.notes-editor')
+        if (area) area.focus()
+      })
+    },
+
+    // Carga en el editor la nota del tema seleccionado (al cambiar la selección)
+    loadNoteDraft() {
+      this.flushNote()
+      const node = this.activeNodeList.length === 1 ? Alpine.raw(this.activeNodeList[0]) : null
+      this.noteNodeUid = node ? node.uid : null
+      this.noteDraft = node ? (node.getData('note') || '') : ''
+    },
+
+    // Guarda la nota con un pequeño retardo mientras se escribe (una entrada de historial
+    // por pausa, no por tecla)
+    onNoteInput() {
+      clearTimeout(this.noteTimer)
+      this.noteTimer = setTimeout(() => this.flushNote(), 500)
+    },
+
+    flushNote() {
+      clearTimeout(this.noteTimer)
+      this.noteTimer = null
+      if (!this.mindMap || !this.noteNodeUid) return
+      const node = this.mindMap.renderer.findNodeByUid(this.noteNodeUid)
+      if (!node) return
+      const current = node.getData('note') || ''
+      const next = this.noteDraft
+      if (current === next) return
+      this.mindMap.execCommand('SET_NODE_NOTE', node, next || undefined)
     },
 
     // Botón principal de un color: vuelve a aplicar el último color elegido
@@ -323,9 +483,13 @@ function mindMapApp() {
     },
 
     async openMap(id) {
+      // Guardar la nota que se estuviera escribiendo en el mapa anterior
+      this.flushNote()
       const res = await fetch(`/api/maps/${id}`)
       if (!res.ok) return
       const map = await res.json()
+      this.noteNodeUid = null
+      this.noteDraft = ''
 
       this.currentId = map.id
       this.currentTitle = map.title
@@ -353,6 +517,11 @@ function mindMapApp() {
           throw new Error(`El contenedor del mapa tiene tamaño 0 (${rect.width}x${rect.height}), no se puede renderizar`)
         }
 
+        // Los datos pueden venir de fuera de la app (importados o editados a mano): se sanean
+        // antes de que la librería los pinte (ver elements.js)
+        const fixed = sanitizeMapTree(map.data.root)
+        if (fixed > 0) console.warn(`Se corrigieron ${fixed} valores no seguros del mapa`)
+
         const savedTheme = map.data.theme || {}
         // Los mapas creados antes del rediseño guardaban la plantilla 'default'
         const template = !savedTheme.template || savedTheme.template === 'default' ? THEME_NAME : savedTheme.template
@@ -373,6 +542,7 @@ function mindMapApp() {
           // la cinta (ratón fuera) Ctrl+B, Tab… no harían nada. Como en Office, se atienden
           // siempre que el foco no esté en un campo (la librería ya ignora inputs y selects).
           enableShortcutOnlyWhenMouseInSvg: false,
+          customHyperlinkJump: url => openHyperlinkSafely(url),
           errorHandler: createMindMapErrorHandler(() => this.mindMap, (code, error) => {
             console.error(code, error)
             this.errorMsg = `Error en el mapa (${code}): ${(error && error.message) || error || ''}`
@@ -392,7 +562,14 @@ function mindMapApp() {
         this.mindMap.on('scale', scale => { this.zoomPercent = Math.round(scale * 100) })
         this.mindMap.on('node_active', (node, activeNodeList) => {
           this.activeNodeList = [...activeNodeList]
+          if (this.pane === 'notes') this.loadNoteDraft()
         })
+        this.mindMap.on('node_note_click', node => {
+          // Seleccionar el tema como lo hace un clic (SET_NODE_ACTIVE solo cambia el dato)
+          if (!node.getData('isActive')) node.active()
+          this.$nextTick(() => this.openNotes())
+        })
+        this.mindMap.on('node_attachmentClick', node => this.openAttachment(node))
         this.mindMap.on('node_tree_render_end', () => { this.renderTick++ })
         this.mindMap.on('painter_start', () => { this.painterActive = true })
         this.mindMap.on('painter_end', () => { this.painterActive = false })
@@ -458,7 +635,9 @@ function mindMapApp() {
     },
 
     togglePane(name) {
+      if (this.pane === 'notes') this.flushNote()
       this.pane = this.pane === name ? null : name
+      if (this.pane === 'notes') this.loadNoteDraft()
     },
 
     setZoomPercent(value) {

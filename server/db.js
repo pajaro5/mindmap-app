@@ -16,7 +16,18 @@ db.exec(`
     data TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )
+  );
+
+  -- Adjuntos de los temas. El contenido vive en disco (FILES_DIR/<id>); aquí los metadatos
+  CREATE TABLE IF NOT EXISTS files (
+    id TEXT PRIMARY KEY,
+    map_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS files_map_id ON files(map_id);
 `)
 
 module.exports = db
