@@ -124,6 +124,9 @@ function mindMapApp() {
     ribbonTab: 'home',
     pane: 'maps',
     logo: BRAIN_LOGO,
+    painterActive: false,
+    // Desplegable abierto de la cinta: { owner, items, x, y } o null
+    menu: null,
 
     get hasActiveNode() {
       return this.activeNodeList.length > 0
@@ -136,7 +139,9 @@ function mindMapApp() {
       return {
         hasMap: !!this.currentId && !!this.mindMap,
         hasActiveNode: this.activeNodeList.length > 0,
+        hasNonRootActiveNode: this.activeNodeList.some(node => !node.isRoot),
         activeCount: this.activeNodeList.length,
+        painterActive: this.painterActive,
         layout: this.currentLayout,
         pane: this.pane
       }
@@ -146,20 +151,64 @@ function mindMapApp() {
     isPressed(id) { return CommandRegistry.isPressed(id, this.selection) },
     tooltipOf(id) { return CommandRegistry.tooltip(id) },
     labelOf(id) { return CommandRegistry.get(id).label },
+    menuLabelOf(id) { return CommandRegistry.menuLabel(id) },
+    shortcutOf(id) { return CommandRegistry.shortcut(id) },
     iconOf(id) { return CommandRegistry.icon(id) },
 
     runCommand(id) {
+      this.menu = null
       try {
-        CommandRegistry.run(id, this)
+        const result = CommandRegistry.run(id, this)
+        // Algunos comandos son asíncronos (p. ej. Pegar lee el portapapeles)
+        if (result && typeof result.catch === 'function') {
+          result.catch(err => this.reportCommandError(id, err))
+        }
       } catch (err) {
-        console.error(err)
-        this.errorMsg = `No se pudo ejecutar "${this.labelOf(id)}": ${err.message || err}`
+        this.reportCommandError(id, err)
       }
+    },
+
+    reportCommandError(id, err) {
+      console.error(err)
+      this.errorMsg = `No se pudo ejecutar "${this.labelOf(id)}": ${err.message || err}`
+    },
+
+    // ---- Desplegables de la cinta ----
+    // El menú se pinta fuera de la cinta (position: fixed) porque la cinta recorta su
+    // contenido para poder desplazarse en pantallas estrechas.
+    toggleMenu(owner, items, event) {
+      if (this.menu && this.menu.owner === owner) {
+        this.menu = null
+        return
+      }
+      const rect = event.currentTarget.getBoundingClientRect()
+      this.menu = { owner, items, x: Math.round(rect.left), y: Math.round(rect.bottom + 2) }
+      this.$nextTick(() => {
+        const first = document.querySelector('.ribbon-menu [role="menuitem"]:not([disabled])')
+        if (first) first.focus()
+      })
+    },
+
+    closeMenu() {
+      this.menu = null
+    },
+
+    // ---- Copiar formato ----
+    togglePainter() {
+      const painter = this.mindMap && this.mindMap.painter
+      if (!painter) return
+      if (painter.isInPainter) painter.onEndPainter()
+      else painter.startPainter()
     },
 
     async init() {
       window.addEventListener('error', e => {
         this.errorMsg = 'Error JS: ' + e.message
+      })
+      window.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return
+        if (this.menu) this.closeMenu()
+        if (this.painterActive) this.togglePainter()
       })
       this.ribbon = buildRibbon()
       if (this.ribbon.problems.length) {
@@ -231,6 +280,7 @@ function mindMapApp() {
         // Los mapas creados antes del rediseño guardaban la plantilla 'default'
         const template = !savedTheme.template || savedTheme.template === 'default' ? THEME_NAME : savedTheme.template
 
+        this.painterActive = false
         this.mindMap = new MindMapCtor({
           el,
           data: map.data.root,
@@ -241,8 +291,13 @@ function mindMapApp() {
           defaultInsertBelowSecondLevelNodeText: 'Subtema',
           defaultGeneralizationText: 'Resumen',
           defaultAssociativeLineText: 'Relación',
-          defaultOuterFrameText: 'Marco'
+          defaultOuterFrameText: 'Marco',
+          errorHandler: createMindMapErrorHandler(() => this.mindMap, (code, error) => {
+            console.error(code, error)
+            this.errorMsg = `Error en el mapa (${code}): ${(error && error.message) || error || ''}`
+          })
         })
+        extendMindMap(this.mindMap)
 
         if (map.data.view && Object.keys(map.data.view).length) {
           this.mindMap.view.setTransformData(map.data.view)
@@ -256,6 +311,8 @@ function mindMapApp() {
         this.mindMap.on('node_active', (node, activeNodeList) => {
           this.activeNodeList = [...activeNodeList]
         })
+        this.mindMap.on('painter_start', () => { this.painterActive = true })
+        this.mindMap.on('painter_end', () => { this.painterActive = false })
       } catch (err) {
         console.error(err)
         this.errorMsg = err.message || String(err)

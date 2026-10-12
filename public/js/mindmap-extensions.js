@@ -1,0 +1,73 @@
+// Extensiones propias sobre simple-mind-map: comandos y comportamientos que la librería no
+// trae, o que se ajustan para comportarse como MindManager. Se aplican a cada instancia
+// nueva desde app.js (extendMindMap) y al construirla (createMindMapErrorHandler).
+
+const SMM_ERRORS = { READ_CLIPBOARD: 'read_clipboard_error' }
+
+// Pegar con respaldo. La librería lee el portapapeles del sistema cuando el navegador lo
+// permite; si el usuario deniega el permiso o el navegador lo bloquea, la librería no pega
+// nada. En ese caso se pegan los temas copiados dentro de la propia app.
+function createMindMapErrorHandler(getMindMap, onError) {
+  return (code, error) => {
+    const mindMap = getMindMap()
+    if (code === SMM_ERRORS.READ_CLIPBOARD && mindMap && mindMap.renderer.beingCopyData) {
+      mindMap.execCommand('PASTE_NODE', mindMap.renderer.beingCopyData)
+      return
+    }
+    onError(code, error)
+  }
+}
+
+function createUid() {
+  return crypto.randomUUID()
+}
+
+// Inserta un tema hermano ANTES de cada tema activo (la librería solo inserta después).
+// Replica la lógica de Render.insertNode para que el tema nuevo entre en edición igual que
+// con Enter, y se registra como comando para que quede en el historial (deshacer/rehacer).
+function insertNodeBefore(mindMap) {
+  const renderer = mindMap.renderer
+  const list = renderer.activeNodeList.filter(node => !node.isRoot && !node.isGeneralization)
+  if (list.length === 0) return
+  renderer.textEdit.hideEditTextBox()
+
+  const { defaultInsertSecondLevelNodeText, defaultInsertBelowSecondLevelNodeText } = mindMap.opt
+  const { focusNewNode, inserting } = renderer.getNewNodeBehavior(true, list.length > 1)
+  const isRichText = renderer.hasRichTextPlugin()
+
+  list.forEach(node => {
+    const siblings = node.parent.nodeData.children
+    const index = siblings.findIndex(item => item.data.uid === node.uid)
+    const data = {
+      text: node.layerIndex === 1 ? defaultInsertSecondLevelNodeText : defaultInsertBelowSecondLevelNodeText,
+      uid: createUid(),
+      expand: true,
+      richText: isRichText,
+      isActive: focusNewNode
+    }
+    if (isRichText) data.resetRichText = true
+    siblings.splice(index, 0, { inserting, data, children: [] })
+  })
+
+  if (focusNewNode) renderer.clearActiveNodeList()
+  mindMap.render()
+}
+
+// Copiar formato de un solo uso, como en Office/MindManager: tras aplicar el estilo a un
+// tema se desactiva. Escape lo cancela.
+function makePainterOneShot(mindMap) {
+  const painter = mindMap.painter
+  if (!painter) return
+  // Se registra después del plugin, así que se ejecuta cuando el estilo ya se aplicó
+  mindMap.on('node_click', node => {
+    if (painter.isInPainter && painter.painterNode && node && node.uid !== painter.painterNode.uid) {
+      painter.onEndPainter()
+    }
+  })
+}
+
+function extendMindMap(mindMap) {
+  mindMap.command.add('INSERT_NODE_BEFORE', () => insertNodeBefore(mindMap))
+  mindMap.keyCommand.addShortcut('Shift+Enter', () => mindMap.execCommand('INSERT_NODE_BEFORE'))
+  makePainterOneShot(mindMap)
+}

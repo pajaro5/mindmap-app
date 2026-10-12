@@ -251,6 +251,72 @@ button { font-family: inherit; }
 }
 .rb-large:disabled, .rb-small:disabled { opacity: .45; cursor: default; }
 
+/* Botón dividido: acción principal + flecha que abre el desplegable */
+.rb-item { display: flex; }
+.rb-col-large .rb-split { flex-direction: column; }
+.rb-col-stack .rb-split { flex-direction: row; }
+.rb-split .rb-large { border-bottom-left-radius: 0; border-bottom-right-radius: 0; flex: 1; }
+.rb-split .rb-small { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+
+.rb-menu-arrow {
+  font-size: 9px;
+  line-height: 1;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0 0 3px 3px;
+  padding: 1px 0 2px;
+  cursor: pointer;
+}
+.rb-col-stack .rb-menu-arrow { border-radius: 0 3px 3px 0; padding: 0 3px; }
+.rb-split:hover .rb-large:not(:disabled),
+.rb-split:hover .rb-menu-arrow,
+.rb-split.menu-open .rb-menu-arrow {
+  border-color: var(--hover-border);
+}
+.rb-menu-arrow:hover, .rb-split.menu-open .rb-menu-arrow {
+  background: linear-gradient(var(--hover-1), var(--hover-2));
+}
+
+[x-cloak] { display: none !important; }
+
+.ribbon-menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 200px;
+  padding: 2px;
+  background: #fafcff;
+  border: 1px solid #8a9fbf;
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, .25);
+}
+
+.ribbon-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 10px 4px 4px;
+  font-size: 12.5px;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.ribbon-menu-item .rb-icon svg { display: block; width: 20px; height: 20px; }
+.ribbon-menu-label { flex: 1; }
+.ribbon-menu-shortcut { color: var(--muted); font-size: 11.5px; }
+.ribbon-menu-item:hover:not(:disabled), .ribbon-menu-item:focus-visible {
+  outline: none;
+  background: linear-gradient(var(--hover-1), var(--hover-2));
+  border-color: var(--hover-border);
+}
+.ribbon-menu-item:disabled { opacity: .45; cursor: default; }
+
+/* Cursor de "copiar formato" mientras está activo */
+body.painter-active #mindMapContainer { cursor: copy; }
+
 /* ---------- Área de trabajo ---------- */
 .workspace {
   flex: 1;

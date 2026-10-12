@@ -16,14 +16,12 @@ test('Tab crea un subtema y Enter un tema hermano', async ({ openMap, page }) =>
   const { app } = openMap
   await app.selectRoot()
   await page.keyboard.press('Tab')
-  await page.keyboard.type('Subtema 1')
-  await page.keyboard.press('Enter')
+  await app.typeNewTopic('Subtema 1')
   await app.expectNodeCount(2)
 
   await app.nodes.filter({ hasText: 'Subtema 1' }).click()
   await page.keyboard.press('Enter')
-  await page.keyboard.type('Subtema 2')
-  await page.keyboard.press('Enter')
+  await app.typeNewTopic('Subtema 2')
   await app.expectNodeCount(3)
   await expect(app.nodes.filter({ hasText: 'Subtema 2' })).toHaveCount(1)
 })

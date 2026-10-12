@@ -24,8 +24,7 @@ test('el mapa editado persiste tras recargar la página', async ({ openMap, page
   const { app, map } = openMap
   await app.selectRoot()
   await page.keyboard.press('Tab')
-  await page.keyboard.type('Hijo persistente')
-  await page.keyboard.press('Enter')
+  await app.typeNewTopic('Hijo persistente')
   await app.expectNodeCount(2)
   await expect.poll(async () => JSON.stringify((await maps.get(map.id)).data.root)).toContain('Hijo persistente')
 

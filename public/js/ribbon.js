@@ -2,6 +2,8 @@
 // Cada elemento referencia un comando de commands.js; aquí solo se decide dónde y cómo
 // se muestra. Tamaños: 'large' (icono grande con texto debajo) o 'small' (icono pequeño
 // con texto a la derecha; se apilan de 3 en 3 en una columna, como en Office).
+// Un elemento con `menu` es un botón dividido: el botón ejecuta `cmd` y la flecha abre
+// un desplegable con los comandos de `menu`.
 
 const QUICK_ACCESS = ['map.new', 'edit.undo', 'edit.redo']
 
@@ -10,7 +12,22 @@ const RIBBON_TABS = [
     id: 'home',
     label: 'Inicio',
     groups: [
-      { label: 'Insertar', items: [{ cmd: 'topic.insertSibling' }, { cmd: 'topic.insertChild' }] },
+      {
+        label: 'Portapapeles',
+        items: [
+          { cmd: 'clipboard.paste' },
+          { cmd: 'clipboard.cut', size: 'small' },
+          { cmd: 'clipboard.copy', size: 'small' },
+          { cmd: 'clipboard.formatPainter', size: 'small' }
+        ]
+      },
+      {
+        label: 'Insertar',
+        items: [
+          { cmd: 'topic.insertSibling', menu: ['topic.insertSibling', 'topic.insertBefore', 'topic.insertParent'] },
+          { cmd: 'topic.insertChild' }
+        ]
+      },
       { label: 'Marcadores', items: [{ cmd: 'markers.icons' }] },
       { label: 'Edición', items: [{ cmd: 'topic.remove' }] }
     ]
@@ -47,16 +64,16 @@ function layoutGroupColumns(items) {
   const columns = []
   let stack = null
   items.forEach((item, i) => {
-    const size = item.size || 'large'
-    if (size === 'small') {
-      if (!stack || stack.cmds.length === SMALL_ITEMS_PER_COLUMN) {
-        stack = { key: `s${i}`, type: 'small', cmds: [] }
+    const entry = { cmd: item.cmd, menu: item.menu || null }
+    if ((item.size || 'large') === 'small') {
+      if (!stack || stack.items.length === SMALL_ITEMS_PER_COLUMN) {
+        stack = { key: `s${i}`, type: 'small', items: [] }
         columns.push(stack)
       }
-      stack.cmds.push(item.cmd)
+      stack.items.push(entry)
     } else {
       stack = null
-      columns.push({ key: `l${i}`, type: 'large', cmds: [item.cmd] })
+      columns.push({ key: `l${i}`, type: 'large', items: [entry] })
     }
   })
   return columns
@@ -79,7 +96,11 @@ function buildRibbon(tabs = RIBBON_TABS, quickAccess = QUICK_ACCESS) {
       id: tab.id,
       label: tab.label,
       groups: tab.groups.map(group => {
-        group.items.forEach(item => checkCmd(item.cmd, `${tab.label} › ${group.label}`))
+        const where = `${tab.label} › ${group.label}`
+        group.items.forEach(item => {
+          checkCmd(item.cmd, where)
+          ;(item.menu || []).forEach(id => checkCmd(id, `${where} (menú de ${item.cmd})`))
+        })
         return { label: group.label, columns: layoutGroupColumns(group.items) }
       })
     }

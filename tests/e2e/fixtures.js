@@ -16,6 +16,78 @@ class AppPage {
     this.mapList = page.locator('.map-list')
     this.zoomValue = page.locator('.zoom-value')
     this.zoomSlider = page.locator('.zoom-slider')
+    this.editBox = page.locator('.smm-richtext-node-edit-wrap')
+    this.menu = page.locator('.ribbon-menu')
+  }
+
+  // Escribe el texto del tema que se acaba de crear (Tab, Enter, Shift+Enter…). Hay que
+  // esperar a que se abra el cuadro de edición: la librería lo abre tras renderizar, y si
+  // se teclea antes el texto se pierde (pasaba en CI, con máquinas más lentas).
+  async typeNewTopic(text) {
+    await expect(this.editBox).toBeVisible()
+    await this.page.keyboard.type(text)
+    await this.page.keyboard.press('Enter')
+    await expect(this.editBox).toBeHidden()
+  }
+
+  // Abre el menú desplegable de un botón dividido de la cinta y elige una opción
+  async chooseFromMenu(tabId, ownerCmd, itemCmd) {
+    await this.ribbonTab(tabId).click()
+    await this.ribbonPanel(tabId).locator(`[data-menu-for="${ownerCmd}"]`).click()
+    await expect(this.menu).toBeVisible()
+    await this.menu.locator(`[data-cmd="${itemCmd}"]`).click()
+    await expect(this.menu).toBeHidden()
+  }
+
+  nodeTexts() {
+    return this.nodes.locator('.smm-richtext-node-wrap, .smm-text-node-wrap').allTextContents()
+  }
+
+  // Tema cuyo texto es exactamente `text`
+  node(text) {
+    const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return this.nodes.filter({ hasText: new RegExp(`^\\s*${escaped}\\s*$`) })
+  }
+
+  async selectNode(text) {
+    await this.node(text).click()
+    await this.page.waitForFunction(t => {
+      const list = window.Alpine.$data(document.body).activeNodeList
+      return list.length === 1 && list[0].getData('text').replace(/<[^>]+>/g, '').trim() === t
+    }, text)
+  }
+
+  // Árbol del mapa como { t: texto, c: [hijos] }, sin etiquetas HTML del texto enriquecido
+  tree() {
+    return this.page.evaluate(() => {
+      const strip = s => String(s).replace(/<[^>]+>/g, '').trim()
+      const walk = n => ({ t: strip(n.data.text), c: (n.children || []).map(walk) })
+      return walk(window.Alpine.$data(document.body).mindMap.getData())
+    })
+  }
+
+  // Valor de una propiedad de estilo guardada en los datos del tema con ese texto
+  nodeData(text, prop) {
+    return this.page.evaluate(({ text, prop }) => {
+      const strip = s => String(s).replace(/<[^>]+>/g, '').trim()
+      const find = n => strip(n.getData('text')) === text ? n : (n.children || []).map(find).find(Boolean)
+      const node = find(window.Alpine.$data(document.body).mindMap.renderer.root)
+      return node ? node.getData(prop) : undefined
+    }, { text, prop })
+  }
+
+  // Aplica un estilo a un tema a través del comando de la librería (queda en el historial)
+  setNodeStyle(text, prop, value) {
+    return this.page.evaluate(({ text, prop, value }) => {
+      const strip = s => String(s).replace(/<[^>]+>/g, '').trim()
+      const mm = window.Alpine.$data(document.body).mindMap
+      const find = n => strip(n.getData('text')) === text ? n : (n.children || []).map(find).find(Boolean)
+      mm.execCommand('SET_NODE_STYLE', find(mm.renderer.root), prop, value)
+    }, { text, prop, value })
+  }
+
+  isPainterActive() {
+    return this.page.evaluate(() => window.Alpine.$data(document.body).painterActive)
   }
 
   async goto() {
@@ -115,6 +187,55 @@ class AppPage {
   }
 }
 
+// Sustituye navigator.clipboard por un portapapeles falso controlable desde la prueba:
+//   window.__clipboard.text      contenido de texto del "sistema"
+//   window.__clipboard.denyRead  true = el navegador deniega la lectura (permiso denegado)
+// Así las pruebas no dependen de los permisos del navegador sin interfaz.
+async function installFakeClipboard(page, { denyRead = false } = {}) {
+  await page.addInitScript(denyRead => {
+    window.__clipboard = { text: null, denyRead, reads: 0 }
+    const fake = {
+      writeText: async text => { window.__clipboard.text = text },
+      readText: async () => window.__clipboard.text || '',
+      read: async () => {
+        window.__clipboard.reads++
+        if (window.__clipboard.denyRead) throw new DOMException('Lectura denegada', 'NotAllowedError')
+        const text = window.__clipboard.text
+        if (!text) return []
+        return [{ types: ['text/plain'], getType: async () => new Blob([text], { type: 'text/plain' }) }]
+      },
+      write: async () => {}
+    }
+    Object.defineProperty(navigator, 'clipboard', { value: fake, configurable: true })
+  }, denyRead)
+}
+
+// Mapa de ejemplo con nombres únicos para localizar temas sin ambigüedad
+const SAMPLE_TREE = {
+  layout: 'logicalStructure',
+  root: {
+    data: { text: 'Raíz' },
+    children: [
+      { data: { text: 'Alfa' }, children: [{ data: { text: 'Alfa uno' }, children: [] }] },
+      { data: { text: 'Beta' }, children: [] },
+      { data: { text: 'Gamma' }, children: [] }
+    ]
+  },
+  theme: { template: 'mindmanager', config: {} },
+  view: {}
+}
+
+// Crea un mapa con `data`, ejecuta `beforeGoto(page)` (p. ej. instalar el portapapeles
+// falso) y lo abre en la app
+async function setupMap(page, maps, { data = SAMPLE_TREE, beforeGoto } = {}) {
+  const map = await maps.create({ data })
+  if (beforeGoto) await beforeGoto(page)
+  const app = new AppPage(page)
+  await app.goto()
+  await app.openMapByTitle(map.title)
+  return { app, map }
+}
+
 function uniqueTitle(testInfo, prefix = 'E2E') {
   return `${prefix} ${testInfo.project.name} ${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 }
@@ -175,4 +296,4 @@ const test = base.test.extend({
   }
 })
 
-module.exports = { test, expect, AppPage, uniqueTitle }
+module.exports = { test, expect, AppPage, uniqueTitle, installFakeClipboard, setupMap, SAMPLE_TREE }

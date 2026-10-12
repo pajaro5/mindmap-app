@@ -65,6 +65,12 @@ app.delete('/api/maps/:id', (req, res) => {
   res.status(204).end()
 })
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Mindmap app corriendo en http://localhost:${PORT}`)
 })
+
+// Node cierra las conexiones keep-alive inactivas a los 5 s. Un cliente que reutiliza una
+// conexión justo cuando el servidor la cierra recibe ECONNRESET. Se amplía el margen para
+// que siempre cierre antes el cliente que el servidor.
+server.keepAliveTimeout = 65_000
+server.headersTimeout = 66_000

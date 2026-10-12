@@ -12,8 +12,7 @@ test.describe('[Regresión] Tamaño del lienzo', () => {
     const { app } = openMap
     await app.selectRoot()
     await page.keyboard.press('Tab')
-    await page.keyboard.type('Nodo de scroll')
-    await page.keyboard.press('Enter')
+    await app.typeNewTopic('Nodo de scroll')
     await app.expectNodeCount(2)
     const g = await app.geometry()
     expect(g.scrollX).toBe(0)

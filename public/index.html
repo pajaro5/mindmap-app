@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="/css/style.css" />
   <script src="/vendor/simple-mind-map.umd.min.js"></script>
 </head>
-<body x-data="mindMapApp()" x-init="init()">
+<body x-data="mindMapApp()" x-init="init()" :class="{ 'painter-active': painterActive }">
 
   <div class="app-shell">
     <!-- Barra de título: logo, barra de acceso rápido y nombre del mapa -->
@@ -44,19 +44,44 @@
               <div class="ribbon-group-body">
                 <template x-for="col in group.columns" :key="col.key">
                   <div :class="col.type === 'large' ? 'rb-col-large' : 'rb-col-stack'">
-                    <template x-for="id in col.cmds" :key="id">
-                      <button :class="[col.type === 'large' ? 'rb-large' : 'rb-small', isPressed(id) ? 'pressed' : '']"
-                              :data-cmd="id" :title="tooltipOf(id)" :aria-pressed="isPressed(id)"
-                              :disabled="!isEnabled(id)" @click="runCommand(id)">
-                        <span class="rb-icon" x-html="iconOf(id)"></span>
-                        <span class="rb-label" x-text="labelOf(id)"></span>
-                      </button>
+                    <template x-for="item in col.items" :key="item.cmd">
+                      <div class="rb-item" :class="{ 'rb-split': item.menu, 'menu-open': menu && menu.owner === item.cmd }">
+                        <button :class="[col.type === 'large' ? 'rb-large' : 'rb-small', isPressed(item.cmd) ? 'pressed' : '']"
+                                :data-cmd="item.cmd" :title="tooltipOf(item.cmd)" :aria-pressed="isPressed(item.cmd)"
+                                :disabled="!isEnabled(item.cmd)" @click="runCommand(item.cmd)">
+                          <span class="rb-icon" x-html="iconOf(item.cmd)"></span>
+                          <span class="rb-label" x-text="labelOf(item.cmd)"></span>
+                        </button>
+                        <template x-if="item.menu">
+                          <button class="rb-menu-arrow" :data-menu-for="item.cmd" aria-haspopup="menu"
+                                  :aria-expanded="!!(menu && menu.owner === item.cmd)"
+                                  :title="'Más opciones de ' + labelOf(item.cmd)"
+                                  @click.stop="toggleMenu(item.cmd, item.menu, $event)">▾</button>
+                        </template>
+                      </div>
                     </template>
                   </div>
                 </template>
               </div>
               <div class="ribbon-group-label" x-text="group.label"></div>
             </div>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <!-- Desplegable de los botones divididos (fuera de la cinta para que no se recorte) -->
+    <div class="ribbon-menu" role="menu" x-show="menu" x-cloak
+         :style="menu ? `left:${menu.x}px;top:${menu.y}px` : ''"
+         @click.outside="closeMenu()" @keydown.escape.stop="closeMenu()">
+      <template x-if="menu">
+        <div>
+          <template x-for="id in menu.items" :key="id">
+            <button class="ribbon-menu-item" role="menuitem" :data-cmd="id" :disabled="!isEnabled(id)" @click="runCommand(id)">
+              <span class="rb-icon" x-html="iconOf(id)"></span>
+              <span class="ribbon-menu-label" x-text="menuLabelOf(id)"></span>
+              <span class="ribbon-menu-shortcut" x-text="shortcutOf(id)"></span>
+            </button>
           </template>
         </div>
       </template>
@@ -143,6 +168,7 @@
   </div>
 
   <script src="/js/icons.js"></script>
+  <script src="/js/mindmap-extensions.js"></script>
   <script src="/js/commands.js"></script>
   <script src="/js/ribbon.js"></script>
   <script src="/js/app.js"></script>

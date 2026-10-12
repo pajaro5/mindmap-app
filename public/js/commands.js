@@ -10,12 +10,35 @@
 //   icon      Nombre en ICONS (icons.js)
 //   enabled   (selection) => boolean   Si falta, siempre habilitado
 //   pressed   (selection) => boolean   Para botones de estado (conmutadores)
+//   menuLabel Texto en los menús desplegables (opcional, por defecto = label)
 //   run       (app) => void            Acción; `app` es el componente Alpine
 
 const hasMap = s => s.hasMap
 const hasActiveNode = s => s.hasActiveNode
+// El tema central no tiene hermanos ni padre, y no se puede cortar
+const hasNonRootActiveNode = s => s.hasNonRootActiveNode
 
 const COMMANDS = {
+  // ---- Portapapeles ----
+  'clipboard.paste': {
+    label: 'Pegar', tooltip: 'Pegar como subtema del tema seleccionado', shortcut: 'Ctrl+V', icon: 'paste', enabled: hasActiveNode,
+    run: app => app.mindMap.renderer.paste()
+  },
+  'clipboard.cut': {
+    label: 'Cortar', tooltip: 'Cortar el tema y su rama', shortcut: 'Ctrl+X', icon: 'cut', enabled: hasNonRootActiveNode,
+    run: app => app.mindMap.renderer.cut()
+  },
+  'clipboard.copy': {
+    label: 'Copiar', tooltip: 'Copiar el tema y su rama', shortcut: 'Ctrl+C', icon: 'copy', enabled: hasActiveNode,
+    run: app => app.mindMap.renderer.copy()
+  },
+  'clipboard.formatPainter': {
+    label: 'Copiar formato', tooltip: 'Copiar el formato del tema y aplicarlo a otro (Esc para cancelar)', icon: 'formatPainter',
+    enabled: s => s.hasActiveNode || s.painterActive,
+    pressed: s => s.painterActive,
+    run: app => app.togglePainter()
+  },
+
   // ---- Mapa ----
   'map.new': {
     label: 'Nuevo mapa', icon: 'newMap',
@@ -34,8 +57,19 @@ const COMMANDS = {
 
   // ---- Temas ----
   'topic.insertSibling': {
-    label: 'Tema', tooltip: 'Insertar tema al mismo nivel', shortcut: 'Enter', icon: 'topic', enabled: hasActiveNode,
+    label: 'Tema', menuLabel: 'Tema después', tooltip: 'Insertar tema al mismo nivel, después', shortcut: 'Enter', icon: 'topic',
+    enabled: hasNonRootActiveNode,
     run: app => app.mindMap.execCommand('INSERT_NODE')
+  },
+  'topic.insertBefore': {
+    label: 'Tema antes', tooltip: 'Insertar tema al mismo nivel, antes', shortcut: 'Shift+Enter', icon: 'topicBefore',
+    enabled: hasNonRootActiveNode,
+    run: app => app.mindMap.execCommand('INSERT_NODE_BEFORE')
+  },
+  'topic.insertParent': {
+    label: 'Tema padre', tooltip: 'Insertar un tema padre del seleccionado', shortcut: 'Shift+Tab', icon: 'topicParent',
+    enabled: hasNonRootActiveNode,
+    run: app => app.mindMap.execCommand('INSERT_PARENT_NODE')
   },
   'topic.insertChild': {
     label: 'Subtema', tooltip: 'Insertar subtema', shortcut: 'Tab', icon: 'subtopic', enabled: hasActiveNode,
@@ -131,12 +165,21 @@ const CommandRegistry = {
     const text = cmd.tooltip || cmd.label
     return cmd.shortcut ? `${text} (${cmd.shortcut})` : text
   },
+  menuLabel(id) {
+    const cmd = this.get(id)
+    return cmd.menuLabel || cmd.label
+  },
+  shortcut(id) {
+    return this.get(id).shortcut || ''
+  },
   icon(id) {
     return ICONS[this.get(id).icon] || ''
   },
+  // Devuelve lo que devuelva el comando (una promesa en los asíncronos) o false si no se
+  // ejecutó por estar deshabilitado
   run(id, app) {
     if (!this.isEnabled(id, app.selection)) return false
-    this.get(id).run(app)
-    return true
+    const result = this.get(id).run(app)
+    return result === undefined ? true : result
   }
 }

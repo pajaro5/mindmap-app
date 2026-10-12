@@ -37,15 +37,15 @@ Soporte en simple-mind-map: **Nativo** (comando/plugin existente) · **Parcial**
 ### 2.1 Portapapeles
 | Función | Qué hace en MindManager | Estado | simple-mind-map | Esfuerzo |
 |---|---|---|---|---|
-| Pegar (+ pegado especial) | Pega temas copiados; el desplegable pega como texto, imagen, etc. | 🟡 solo Ctrl+V | Nativo (`PASTE_NODE`, `paste`) | S |
-| Cortar | Corta el tema con su rama | 🟡 solo Ctrl+X | Nativo (`CUT_NODE`) | S |
-| Copiar | Copia el tema con su rama | 🟡 solo Ctrl+C | Nativo (`copy`) | S |
-| Copiar formato | Copia el estilo de un tema y lo aplica a otros | ❌ | Nativo (plugin `painter`) | S |
+| Pegar (+ pegado especial) | Pega temas copiados; el desplegable pega como texto, imagen, etc. | ✅ Pegar (con respaldo si el navegador bloquea el portapapeles) · ❌ pegado especial | Nativo (`PASTE_NODE`, `paste`) | S |
+| Cortar | Corta el tema con su rama | ✅ | Nativo (`CUT_NODE`) | S |
+| Copiar | Copia el tema con su rama | ✅ | Nativo (`copy`) | S |
+| Copiar formato | Copia el estilo de un tema y lo aplica a otros | ✅ de un solo uso; Esc cancela | Nativo (plugin `painter`) | S |
 
 ### 2.2 Insertar
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
 |---|---|---|---|---|
-| Tema (+ desplegable) | Tema al mismo nivel; el desplegable inserta antes, después o como tema padre | 🟡 sin desplegable | Nativo (`INSERT_NODE`, `INSERT_PARENT_NODE`) | S |
+| Tema (+ desplegable) | Tema al mismo nivel; el desplegable inserta antes, después o como tema padre | ✅ (Tema antes = comando propio `INSERT_NODE_BEFORE`, Shift+Enter) | Nativo (`INSERT_NODE`, `INSERT_PARENT_NODE`) + propio | S |
 | Subtema | Tema hijo | ✅ | Nativo | — |
 | Llamada (Callout) | Nota flotante anclada a un tema, fuera de la jerarquía | ❌ | Propio (posición libre + conector) | L |
 | Relación | Flecha curva entre dos temas cualesquiera, con texto | ❌ | Nativo (plugin `associativeLine`) | M |
@@ -109,7 +109,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | Fase | Contenido | Esfuerzo estimado |
 |---|---|---|
 | **0. Cimientos** ✅ | Registro de comandos, cinta declarativa, estado de selección, migración a `@playwright/test` + CI. Reorganizar la pestaña Inicio con los grupos de MindManager. Sustituir el logo (cerebro estilizado). | M |
-| **1. Portapapeles e Insertar básico** | Pegar/Cortar/Copiar, Copiar formato, desplegable de Tema (antes, después, padre) | S–M |
+| **1. Portapapeles e Insertar básico** ✅ | Pegar/Cortar/Copiar, Copiar formato, desplegable de Tema (antes, después, padre). Pendiente: pegado especial. | S–M |
 | **2. Formato y Estilo** | Fuente, tamaño, B/I/U/S, colores, alineación, galería de estilos de tema | M |
 | **3. Elementos del tema** | Hipervínculo, Notas (editor + panel), Imagen; Adjunto con la API de archivos | M–L |
 | **4. Relación y Límite** | Plugins `associativeLine` y `outerFrame` con sus desplegables | M |
