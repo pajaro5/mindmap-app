@@ -4,11 +4,14 @@ Aplicación web local para crear y editar mapas mentales. Los mapas se guardan a
 
 ## Funcionalidades
 
-- Crear, renombrar y eliminar mapas mentales desde una barra lateral.
-- Editor visual de nodos basado en [simple-mind-map](https://github.com/wanglin2/mind-map).
-- Dos estilos de mapa: **Árbol** (estructura lógica) y **Radial**.
-- Zoom, deshacer y rehacer.
-- Panel de iconos para asignar a los nodos.
+Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista, Exportar), panel de tareas a la derecha y barra de estado con zoom.
+
+- Crear, renombrar y eliminar mapas desde el panel **Mis mapas**.
+- Editor visual de nodos basado en [simple-mind-map](https://github.com/wanglin2/mind-map), con un tema propio (`mindmanager`): tema central azul, temas principales verdes y ramas curvas.
+- Dos diseños de mapa: **Radial** (por defecto) y **Árbol**.
+- Insertar subtemas y temas, eliminar, deshacer y rehacer desde la cinta o con el teclado (Tab, Enter, Supr).
+- Panel **Marcadores** para asignar iconos de prioridad, progreso, emojis y marcas a los temas.
+- Zoom con botones, slider y "ajustar a la ventana".
 - Autoguardado mientras editas.
 - Exportación a **PNG** y **PDF**.
 

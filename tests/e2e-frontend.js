@@ -69,6 +69,35 @@ function countNodes(node) {
   return 1 + (node.children || []).reduce((sum, c) => sum + countNodes(c), 0)
 }
 
+// Compara el tamaño del <svg> de simple-mind-map con el de su contenedor y el scroll de la página
+async function getCanvasGeometry(page) {
+  return page.evaluate(() => {
+    const el = document.getElementById('mindMapContainer')
+    const svg = el.querySelector(':scope > svg')
+    const c = el.getBoundingClientRect()
+    const s = svg ? svg.getBoundingClientRect() : { width: -1, height: -1 }
+    return {
+      container: { w: Math.round(c.width), h: Math.round(c.height) },
+      svg: { w: Math.round(s.width), h: Math.round(s.height) },
+      scrollY: window.scrollY,
+      scrollX: window.scrollX,
+      docH: document.documentElement.scrollHeight,
+      winH: window.innerHeight
+    }
+  })
+}
+
+function assertSvgFitsContainer(g, when) {
+  assert(
+    Math.abs(g.svg.w - g.container.w) <= 1 && Math.abs(g.svg.h - g.container.h) <= 1,
+    `${when}: el SVG (${g.svg.w}x${g.svg.h}) no coincide con el contenedor (${g.container.w}x${g.container.h})`
+  )
+}
+
+async function openRibbonTab(page, label) {
+  await page.click(`.ribbon-tab:has-text("${label}")`)
+}
+
 ;(async () => {
   const browser = await chromium.launch({ headless: true })
   const context = await browser.newContext({ acceptDownloads: true })
@@ -101,7 +130,7 @@ function countNodes(node) {
   let mapId
   await run('TC3 - Crear mapa nuevo renderiza el nodo raíz', async () => {
     const before = await getAppData(page)
-    await page.click('button:has-text("+ Nuevo")')
+    await page.click('button[title="Nuevo mapa"]')
     await page.waitForFunction(
       prevCount => window.Alpine.$data(document.body).maps.length > prevCount,
       before.mapsCount,
@@ -257,7 +286,7 @@ function countNodes(node) {
   await run('TC11 - El mapa persiste tras recargar la página', async () => {
     const beforeReload = await getMindMapNodeCount(page)
     await page.reload({ waitUntil: 'networkidle' })
-    await page.click(`li:has-text("Mapa de prueba E2E")`)
+    await page.click(`.map-list li:has-text("Mapa de prueba E2E")`)
     await page.waitForSelector('.smm-node', { timeout: 5000 })
     const afterReload = await getMindMapNodeCount(page)
     assert(afterReload === beforeReload, `Nodos antes de recargar (${beforeReload}) != después (${afterReload})`)
@@ -267,6 +296,7 @@ function countNodes(node) {
 
   // ---- TC12: exportar PNG y PDF dispara una descarga válida ----
   await run('TC12 - Exportar PNG genera un archivo', async () => {
+    await openRibbonTab(page, 'Exportar')
     const [download] = await Promise.all([
       page.waitForEvent('download', { timeout: 10000 }),
       page.click('button:has-text("Exportar PNG")')
@@ -290,10 +320,176 @@ function countNodes(node) {
     assert(download.suggestedFilename().endsWith('.pdf'), `Extensión inesperada: ${download.suggestedFilename()}`)
   })
 
+  // ---- TC15-TC18: regresión del bug "el lienzo queda tapado/cortado por el panel lateral" ----
+  // Causa raíz: el <svg> del mapa se dimensionaba antes de que se mostraran la barra de
+  // herramientas y el panel de iconos, y nunca se volvía a ajustar.
+  await run('TC15 - [Regresión] El SVG del mapa mide lo mismo que su contenedor', async () => {
+    assertSvgFitsContainer(await getCanvasGeometry(page), 'Tras abrir el mapa')
+  })
+
+  await run('TC16 - [Regresión] Editar nodos no desplaza la página', async () => {
+    await page.locator('.smm-node').first().click()
+    await page.keyboard.press('Tab')
+    await page.keyboard.type('Nodo de scroll')
+    await page.keyboard.press('Enter')
+    await page.waitForTimeout(300)
+    const g = await getCanvasGeometry(page)
+    assert(g.scrollY === 0 && g.scrollX === 0, `La página se desplazó (scrollX=${g.scrollX}, scrollY=${g.scrollY})`)
+    assert(g.docH <= g.winH, `El documento (${g.docH}px) es más alto que la ventana (${g.winH}px)`)
+    await page.click('button[title="Deshacer"]')
+    await page.click('button[title="Deshacer"]')
+  })
+
+  await run('TC17 - [Regresión] Abrir/cerrar el panel lateral reajusta el lienzo', async () => {
+    const before = await getCanvasGeometry(page)
+    await page.click('button[title="Cerrar panel"]')
+    await page.waitForTimeout(300)
+    const closed = await getCanvasGeometry(page)
+    assert(closed.container.w > before.container.w, 'El lienzo no se ensanchó al cerrar el panel')
+    assertSvgFitsContainer(closed, 'Con el panel cerrado')
+
+    await page.click('.task-strip-tab:has-text("Marcadores")')
+    await page.waitForTimeout(300)
+    const reopened = await getCanvasGeometry(page)
+    assert(reopened.container.w === before.container.w, 'El lienzo no recuperó su ancho al reabrir el panel')
+    assertSvgFitsContainer(reopened, 'Con el panel de marcadores abierto')
+
+    // El panel de marcadores no debe solaparse con el lienzo
+    const overlap = await page.evaluate(() => {
+      const canvas = document.querySelector('.canvas-wrap').getBoundingClientRect()
+      const pane = document.querySelector('.task-pane').getBoundingClientRect()
+      return canvas.right - pane.left
+    })
+    assert(overlap <= 0, `El panel se solapa ${overlap}px sobre el lienzo`)
+  })
+
+  await run('TC18 - [Regresión] Redimensionar la ventana reajusta el lienzo', async () => {
+    const original = page.viewportSize()
+    await page.setViewportSize({ width: 1000, height: 600 })
+    await page.waitForTimeout(300)
+    assertSvgFitsContainer(await getCanvasGeometry(page), 'Ventana 1000x600')
+    await page.setViewportSize(original)
+    await page.waitForTimeout(300)
+    assertSvgFitsContainer(await getCanvasGeometry(page), 'Ventana restaurada')
+  })
+
+  // ---- TC19: marcadores (iconos) ----
+  await run('TC19 - Asignar y quitar un marcador a un nodo', async () => {
+    const firstIcon = page.locator('.task-pane .icon-btn').first()
+    // Sin nodo seleccionado los marcadores están deshabilitados
+    await page.mouse.click(300, 600)
+    await page.waitForTimeout(200)
+    assert(await firstIcon.isDisabled(), 'Los marcadores deberían estar deshabilitados sin selección')
+
+    await page.locator('.smm-node').first().click()
+    await page.waitForTimeout(200)
+    const iconId = await firstIcon.getAttribute('title')
+    await firstIcon.click()
+    const hasIcon = () => page.evaluate(id => {
+      const node = window.Alpine.$data(document.body).activeNodeList[0]
+      return (node.getData('icon') || []).includes(id)
+    }, iconId)
+    assert(await hasIcon(), `El nodo no recibió el marcador ${iconId}`)
+    await firstIcon.click()
+    assert(!(await hasIcon()), `El marcador ${iconId} no se quitó del nodo`)
+  })
+
+  // ---- TC20: botones de la cinta para insertar/eliminar temas ----
+  await run('TC20 - Cinta: Subtema, Tema y Eliminar', async () => {
+    await openRibbonTab(page, 'Inicio')
+    await page.mouse.click(300, 600)
+    await page.waitForTimeout(200)
+    const sub = page.locator('.rb-large:has-text("Subtema")')
+    assert(await sub.isDisabled(), 'Subtema debería estar deshabilitado sin selección')
+
+    const before = await getMindMapNodeCount(page)
+    await page.locator('.smm-node').first().click()
+    await sub.click()
+    await page.waitForFunction(n => document.querySelectorAll('.smm-node').length === n + 1, before, { timeout: 5000 })
+    await page.keyboard.press('Escape')
+
+    // El nodo recién creado queda activo: insertar un hermano y luego eliminar ambos
+    await page.locator('.rb-large:has-text("Tema")').first().click()
+    await page.waitForFunction(n => document.querySelectorAll('.smm-node').length === n + 2, before, { timeout: 5000 })
+    await page.keyboard.press('Escape')
+    await page.locator('.rb-large:has-text("Eliminar")').click()
+    await page.waitForFunction(n => document.querySelectorAll('.smm-node').length === n + 1, before, { timeout: 5000 })
+    await page.click('button[title="Deshacer"]')
+    await page.click('button[title="Deshacer"]')
+    await page.click('button[title="Deshacer"]')
+    await page.waitForFunction(n => document.querySelectorAll('.smm-node').length === n, before, { timeout: 5000 })
+  })
+
+  // ---- TC21: diseño radial / árbol ----
+  await run('TC21 - Cambiar diseño Radial/Árbol y persistirlo', async () => {
+    await page.click('.rb-large:has-text("Árbol")')
+    await page.waitForTimeout(1200)
+    let remote = await fetchMapFromApi(page, mapId)
+    assert(remote.data.layout === 'logicalStructure', `Layout guardado inesperado: ${remote.data.layout}`)
+    await page.click('.rb-large:has-text("Radial")')
+    await page.waitForTimeout(1200)
+    remote = await fetchMapFromApi(page, mapId)
+    assert(remote.data.layout === 'mindMap', `Layout guardado inesperado: ${remote.data.layout}`)
+    assert(await page.locator('.rb-large.pressed:has-text("Radial")').count() === 1, 'El botón Radial no aparece pulsado')
+  })
+
+  // ---- TC22: zoom en la barra de estado ----
+  await run('TC22 - Barra de estado refleja y controla el zoom', async () => {
+    await page.click('button[title="Restablecer zoom"]')
+    await page.waitForTimeout(200)
+    assert((await page.locator('.zoom-value').textContent()).trim() === '100%', 'El zoom no muestra 100% tras restablecer')
+    await page.click('button[title="Acercar"]')
+    await page.waitForTimeout(200)
+    const label = (await page.locator('.zoom-value').textContent()).trim()
+    assert(label !== '100%' && parseInt(label) > 100, `El indicador no se actualizó al acercar: ${label}`)
+
+    await page.locator('.zoom-slider').fill('50')
+    await page.waitForTimeout(200)
+    const scale = await getScale(page)
+    assert(Math.abs(scale - 0.5) < 0.01, `El slider no aplicó el zoom (escala ${scale})`)
+    await page.click('button[title="Restablecer zoom"]')
+  })
+
+  // ---- TC23: tema MindManager por defecto ----
+  await run('TC23 - Mapas nuevos usan el tema mindmanager y layout radial', async () => {
+    await page.waitForTimeout(1200)
+    const remote = await fetchMapFromApi(page, mapId)
+    assert(remote.data.theme.template === 'mindmanager', `Tema guardado inesperado: ${remote.data.theme.template}`)
+    const theme = await page.evaluate(() => {
+      const cfg = window.Alpine.$data(document.body).mindMap.themeConfig
+      return { root: cfg.root.startColor, second: cfg.second.fillColor, line: cfg.lineStyle }
+    })
+    assert(theme.second === '#7dc142' && theme.line === 'curve', `El tema aplicado no es el esperado: ${JSON.stringify(theme)}`)
+  })
+
+  // ---- TC24: compatibilidad con mapas creados antes del rediseño ----
+  await run('TC24 - Un mapa antiguo (tema default) se abre con el nuevo tema', async () => {
+    const legacyId = await page.evaluate(async () => {
+      const res = await fetch('/api/maps', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: 'Mapa legado E2E' })
+      })
+      const map = await res.json()
+      await fetch(`/api/maps/${map.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { layout: 'logicalStructure', root: { data: { text: 'Legado' }, children: [] }, theme: { template: 'default', config: {} }, view: {} } })
+      })
+      return map.id
+    })
+    createdMapIds.add(legacyId)
+    await page.click('.task-strip-tab:has-text("Mis mapas")')
+    await page.evaluate(() => window.Alpine.$data(document.body).loadMapList())
+    await page.click('.map-list li:has-text("Mapa legado E2E")')
+    await page.waitForFunction(() => document.querySelector('.smm-node') && document.querySelector('.smm-node').textContent.includes('Legado'), null, { timeout: 5000 })
+    const applied = await page.evaluate(() => window.Alpine.$data(document.body).mindMap.themeConfig.second.fillColor)
+    assert(applied === '#7dc142', `El mapa legado no usa el tema nuevo (second.fillColor=${applied})`)
+    assertSvgFitsContainer(await getCanvasGeometry(page), 'Mapa legado')
+  })
+
   // ---- TC14: eliminar un mapa lo quita de la lista y del backend ----
   await run('TC14 - Eliminar mapa lo remueve de la lista y del backend', async () => {
+    if (!(await page.locator('.map-list').isVisible())) await page.click('.task-strip-tab:has-text("Mis mapas")')
     const idToDelete = mapId
-    const li = page.locator(`li:has-text("Mapa de prueba E2E")`)
+    const li = page.locator(`.map-list li:has-text("Mapa de prueba E2E")`)
     await li.locator('button.btn-icon').click()
     await page.waitForFunction(
       title => !document.body.innerText.includes(title),

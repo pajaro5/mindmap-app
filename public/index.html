@@ -10,63 +10,192 @@
 <body x-data="mindMapApp()" x-init="init()">
 
   <div class="app-shell">
-    <!-- Sidebar: lista de mapas -->
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h1>Mis Mapas</h1>
-        <button class="btn btn-primary" @click="createMap()">+ Nuevo</button>
+    <!-- Barra de título: logo, barra de acceso rápido y nombre del mapa -->
+    <header class="titlebar">
+      <div class="app-logo" aria-hidden="true">M</div>
+      <div class="qat">
+        <button class="qat-btn" title="Nuevo mapa" @click="createMap()">
+          <svg viewBox="0 0 16 16"><path d="M3 1h7l3 3v11H3z" fill="#fff" stroke="#3b6ea5"/><path d="M10 1v3h3" fill="none" stroke="#3b6ea5"/></svg>
+        </button>
+        <button class="qat-btn" title="Deshacer" @click="undo()" :disabled="!currentId">
+          <svg viewBox="0 0 16 16"><path d="M5 4 2 7l3 3M2.5 7H10a4 4 0 0 1 0 8H7" fill="none" stroke="#1d4f8a" stroke-width="1.6"/></svg>
+        </button>
+        <button class="qat-btn" title="Rehacer" @click="redo()" :disabled="!currentId">
+          <svg viewBox="0 0 16 16"><path d="m11 4 3 3-3 3M13.5 7H6a4 4 0 0 0 0 8h3" fill="none" stroke="#1d4f8a" stroke-width="1.6"/></svg>
+        </button>
       </div>
-      <ul class="map-list">
-        <template x-for="m in maps" :key="m.id">
-          <li :class="{ active: m.id === currentId }" @click="openMap(m.id)">
-            <span class="map-title" x-text="m.title"></span>
-            <button class="btn-icon" title="Eliminar" @click.stop="deleteMap(m.id)">✕</button>
-          </li>
+      <div class="window-title">
+        <template x-if="currentId">
+          <input class="title-input" type="text" x-model="currentTitle" @change="renameMap()" title="Renombrar mapa" />
         </template>
-        <li x-show="maps.length === 0" class="empty-hint">Aún no tienes mapas. Crea uno.</li>
-      </ul>
-    </aside>
-
-    <!-- Main: toolbar + canvas -->
-    <main class="main-area">
-      <div class="toolbar" x-show="currentId">
-        <input class="title-input" type="text" x-model="currentTitle" @change="renameMap()" />
-        <div class="toolbar-group">
-          <button class="btn" @click="zoomOut()" title="Alejar">−</button>
-          <button class="btn" @click="resetZoom()" title="Restablecer zoom">100%</button>
-          <button class="btn" @click="zoomIn()" title="Acercar">+</button>
-        </div>
-        <div class="toolbar-group">
-          <button class="btn" @click="undo()" title="Deshacer">↶</button>
-          <button class="btn" @click="redo()" title="Rehacer">↷</button>
-        </div>
-        <div class="toolbar-group">
-          <select class="layout-select" x-model="currentLayout" @change="setLayout(currentLayout)" title="Estilo del mapa">
-            <option value="logicalStructure">Estilo: Árbol</option>
-            <option value="mindMap">Estilo: Radial</option>
-          </select>
-        </div>
-        <div class="toolbar-group">
-          <button class="btn" @click="exportMap('png')">Exportar PNG</button>
-          <button class="btn" @click="exportMap('pdf')">Exportar PDF</button>
-        </div>
-        <span class="save-status" x-text="saveStatus"></span>
+        <span class="app-name">Mapas Mentales</span>
       </div>
+    </header>
 
-      <div class="content-row">
-        <div class="canvas-wrap">
-          <div id="mindMapContainer"></div>
-          <div class="placeholder" x-show="!currentId">
-            <p>Selecciona un mapa de la izquierda o crea uno nuevo para empezar.</p>
+    <!-- Cinta de opciones -->
+    <nav class="ribbon-tabs" role="tablist">
+      <template x-for="tab in ribbonTabs" :key="tab.id">
+        <button class="ribbon-tab" role="tab" :class="{ active: ribbonTab === tab.id }"
+                :aria-selected="ribbonTab === tab.id" @click="ribbonTab = tab.id" x-text="tab.label"></button>
+      </template>
+    </nav>
+
+    <div class="ribbon">
+      <!-- Inicio -->
+      <template x-if="ribbonTab === 'home'">
+        <div class="ribbon-panel">
+          <div class="ribbon-group">
+            <div class="ribbon-group-body">
+              <button class="rb-large" @click="createMap()">
+                <svg viewBox="0 0 32 32"><path d="M7 3h13l6 6v20H7z" fill="#fff" stroke="#3b6ea5" stroke-width="1.5"/><path d="M20 3v6h6" fill="#dbe8f7" stroke="#3b6ea5" stroke-width="1.5"/><circle cx="23" cy="23" r="6" fill="#5bb33a"/><path d="M23 20v6M20 23h6" stroke="#fff" stroke-width="2"/></svg>
+                <span>Nuevo<br>mapa</span>
+              </button>
+            </div>
+            <div class="ribbon-group-label">Mapa</div>
           </div>
-          <div class="error-banner" x-show="errorMsg" x-text="errorMsg"></div>
+
+          <div class="ribbon-group">
+            <div class="ribbon-group-body">
+              <button class="rb-large" @click="insertChild()" :disabled="!hasActiveNode" title="Insertar subtema (Tab)">
+                <svg viewBox="0 0 32 32"><rect x="2" y="12" width="12" height="8" rx="2" fill="#3d8fd8"/><path d="M14 16c5 0 5-8 10-8M14 16c5 0 5 8 10 8" fill="none" stroke="#999" stroke-width="2"/><rect x="22" y="5" width="9" height="6" rx="1.5" fill="#7dc142"/><rect x="22" y="21" width="9" height="6" rx="1.5" fill="#7dc142"/></svg>
+                <span>Subtema</span>
+              </button>
+              <button class="rb-large" @click="insertSibling()" :disabled="!hasActiveNode" title="Insertar tema al mismo nivel (Enter)">
+                <svg viewBox="0 0 32 32"><rect x="6" y="5" width="20" height="9" rx="2" fill="#7dc142"/><rect x="6" y="18" width="20" height="9" rx="2" fill="#fff" stroke="#7dc142" stroke-width="1.5" stroke-dasharray="3 2"/><path d="M16 20v5M13.5 22.5h5" stroke="#5bb33a" stroke-width="2"/></svg>
+                <span>Tema</span>
+              </button>
+              <button class="rb-large" @click="removeNode()" :disabled="!hasActiveNode" title="Eliminar tema (Supr)">
+                <svg viewBox="0 0 32 32"><rect x="6" y="11" width="20" height="10" rx="2" fill="#7dc142"/><circle cx="23" cy="22" r="7" fill="#d9412b"/><path d="m20 19 6 6m0-6-6 6" stroke="#fff" stroke-width="2"/></svg>
+                <span>Eliminar</span>
+              </button>
+            </div>
+            <div class="ribbon-group-label">Insertar</div>
+          </div>
+
+          <div class="ribbon-group">
+            <div class="ribbon-group-body">
+              <button class="rb-large" @click="undo()" :disabled="!currentId" title="Deshacer (Ctrl+Z)">
+                <svg viewBox="0 0 32 32"><path d="M10 7 4 13l6 6M5 13h14a7 7 0 0 1 0 14h-5" fill="none" stroke="#1d4f8a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Deshacer</span>
+              </button>
+              <button class="rb-large" @click="redo()" :disabled="!currentId" title="Rehacer (Ctrl+Y)">
+                <svg viewBox="0 0 32 32"><path d="m22 7 6 6-6 6M27 13H13a7 7 0 0 0 0 14h5" fill="none" stroke="#1d4f8a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Rehacer</span>
+              </button>
+            </div>
+            <div class="ribbon-group-label">Edición</div>
+          </div>
+
+          <div class="ribbon-group">
+            <div class="ribbon-group-body">
+              <button class="rb-large" :class="{ pressed: currentLayout === 'mindMap' }" @click="setLayout('mindMap')" :disabled="!currentId" title="Mapa radial (ramas a ambos lados)">
+                <svg viewBox="0 0 32 32"><path d="M16 16C10 16 10 7 4 7M16 16c-6 0-6 9-12 9M16 16c6 0 6-9 12-9M16 16c6 0 6 9 12 9" fill="none" stroke="#999" stroke-width="2"/><rect x="10" y="12" width="12" height="8" rx="2" fill="#3d8fd8"/></svg>
+                <span>Radial</span>
+              </button>
+              <button class="rb-large" :class="{ pressed: currentLayout === 'logicalStructure' }" @click="setLayout('logicalStructure')" :disabled="!currentId" title="Mapa en árbol (ramas a la derecha)">
+                <svg viewBox="0 0 32 32"><path d="M11 16c6 0 6-9 12-9M11 16h12M11 16c6 0 6 9 12 9" fill="none" stroke="#999" stroke-width="2"/><rect x="2" y="12" width="10" height="8" rx="2" fill="#3d8fd8"/><rect x="22" y="4" width="8" height="5" rx="1" fill="#7dc142"/><rect x="22" y="14" width="8" height="5" rx="1" fill="#7dc142"/><rect x="22" y="23" width="8" height="5" rx="1" fill="#7dc142"/></svg>
+                <span>Árbol</span>
+              </button>
+            </div>
+            <div class="ribbon-group-label">Diseño del mapa</div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Vista -->
+      <template x-if="ribbonTab === 'view'">
+        <div class="ribbon-panel">
+          <div class="ribbon-group">
+            <div class="ribbon-group-body">
+              <button class="rb-large" @click="zoomIn()" :disabled="!currentId" title="Acercar zoom">
+                <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="9" fill="#e8f1fb" stroke="#1d4f8a" stroke-width="2.5"/><path d="m20 20 9 9" stroke="#1d4f8a" stroke-width="3.5" stroke-linecap="round"/><path d="M13 9v8M9 13h8" stroke="#1d4f8a" stroke-width="2.5"/></svg>
+                <span>Acercar</span>
+              </button>
+              <button class="rb-large" @click="zoomOut()" :disabled="!currentId" title="Alejar zoom">
+                <svg viewBox="0 0 32 32"><circle cx="13" cy="13" r="9" fill="#e8f1fb" stroke="#1d4f8a" stroke-width="2.5"/><path d="m20 20 9 9" stroke="#1d4f8a" stroke-width="3.5" stroke-linecap="round"/><path d="M9 13h8" stroke="#1d4f8a" stroke-width="2.5"/></svg>
+                <span>Alejar</span>
+              </button>
+              <button class="rb-large" @click="fitView()" :disabled="!currentId" title="Ajustar el mapa a la ventana">
+                <svg viewBox="0 0 32 32"><rect x="4" y="6" width="24" height="20" rx="2" fill="#fff" stroke="#1d4f8a" stroke-width="2"/><path d="M8 13v-3h3M24 13v-3h-3M8 19v3h3M24 19v3h-3" fill="none" stroke="#3d8fd8" stroke-width="2"/></svg>
+                <span>Ajustar</span>
+              </button>
+              <button class="rb-large" @click="resetZoom()" :disabled="!currentId" title="Tamaño real (100%)">
+                <svg viewBox="0 0 32 32"><rect x="4" y="6" width="24" height="20" rx="2" fill="#fff" stroke="#1d4f8a" stroke-width="2"/><text x="16" y="20" font-size="9" font-weight="700" text-anchor="middle" fill="#1d4f8a" font-family="Segoe UI, Arial">1:1</text></svg>
+                <span>100%</span>
+              </button>
+            </div>
+            <div class="ribbon-group-label">Zoom</div>
+          </div>
+
+          <div class="ribbon-group">
+            <div class="ribbon-group-body">
+              <button class="rb-large" :class="{ pressed: pane === 'maps' }" @click="togglePane('maps')" title="Mostrar u ocultar Mis mapas">
+                <svg viewBox="0 0 32 32"><path d="M3 8h10l2 3h14v16H3z" fill="#f5c84c" stroke="#b8901f" stroke-width="1.5"/></svg>
+                <span>Mis mapas</span>
+              </button>
+              <button class="rb-large" :class="{ pressed: pane === 'markers' }" @click="togglePane('markers')" title="Mostrar u ocultar Marcadores">
+                <svg viewBox="0 0 32 32"><circle cx="10" cy="10" r="6" fill="#d9412b"/><text x="10" y="13.5" font-size="9" font-weight="700" text-anchor="middle" fill="#fff" font-family="Arial">1</text><path d="M18 6v20" stroke="#666" stroke-width="2"/><path d="M18 6h10l-3 4 3 4H18z" fill="#5bb33a"/><circle cx="10" cy="23" r="6" fill="#fff" stroke="#5bb33a" stroke-width="2"/><path d="M10 17a6 6 0 0 1 6 6h-6z" fill="#5bb33a"/></svg>
+                <span>Marcadores</span>
+              </button>
+            </div>
+            <div class="ribbon-group-label">Paneles</div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Exportar -->
+      <template x-if="ribbonTab === 'export'">
+        <div class="ribbon-panel">
+          <div class="ribbon-group">
+            <div class="ribbon-group-body">
+              <button class="rb-large" @click="exportMap('png')" :disabled="!currentId" title="Exportar como imagen PNG">
+                <svg viewBox="0 0 32 32"><rect x="4" y="5" width="24" height="22" rx="2" fill="#fff" stroke="#3b6ea5" stroke-width="1.5"/><path d="m6 24 7-9 5 6 3-3 5 6z" fill="#7dc142"/><circle cx="21" cy="11" r="3" fill="#f5c84c"/></svg>
+                <span>Exportar PNG</span>
+              </button>
+              <button class="rb-large" @click="exportMap('pdf')" :disabled="!currentId" title="Exportar como documento PDF">
+                <svg viewBox="0 0 32 32"><path d="M7 3h13l6 6v20H7z" fill="#fff" stroke="#3b6ea5" stroke-width="1.5"/><rect x="4" y="15" width="18" height="9" rx="1.5" fill="#d9412b"/><text x="13" y="22.3" font-size="7" font-weight="700" text-anchor="middle" fill="#fff" font-family="Arial">PDF</text></svg>
+                <span>Exportar PDF</span>
+              </button>
+            </div>
+            <div class="ribbon-group-label">Exportar</div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Área de trabajo: lienzo + panel de tareas + tira vertical de pestañas -->
+    <div class="workspace">
+      <main class="canvas-wrap">
+        <div id="mindMapContainer"></div>
+        <div class="placeholder" x-show="!currentId">
+          <p>Selecciona un mapa en <strong>Mis mapas</strong> o crea uno nuevo para empezar.</p>
+        </div>
+        <div class="error-banner" x-show="errorMsg" x-text="errorMsg"></div>
+      </main>
+
+      <aside class="task-pane" x-show="pane">
+        <div class="task-pane-header">
+          <span x-text="pane === 'maps' ? 'Mis mapas' : 'Marcadores'"></span>
+          <button class="task-pane-close" title="Cerrar panel" @click="pane = null">✕</button>
         </div>
 
-        <!-- Barra vertical de iconos -->
-        <aside class="icon-sidebar" x-show="currentId">
-          <div class="icon-sidebar-header">Iconos</div>
-          <div class="icon-sidebar-hint" x-show="activeNodeList.length === 0">
-            Selecciona un nodo para asignarle un icono.
+        <div class="task-pane-body" x-show="pane === 'maps'">
+          <button class="btn btn-primary btn-block" @click="createMap()">+ Nuevo mapa</button>
+          <ul class="map-list">
+            <template x-for="m in maps" :key="m.id">
+              <li :class="{ active: m.id === currentId }" @click="openMap(m.id)">
+                <span class="map-doc-icon" aria-hidden="true"></span>
+                <span class="map-title" x-text="m.title"></span>
+                <button class="btn-icon" title="Eliminar" @click.stop="deleteMap(m.id)">✕</button>
+              </li>
+            </template>
+            <li x-show="maps.length === 0" class="empty-hint">Aún no tienes mapas. Crea uno.</li>
+          </ul>
+        </div>
+
+        <div class="task-pane-body markers" x-show="pane === 'markers'">
+          <div class="icon-sidebar-hint" x-show="!hasActiveNode">
+            Selecciona un tema del mapa para asignarle un marcador.
           </div>
           <template x-for="cat in iconCategories" :key="cat.type">
             <div class="icon-category">
@@ -76,7 +205,7 @@
                   <button
                     class="icon-btn"
                     :class="{ active: isIconActive(item.id) }"
-                    :disabled="activeNodeList.length === 0"
+                    :disabled="!hasActiveNode"
                     :title="item.id"
                     @click="toggleIcon(item.id)"
                     x-html="item.svg"
@@ -85,9 +214,34 @@
               </div>
             </div>
           </template>
-        </aside>
+        </div>
+      </aside>
+
+      <nav class="task-strip" aria-label="Paneles">
+        <button class="task-strip-tab" :class="{ active: pane === 'maps' }" @click="togglePane('maps')">
+          <svg viewBox="0 0 16 16"><path d="M1 4h5l1 1.5h8V14H1z" fill="#f5c84c" stroke="#b8901f"/></svg>
+          <span>Mis mapas</span>
+        </button>
+        <button class="task-strip-tab" :class="{ active: pane === 'markers' }" @click="togglePane('markers')">
+          <svg viewBox="0 0 16 16"><path d="M4 2v13" stroke="#666" stroke-width="1.4"/><path d="M4 2h9l-2.5 3L13 8H4z" fill="#5bb33a"/></svg>
+          <span>Marcadores</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Barra de estado -->
+    <footer class="statusbar">
+      <span class="status-item" x-text="maps.length + (maps.length === 1 ? ' mapa' : ' mapas')"></span>
+      <span class="status-item save-status" x-text="saveStatus"></span>
+      <div class="zoom-control" x-show="currentId">
+        <button class="zoom-btn" @click="zoomOut()" title="Alejar">−</button>
+        <input class="zoom-slider" type="range" min="20" max="400" step="5"
+               :value="zoomPercent" @input="setZoomPercent($event.target.value)" title="Zoom" />
+        <button class="zoom-btn" @click="zoomIn()" title="Acercar">+</button>
+        <button class="zoom-value" @click="resetZoom()" title="Restablecer zoom" x-text="zoomPercent + '%'"></button>
+        <button class="zoom-btn" @click="fitView()" title="Ajustar a la ventana">⤢</button>
       </div>
-    </main>
+    </footer>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.3/cdn.min.js" defer></script>

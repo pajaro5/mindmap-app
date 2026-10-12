@@ -7,6 +7,89 @@ const ICON_CATEGORY_LABELS = {
   sign: 'Marcas'
 }
 
+// Tema visual inspirado en MindManager: tema central azul, temas principales verdes
+// con texto blanco y subtemas como texto sobre ramas curvas grises.
+// Se registra como tema con nombre para que en la BD solo se guarde "mindmanager" y
+// las personalizaciones del usuario, no una copia completa de estos valores.
+const THEME_NAME = 'mindmanager'
+const FONT = 'Segoe UI, Tahoma, Arial, sans-serif'
+const MINDMANAGER_THEME = {
+  backgroundColor: '#ffffff',
+  lineColor: '#b9b9b9',
+  lineWidth: 2,
+  lineStyle: 'curve',
+  rootLineKeepSameInCurve: false,
+  generalizationLineColor: '#9ab7d8',
+  iconSize: 18,
+  paddingX: 14,
+  paddingY: 6,
+  root: {
+    shape: 'rectangle',
+    fontFamily: FONT,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    fillColor: '#3d8fd8',
+    gradientStyle: true,
+    startColor: '#6db2f0',
+    endColor: '#2b6fbd',
+    startDir: [0, 0],
+    endDir: [0, 1],
+    borderColor: '#24609f',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingX: 34,
+    paddingY: 22,
+    lineWidth: 5,
+    textAlign: 'center'
+  },
+  second: {
+    shape: 'rectangle',
+    fontFamily: FONT,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    fillColor: '#7dc142',
+    gradientStyle: true,
+    startColor: '#a3d86a',
+    endColor: '#66ab2c',
+    startDir: [0, 0],
+    endDir: [0, 1],
+    borderColor: '#57962a',
+    borderWidth: 1,
+    borderRadius: 9,
+    paddingX: 18,
+    paddingY: 10,
+    marginX: 90,
+    marginY: 34,
+    lineWidth: 2
+  },
+  node: {
+    fontFamily: FONT,
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#2b2b2b',
+    fillColor: 'transparent',
+    borderWidth: 0,
+    marginX: 44,
+    marginY: 4,
+    lineWidth: 1
+  },
+  generalization: {
+    fontFamily: FONT,
+    fontSize: 12,
+    color: '#1d4f8a',
+    fillColor: '#eaf3fd',
+    borderColor: '#9ab7d8',
+    borderWidth: 1,
+    borderRadius: 6
+  }
+}
+
+if (MindMapCtor && typeof MindMapCtor.defineTheme === 'function') {
+  MindMapCtor.defineTheme(THEME_NAME, MINDMANAGER_THEME)
+}
+
 function buildIconCategories() {
   if (!MindMapCtor || !Array.isArray(MindMapCtor.iconList)) return []
   return MindMapCtor.iconList.map(cat => ({
@@ -19,6 +102,11 @@ function buildIconCategories() {
   }))
 }
 
+// Espera a que el navegador haya aplicado el layout pendiente (tras cambios de Alpine)
+function nextFrame() {
+  return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+}
+
 function mindMapApp() {
   return {
     maps: [],
@@ -28,15 +116,37 @@ function mindMapApp() {
     saveStatus: '',
     saveTimer: null,
     errorMsg: '',
-    currentLayout: 'logicalStructure',
+    currentLayout: 'mindMap',
     activeNodeList: [],
     iconCategories: [],
+    zoomPercent: 100,
+    ribbonTabs: [
+      { id: 'home', label: 'Inicio' },
+      { id: 'view', label: 'Vista' },
+      { id: 'export', label: 'Exportar' }
+    ],
+    ribbonTab: 'home',
+    pane: 'maps',
+
+    get hasActiveNode() {
+      return this.activeNodeList.length > 0
+    },
 
     async init() {
       window.addEventListener('error', e => {
         this.errorMsg = 'Error JS: ' + e.message
       })
       this.iconCategories = buildIconCategories()
+
+      // El lienzo cambia de tamaño al abrir/cerrar paneles o redimensionar la ventana.
+      // simple-mind-map no lo detecta solo: hay que avisarle con resize() para que el
+      // <svg> siga midiendo exactamente lo mismo que su contenedor.
+      const el = document.getElementById('mindMapContainer')
+      this.resizeObserver = new ResizeObserver(() => {
+        if (this.mindMap) this.mindMap.resize()
+      })
+      this.resizeObserver.observe(el)
+
       await this.loadMapList()
     },
 
@@ -65,9 +175,10 @@ function mindMapApp() {
       this.currentTitle = map.title
       this.errorMsg = ''
       this.activeNodeList = []
-      this.currentLayout = map.data.layout || 'logicalStructure'
+      this.currentLayout = map.data.layout || 'mindMap'
 
       await this.$nextTick()
+      await nextFrame()
 
       try {
         const el = document.getElementById('mindMapContainer')
@@ -86,30 +197,34 @@ function mindMapApp() {
           throw new Error(`El contenedor del mapa tiene tamaño 0 (${rect.width}x${rect.height}), no se puede renderizar`)
         }
 
+        const savedTheme = map.data.theme || {}
+        // Los mapas creados antes del rediseño guardaban la plantilla 'default'
+        const template = !savedTheme.template || savedTheme.template === 'default' ? THEME_NAME : savedTheme.template
+
         this.mindMap = new MindMapCtor({
           el,
           data: map.data.root,
-          layout: map.data.layout || 'logicalStructure',
-          theme: (map.data.theme && map.data.theme.template) || 'default',
-          defaultInsertSecondLevelNodeText: 'Subtema',
-          defaultInsertBelowSecondLevelNodeText: 'Tema',
+          layout: this.currentLayout,
+          theme: template,
+          themeConfig: savedTheme.config || {},
+          defaultInsertSecondLevelNodeText: 'Tema principal',
+          defaultInsertBelowSecondLevelNodeText: 'Subtema',
           defaultGeneralizationText: 'Resumen',
           defaultAssociativeLineText: 'Relación',
           defaultOuterFrameText: 'Marco'
         })
 
-        if (map.data.theme && map.data.theme.config) {
-          this.mindMap.setThemeConfig(map.data.theme.config, true)
-        }
         if (map.data.view && Object.keys(map.data.view).length) {
           this.mindMap.view.setTransformData(map.data.view)
         }
+        this.zoomPercent = Math.round(this.mindMap.view.scale * 100)
 
         this.mindMap.on('data_change', () => this.scheduleSave())
         this.mindMap.on('view_theme_change', () => this.scheduleSave())
         this.mindMap.on('layout_change', () => this.scheduleSave())
+        this.mindMap.on('scale', scale => { this.zoomPercent = Math.round(scale * 100) })
         this.mindMap.on('node_active', (node, activeNodeList) => {
-          this.activeNodeList = activeNodeList
+          this.activeNodeList = [...activeNodeList]
         })
       } catch (err) {
         console.error(err)
@@ -155,30 +270,44 @@ function mindMapApp() {
         }
         this.currentId = null
         this.currentTitle = ''
+        this.activeNodeList = []
       }
       await this.loadMapList()
     },
 
+    togglePane(name) {
+      this.pane = this.pane === name ? null : name
+    },
+
+    insertChild() { if (this.mindMap && this.hasActiveNode) this.mindMap.execCommand('INSERT_CHILD_NODE') },
+    insertSibling() { if (this.mindMap && this.hasActiveNode) this.mindMap.execCommand('INSERT_NODE') },
+    removeNode() { if (this.mindMap && this.hasActiveNode) this.mindMap.execCommand('REMOVE_NODE') },
+
     zoomIn() { if (this.mindMap) this.mindMap.view.enlarge() },
     zoomOut() { if (this.mindMap) this.mindMap.view.narrow() },
     resetZoom() { if (this.mindMap) this.mindMap.view.reset() },
+    fitView() { if (this.mindMap) this.mindMap.view.fit() },
+    setZoomPercent(value) {
+      if (this.mindMap) this.mindMap.view.setScale(Number(value) / 100)
+    },
     undo() { if (this.mindMap) this.mindMap.execCommand('BACK') },
     redo() { if (this.mindMap) this.mindMap.execCommand('FORWARD') },
 
     setLayout(layout) {
       if (!this.mindMap) return
+      this.currentLayout = layout
       this.mindMap.setLayout(layout)
     },
 
     isIconActive(iconId) {
-      if (this.activeNodeList.length === 0) return false
+      if (!this.hasActiveNode) return false
       const node = this.activeNodeList[0]
       const icons = node.getData('icon') || []
       return icons.includes(iconId)
     },
 
     toggleIcon(iconId) {
-      if (!this.mindMap || this.activeNodeList.length === 0) return
+      if (!this.mindMap || !this.hasActiveNode) return
       this.activeNodeList.forEach(node => {
         const icons = node.getData('icon') || []
         const next = icons.includes(iconId)

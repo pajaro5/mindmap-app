@@ -1,5 +1,39 @@
+/* Look & feel inspirado en MindManager (cinta tipo Office, panel de tareas a la derecha,
+   barra de estado con zoom). Los colores viven en variables para poder ajustar el tema. */
+:root {
+  --chrome-blue-1: #dfeaf7;
+  --chrome-blue-2: #c4d7ee;
+  --chrome-border: #8db2e3;
+  --title-1: #3f78c0;
+  --title-2: #23589c;
+  --ribbon-1: #f4f8fd;
+  --ribbon-2: #d9e6f6;
+  --group-border: #a9c3e4;
+  --group-label: #15428b;
+  --accent: #3d8fd8;
+  --hover-1: #fff6d6;
+  --hover-2: #ffd96b;
+  --hover-border: #e3b33b;
+  --text: #1e2a3a;
+  --muted: #5b6b80;
+  --canvas: #ffffff;
+  --font: "Segoe UI", Tahoma, Roboto, Arial, sans-serif;
+}
+
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+
+/* La página nunca debe desplazarse: todo el scroll vive dentro del lienzo o de los paneles.
+   Si un elemento de la librería sobresale, se recorta en vez de mover toda la interfaz. */
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--chrome-blue-2);
+}
+
+button { font-family: inherit; }
 
 /* simple-mind-map no incluye su propio reset de CSS para el contenido de texto
    enriquecido de los nodos; sin esto el <p> hereda el margen por defecto del
@@ -19,158 +53,206 @@ html, body { height: 100%; margin: 0; font-family: -apple-system, Segoe UI, Robo
 
 .app-shell {
   display: flex;
+  flex-direction: column;
   height: 100vh;
   width: 100vw;
 }
 
-.sidebar {
-  width: 260px;
-  flex-shrink: 0;
-  background: #1f2430;
-  color: #e6e6e6;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid #333a47;
-}
-
-.sidebar-header h1 {
-  font-size: 15px;
-  margin: 0;
-  font-weight: 600;
-}
-
-.map-list {
-  list-style: none;
-  margin: 0;
-  padding: 8px;
-  flex: 1;
-}
-
-.map-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-bottom: 2px;
-  font-size: 14px;
-}
-
-.map-list li:hover { background: #2a3040; }
-.map-list li.active { background: #3a5ba0; color: #fff; }
-
-.map-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.btn-icon {
-  background: transparent;
-  border: none;
-  color: inherit;
-  opacity: 0.6;
-  cursor: pointer;
-  font-size: 12px;
-}
-.btn-icon:hover { opacity: 1; }
-
-.empty-hint {
-  opacity: 0.6;
-  font-size: 13px;
-  padding: 10px;
-  cursor: default;
-}
-.empty-hint:hover { background: none; }
-
-.main-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.toolbar {
+/* ---------- Barra de título ---------- */
+.titlebar {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 14px;
-  border-bottom: 1px solid #ddd;
-  background: #fafafa;
+  height: 36px;
+  padding: 0 10px 0 4px;
+  background: linear-gradient(#5b93d6, var(--title-1) 45%, var(--title-2));
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.app-logo {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+  background: radial-gradient(circle at 35% 30%, #ff8a73, #d9412b 60%, #9e2414);
+  border: 2px solid #f3f6fb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+
+.qat {
+  display: flex;
+  gap: 2px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: linear-gradient(#e8f0fa, #c3d6ef);
+  border: 1px solid #8eb0dc;
+}
+
+.qat-btn {
+  width: 22px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+}
+.qat-btn svg { width: 15px; height: 15px; }
+.qat-btn:hover:not(:disabled) { background: linear-gradient(var(--hover-1), var(--hover-2)); border-color: var(--hover-border); }
+.qat-btn:disabled { opacity: .4; cursor: default; }
+
+.window-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
 }
 
 .title-input {
-  font-size: 15px;
+  font: inherit;
   font-weight: 600;
+  color: #fff;
+  background: transparent;
   border: 1px solid transparent;
-  padding: 4px 8px;
-  border-radius: 4px;
-  min-width: 160px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-align: right;
+  min-width: 60px;
+  max-width: 340px;
+  field-sizing: content;
 }
-.title-input:hover, .title-input:focus {
-  border-color: #ccc;
-  outline: none;
+.title-input:hover { border-color: rgba(255, 255, 255, .5); }
+.title-input:focus { outline: none; background: #fff; color: var(--text); text-align: left; }
+
+.title-input + .app-name::before { content: "– "; }
+.app-name { opacity: .9; white-space: nowrap; }
+
+/* ---------- Cinta de opciones ---------- */
+.ribbon-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px 8px 0 48px;
+  background: var(--chrome-blue-2);
+  flex-shrink: 0;
 }
 
-.toolbar-group {
+.ribbon-tab {
+  padding: 4px 16px 5px;
+  font-size: 12.5px;
+  color: var(--group-label);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+}
+.ribbon-tab:hover { background: rgba(255, 255, 255, .45); }
+.ribbon-tab.active {
+  background: var(--ribbon-1);
+  border-color: var(--chrome-border);
+  margin-bottom: -1px;
+  position: relative;
+  z-index: 1;
+}
+
+.ribbon {
+  height: 96px;
+  flex-shrink: 0;
+  background: linear-gradient(var(--ribbon-1), #e6eef9 60%, var(--ribbon-2));
+  border-top: 1px solid var(--chrome-border);
+  border-bottom: 1px solid var(--chrome-border);
+  padding: 4px 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.ribbon-panel {
   display: flex;
   gap: 4px;
-  padding: 0 8px;
-  border-left: 1px solid #ddd;
+  height: 100%;
 }
 
-.btn {
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  background: #fff;
-  border-radius: 5px;
+.ribbon-group {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--group-border);
+  border-radius: 4px;
+  background: linear-gradient(rgba(255, 255, 255, .55), rgba(255, 255, 255, .1));
+  flex-shrink: 0;
+}
+
+.ribbon-group-body {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 3px 3px 0;
+}
+
+.ribbon-group-label {
+  font-size: 11px;
+  color: var(--group-label);
+  text-align: center;
+  padding: 1px 8px 2px;
+  background: linear-gradient(#c9dbf1, #b6cdea);
+  border-radius: 0 0 3px 3px;
+  white-space: nowrap;
+}
+
+.rb-large {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  min-width: 52px;
+  padding: 3px 5px;
+  font-size: 11.5px;
+  line-height: 1.15;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
   cursor: pointer;
-  font-size: 13px;
 }
-.btn:hover { background: #f0f0f0; }
-
-.btn-primary {
-  background: #3a5ba0;
-  color: #fff;
-  border-color: #3a5ba0;
+.rb-large svg { width: 32px; height: 32px; flex-shrink: 0; }
+.rb-large span { text-align: center; }
+.rb-large:hover:not(:disabled) {
+  background: linear-gradient(var(--hover-1), #ffe9a8 50%, var(--hover-2));
+  border-color: var(--hover-border);
 }
-.btn-primary:hover { background: #2f4a85; }
-
-.save-status {
-  margin-left: auto;
-  font-size: 12px;
-  color: #888;
+.rb-large.pressed {
+  background: linear-gradient(#ffd99a, #fbbf5d 50%, #f6a93a);
+  border-color: #c2862a;
 }
+.rb-large:disabled { opacity: .45; cursor: default; }
 
-.layout-select {
-  padding: 6px 10px;
-  border: 1px solid #ccc;
-  background: #fff;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.content-row {
+/* ---------- Área de trabajo ---------- */
+.workspace {
   flex: 1;
   display: flex;
   min-height: 0;
+  padding: 4px 0 0 4px;
+  gap: 4px;
 }
 
 .canvas-wrap {
   flex: 1;
-  position: relative;
-  background: #f5f6f8;
   min-width: 0;
+  position: relative;
+  overflow: hidden;
+  background: var(--canvas);
+  border: 1px solid var(--chrome-border);
 }
 
 #mindMapContainer {
@@ -184,9 +266,9 @@ html, body { height: 100%; margin: 0; font-family: -apple-system, Segoe UI, Robo
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: var(--muted);
   font-size: 14px;
-  background: #f5f6f8;
+  background: var(--canvas);
   z-index: 1;
 }
 
@@ -205,61 +287,221 @@ html, body { height: 100%; margin: 0; font-family: -apple-system, Segoe UI, Robo
   z-index: 2;
 }
 
-.icon-sidebar {
-  width: 220px;
+/* ---------- Panel de tareas (Mis mapas / Marcadores) ---------- */
+.task-pane {
+  width: 240px;
   flex-shrink: 0;
-  background: #fafafa;
-  border-left: 1px solid #ddd;
-  overflow-y: auto;
-  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  background: #f3f7fc;
+  border: 1px solid var(--chrome-border);
+  min-height: 0;
 }
 
-.icon-sidebar-header {
-  font-size: 13px;
+.task-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: #444;
-  margin-bottom: 8px;
+  color: var(--group-label);
+  background: linear-gradient(#e9f1fb, #c9dbf1);
+  border-bottom: 1px solid var(--group-border);
 }
+
+.task-pane-close {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+.task-pane-close:hover { color: var(--text); }
+
+.task-pane-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.btn {
+  padding: 5px 10px;
+  border: 1px solid #9fb9da;
+  background: linear-gradient(#fff, #e5eef9);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.btn:hover { background: linear-gradient(var(--hover-1), var(--hover-2)); border-color: var(--hover-border); }
+
+.btn-primary {
+  color: #fff;
+  border-color: #2c6db5;
+  background: linear-gradient(#5aa2e6, var(--accent) 50%, #2c75c2);
+}
+.btn-primary:hover { color: var(--text); }
+
+.btn-block { width: 100%; margin-bottom: 8px; }
+
+.map-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.map-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.map-list li:hover { background: linear-gradient(var(--hover-1), #ffeab0); border-color: var(--hover-border); }
+.map-list li.active { background: linear-gradient(#ffd99a, #f8b955); border-color: #c2862a; }
+
+.map-doc-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff8a73, #d9412b 70%);
+}
+
+.map-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: .5;
+  cursor: pointer;
+  font-size: 11px;
+}
+.btn-icon:hover { opacity: 1; color: #b3261e; }
+
+.empty-hint {
+  color: var(--muted);
+  font-size: 12.5px;
+  cursor: default;
+}
+.map-list li.empty-hint:hover { background: none; border-color: transparent; }
 
 .icon-sidebar-hint {
   font-size: 12px;
-  color: #999;
+  color: var(--muted);
   margin-bottom: 10px;
   line-height: 1.4;
 }
 
-.icon-category {
-  margin-bottom: 14px;
-}
+.icon-category { margin-bottom: 12px; }
 
 .icon-category-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: #999;
-  margin-bottom: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--group-label);
+  padding-bottom: 3px;
+  margin-bottom: 5px;
+  border-bottom: 1px solid var(--group-border);
 }
 
 .icon-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
 }
 
 .icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   padding: 4px;
   border: 1px solid transparent;
   background: transparent;
-  border-radius: 5px;
+  border-radius: 3px;
   cursor: pointer;
 }
 .icon-btn svg { width: 100%; height: 100%; }
-.icon-btn:hover { background: #eee; }
-.icon-btn.active { border-color: #3a5ba0; background: #e8edf7; }
-.icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-.icon-btn:disabled:hover { background: transparent; }
+.icon-btn:hover:not(:disabled) { background: linear-gradient(var(--hover-1), var(--hover-2)); border-color: var(--hover-border); }
+.icon-btn.active { background: linear-gradient(#ffd99a, #f8b955); border-color: #c2862a; }
+.icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* Tira vertical de pestañas, como el borde derecho de MindManager */
+.task-strip {
+  width: 26px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.task-strip-tab {
+  writing-mode: vertical-rl;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 3px;
+  font-size: 12px;
+  color: var(--group-label);
+  background: linear-gradient(90deg, #eef4fc, #d3e2f4);
+  border: 1px solid var(--group-border);
+  border-left: none;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+}
+.task-strip-tab svg { width: 15px; height: 15px; }
+.task-strip-tab:hover { background: linear-gradient(90deg, var(--hover-1), var(--hover-2)); }
+.task-strip-tab.active { background: linear-gradient(90deg, #ffe2a8, #f8b955); border-color: #c2862a; }
+
+/* ---------- Barra de estado ---------- */
+.statusbar {
+  height: 26px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 10px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--group-label);
+  background: linear-gradient(#e3edf9, #c3d6ee);
+  border-top: 1px solid var(--chrome-border);
+}
+
+.save-status { color: var(--muted); }
+
+.zoom-control {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.zoom-btn, .zoom-value {
+  height: 20px;
+  min-width: 20px;
+  padding: 0 4px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--group-label);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.zoom-value { min-width: 44px; font-size: 12px; }
+.zoom-btn:hover, .zoom-value:hover { background: linear-gradient(var(--hover-1), var(--hover-2)); border-color: var(--hover-border); }
+
+.zoom-slider { width: 110px; accent-color: var(--accent); }

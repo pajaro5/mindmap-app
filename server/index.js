@@ -9,12 +9,12 @@ app.use(express.json({ limit: '20mb' }))
 app.use(express.static(require('path').join(__dirname, '..', 'public')))
 
 const defaultMapData = () => ({
-  layout: 'logicalStructure',
+  layout: 'mindMap',
   root: {
     data: { text: 'Tema central', expand: true },
     children: []
   },
-  theme: { template: 'default', config: {} },
+  theme: { template: 'mindmanager', config: {} },
   view: {}
 })
 
