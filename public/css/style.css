@@ -280,6 +280,92 @@ button { font-family: inherit; }
 
 [x-cloak] { display: none !important; }
 
+/* Grupos en filas (Formato): controles compactos de 24 px como el grupo Fuente de Office */
+.rb-rows { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 2px 2px 0; }
+.rb-row { display: flex; align-items: center; gap: 1px; }
+.rb-row-item { display: flex; align-items: center; }
+.rb-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--group-border); }
+
+.rb-select {
+  height: 22px;
+  margin-right: 3px;
+  padding: 0 2px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: #fff;
+  border: 1px solid #a9c3e4;
+  border-radius: 2px;
+}
+.rb-select:hover:not(:disabled), .rb-select:focus { border-color: var(--hover-border); outline: none; }
+.rb-select:disabled { background: #f1f4f8; color: var(--muted); }
+
+.rb-icon-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.rb-icon-btn .rb-icon svg { display: block; width: 16px; height: 16px; }
+.rb-icon-btn:hover:not(:disabled) { background: linear-gradient(var(--hover-1), var(--hover-2)); border-color: var(--hover-border); }
+.rb-icon-btn.pressed { background: linear-gradient(#ffd99a, #f8b955); border-color: #c2862a; }
+.rb-icon-btn:disabled { opacity: .4; cursor: default; }
+
+/* Botón de color: icono + barra con el último color + flecha que abre la paleta */
+.rb-color { display: flex; align-items: stretch; }
+.rb-color .rb-icon-btn { border-radius: 2px 0 0 2px; }
+.rb-color .rb-icon-btn .rb-icon svg { margin-top: -3px; }
+.rb-color-bar { position: absolute; left: 4px; right: 4px; bottom: 2px; height: 4px; border: 1px solid rgba(0, 0, 0, .15); }
+.rb-color-arrow {
+  width: 12px;
+  padding: 0;
+  font-size: 8px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: none;
+  border-radius: 0 2px 2px 0;
+  cursor: pointer;
+}
+.rb-color:hover .rb-icon-btn:not(:disabled), .rb-color:hover .rb-color-arrow:not(:disabled),
+.rb-color.menu-open .rb-color-arrow { border-color: var(--hover-border); }
+.rb-color-arrow:hover:not(:disabled), .rb-color.menu-open .rb-color-arrow { background: linear-gradient(var(--hover-1), var(--hover-2)); }
+.rb-color-arrow:disabled { opacity: .4; cursor: default; }
+
+.rb-gallery .rb-label { white-space: nowrap; }
+
+/* Paleta de colores */
+.color-palette { padding: 4px; width: 232px; }
+.palette-group { padding: 2px 4px 4px; }
+.palette-title { font-size: 11px; font-weight: 600; color: var(--group-label); margin: 4px 0 3px; }
+.palette-row { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+.swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, .25);
+  cursor: pointer;
+}
+.swatch:hover, .swatch:focus-visible { outline: 2px solid var(--hover-border); outline-offset: 1px; }
+.swatch.current { outline: 2px solid #c2862a; outline-offset: 1px; }
+.swatch-auto {
+  display: inline-block;
+  background: linear-gradient(135deg, #fff 45%, #c00000 45%, #c00000 55%, #fff 55%);
+}
+.palette-more { position: relative; cursor: pointer; }
+.palette-more input[type="color"] { width: 28px; height: 18px; padding: 0; border: 1px solid #a9c3e4; background: none; cursor: pointer; }
+
+/* Galería de formas */
+.options-gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; width: 360px; }
+.option-preview svg { display: block; width: 32px; height: 20px; }
+.options-gallery .ribbon-menu-item.current { background: linear-gradient(#ffd99a, #f8b955); border-color: #c2862a; }
+
 .ribbon-menu {
   position: fixed;
   z-index: 50;

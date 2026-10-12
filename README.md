@@ -9,7 +9,10 @@ Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista,
 - Crear, renombrar y eliminar mapas desde el panel **Mis mapas**.
 - Editor visual de nodos basado en [simple-mind-map](https://github.com/wanglin2/mind-map), con un tema propio (`mindmanager`): tema central azul, temas principales verdes y ramas curvas.
 - Dos diseños de mapa: **Radial** (por defecto) y **Árbol**.
-- Insertar subtemas y temas, eliminar, deshacer y rehacer desde la cinta o con el teclado (Tab, Enter, Supr).
+- Insertar subtemas y temas (después, antes con Shift+Enter, o tema padre), eliminar, deshacer y rehacer desde la cinta o con el teclado.
+- Portapapeles: cortar, copiar, pegar (también texto de otras aplicaciones) y copiar formato.
+- Formato de los temas: fuente, tamaño, negrita/cursiva/subrayado/tachado (Ctrl+B/I/U), colores de relleno, línea y fuente, alineación y forma del tema.
+- Funciona sin conexión: todas las librerías se sirven en local.
 - Panel **Marcadores** para asignar iconos de prioridad, progreso, emojis y marcas a los temas.
 - Zoom con botones, slider y "ajustar a la ventana".
 - Autoguardado mientras editas.

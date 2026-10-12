@@ -24,6 +24,17 @@ test('el favicon se sirve como SVG', async ({ request, page, app }) => {
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg')
 })
 
+test('la app no depende de servidores externos (funciona sin conexión)', async ({ page }) => {
+  const external = []
+  page.on('request', req => {
+    const url = new URL(req.url())
+    if (!['localhost', '127.0.0.1'].includes(url.hostname) && url.protocol.startsWith('http')) external.push(req.url())
+  })
+  await page.goto('/')
+  await page.waitForFunction(() => window.Alpine && window.Alpine.$data(document.body).ribbon.tabs.length > 0)
+  expect(external, 'peticiones a otros dominios').toEqual([])
+})
+
 test('la lista de mapas se carga desde la API', async ({ page, maps }) => {
   const map = await maps.create()
   await page.goto('/')

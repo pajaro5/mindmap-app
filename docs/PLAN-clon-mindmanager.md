@@ -69,16 +69,16 @@ Soporte en simple-mind-map: **Nativo** (comando/plugin existente) · **Parcial**
 ### 2.5 Formato
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
 |---|---|---|---|---|
-| Fuente y tamaño | Selectores de familia y tamaño | ❌ | Nativo (`SET_NODE_STYLE`) | S |
-| Agrandar / reducir fuente | A▲ A▼ | ❌ | Nativo | S |
-| Negrita, cursiva, subrayado, tachado | Formato del texto del tema | ❌ | Nativo (`SET_NODE_STYLE`, `richText`) | S |
-| Color de relleno / línea / fuente | Selectores de color | ❌ | Nativo | M (incluye un componente selector de color) |
-| Alineación del texto | Izquierda, centro, derecha | ❌ | Nativo (`textAlign`) | S |
+| Fuente y tamaño | Selectores de familia y tamaño | ✅ reflejan el tema seleccionado | Nativo (`SET_NODE_STYLE`) | S |
+| Agrandar / reducir fuente | A▲ A▼ | ✅ recorren la lista de tamaños | Nativo | S |
+| Negrita, cursiva, subrayado, tachado | Formato del texto del tema | ✅ Ctrl+B/I/U (Ctrl+I deja de ser "ajustar") | Nativo (`SET_NODE_STYLE`, `richText`) | S |
+| Color de relleno / línea / fuente | Selectores de color | ✅ paleta, último color, Automático y "Más colores…" | Nativo | M (incluye un componente selector de color) |
+| Alineación del texto | Izquierda, centro, derecha | ✅ | Nativo (`textAlign`) | S |
 
 ### 2.6 Estilo
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
 |---|---|---|---|---|
-| Estilo del tema | Galería: forma (rectángulo, redondeado, cápsula, línea…), relleno, sombra | ❌ | Nativo (`SET_NODE_SHAPE`, `SET_NODE_STYLES`) | M |
+| Estilo del tema | Galería: forma (rectángulo, redondeado, cápsula, línea…), relleno, sombra | 🟡 galería de 9 formas · ❌ sombra y estilos predefinidos | Nativo (`SET_NODE_SHAPE`, `SET_NODE_STYLES`) | M |
 
 ### 2.7 Edición
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
@@ -110,7 +110,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 |---|---|---|
 | **0. Cimientos** ✅ | Registro de comandos, cinta declarativa, estado de selección, migración a `@playwright/test` + CI. Reorganizar la pestaña Inicio con los grupos de MindManager. Sustituir el logo (cerebro estilizado). | M |
 | **1. Portapapeles e Insertar básico** ✅ | Pegar/Cortar/Copiar, Copiar formato, desplegable de Tema (antes, después, padre). Pendiente: pegado especial. | S–M |
-| **2. Formato y Estilo** | Fuente, tamaño, B/I/U/S, colores, alineación, galería de estilos de tema | M |
+| **2. Formato y Estilo** ✅ | Fuente, tamaño, B/I/U/S, colores, alineación, galería de formas. Pendiente: sombra y estilos predefinidos de tema. | M |
 | **3. Elementos del tema** | Hipervínculo, Notas (editor + panel), Imagen; Adjunto con la API de archivos | M–L |
 | **4. Relación y Límite** | Plugins `associativeLine` y `outerFrame` con sus desplegables | M |
 | **5. Marcadores** | Desplegable de iconos en la cinta, marcadores de texto con categorías | M |
@@ -123,6 +123,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 |---|---|---|
 | `vendor/simple-mind-map.umd.min.js` pesa 6,7 MB y **no está minificado**: es un build de desarrollo de webpack con `eval()`, y así viene publicado en npm. | Carga y parseo lentos en cada visita. | El paquete incluye `simpleMindMap.esm.min.js` (1,5 MB) con los mismos 21 plugins. Medir con rigor el tiempo de carga antes de cambiar, porque la primera medición fue ruidosa. |
 | La instancia de `mindMap` vive dentro del proxy reactivo de Alpine. | Cada acceso interno de la librería pasa por el seguimiento de dependencias de Alpine; posible sobrecoste en mapas grandes. | Guardarla fuera de la reactividad (variable de cierre + `getMindMap()`) y medir antes y después. |
+| ~~Alpine.js se cargaba desde un CDN~~ ✅ resuelto en la Fase 2 | La app no funcionaba sin conexión y las pruebas fallaban si el CDN tardaba. | Servido en local (public/vendor/alpine-3.14.3.min.js); una prueba impide volver a depender de dominios externos. |
 | Firefox + Playwright 1.63 es inestable en paralelo en Windows. | Pruebas lentas e intermitentes. | Mitigado con `workers: 1` en el proyecto Firefox. Revisar al actualizar Playwright. |
 
 **Siguientes pestañas (fuera de este plan, por definir):**

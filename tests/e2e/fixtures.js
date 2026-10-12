@@ -90,6 +90,46 @@ class AppPage {
     return this.page.evaluate(() => window.Alpine.$data(document.body).painterActive)
   }
 
+  // Cómo se ve un tema: relleno y borde de su forma y estilo de texto del foreignObject
+  nodeRender(text) {
+    return this.page.evaluate(text => {
+      const strip = s => String(s).replace(/<[^>]+>/g, '').trim()
+      const mm = window.Alpine.$data(document.body).mindMap
+      const find = n => strip(n.getData('text')) === text ? n : (n.children || []).map(find).find(Boolean)
+      const node = Alpine.raw(find(mm.renderer.root))
+      const fo = node.group.node.querySelector('foreignObject')
+      const cs = getComputedStyle(fo)
+      return {
+        fill: node.shapeNode.node.getAttribute('fill'),
+        stroke: node.shapeNode.node.getAttribute('stroke'),
+        strokeWidth: node.shapeNode.node.getAttribute('stroke-width'),
+        fontFamily: cs.fontFamily,
+        fontSize: cs.fontSize,
+        fontWeight: cs.fontWeight,
+        fontStyle: cs.fontStyle,
+        textDecoration: fo.style.textDecoration,
+        color: cs.color,
+        textAlign: cs.textAlign
+      }
+    }, text)
+  }
+
+  // Selección múltiple con Ctrl+clic
+  async selectNodes(...texts) {
+    await this.selectNode(texts[0])
+    await this.page.keyboard.down('Control')
+    for (const t of texts.slice(1)) await this.node(t).click()
+    await this.page.keyboard.up('Control')
+    await this.page.waitForFunction(n => window.Alpine.$data(document.body).activeNodeList.length === n, texts.length)
+  }
+
+  async pickColor(cmd, color) {
+    await this.ribbonPanel('home').locator(`[data-menu-for="${cmd}"]`).click()
+    await expect(this.menu).toBeVisible()
+    await this.menu.locator(`[data-color="${color}"]`).click()
+    await expect(this.menu).toBeHidden()
+  }
+
   historyIndex() {
     return this.page.evaluate(() => window.Alpine.$data(document.body).mindMap.command.activeHistoryIndex)
   }

@@ -11,7 +11,11 @@
 //   enabled   (selection) => boolean   Si falta, siempre habilitado
 //   pressed   (selection) => boolean   Para botones de estado (conmutadores)
 //   menuLabel Texto en los menús desplegables (opcional, por defecto = label)
-//   run       (app) => void            Acción; `app` es el componente Alpine
+//   run       (app, value?) => void    Acción; `app` es el componente Alpine. Los comandos
+//                                      con valor (selectores, colores, galerías) lo reciben
+//   control   'select' | 'color' | 'gallery'  Comandos con valor (opcional)
+//   options   (selection) => [{ value, label }]  Opciones de 'select' y 'gallery'
+//   value     (selection) => valor actual del tema seleccionado
 
 const hasMap = s => s.hasMap
 const hasActiveNode = s => s.hasActiveNode
@@ -78,6 +82,93 @@ const COMMANDS = {
   'topic.remove': {
     label: 'Eliminar', tooltip: 'Eliminar tema', shortcut: 'Supr', icon: 'remove', enabled: hasActiveNode,
     run: app => app.mindMap.execCommand('REMOVE_NODE')
+  },
+
+  // ---- Formato (se aplica a todos los temas seleccionados) ----
+  'format.fontFamily': {
+    label: 'Fuente', control: 'select', enabled: hasActiveNode,
+    options: s => fontFamilyOptions(s.style.fontFamily),
+    value: s => s.style.fontFamily,
+    run: (app, value) => app.applyStyle({ fontFamily: value })
+  },
+  'format.fontSize': {
+    label: 'Tamaño de fuente', control: 'select', enabled: hasActiveNode,
+    options: s => fontSizeOptions(s.style.fontSize),
+    value: s => s.style.fontSize,
+    run: (app, value) => app.applyStyle({ fontSize: Number(value) })
+  },
+  'format.growFont': {
+    label: 'Agrandar fuente', icon: 'growFont', enabled: hasActiveNode,
+    run: app => app.applyStyle(node => ({ fontSize: stepFontSize(node.style.merge('fontSize'), +1) }))
+  },
+  'format.shrinkFont': {
+    label: 'Reducir fuente', icon: 'shrinkFont', enabled: hasActiveNode,
+    run: app => app.applyStyle(node => ({ fontSize: stepFontSize(node.style.merge('fontSize'), -1) }))
+  },
+  'format.bold': {
+    label: 'Negrita', shortcut: 'Ctrl+B', icon: 'bold', enabled: hasActiveNode,
+    pressed: s => s.style.fontWeight === 'bold' || Number(s.style.fontWeight) >= 600,
+    run: app => app.toggleStyle('fontWeight', 'bold', 'normal', s => s.style.fontWeight === 'bold' || Number(s.style.fontWeight) >= 600)
+  },
+  'format.italic': {
+    label: 'Cursiva', shortcut: 'Ctrl+I', icon: 'italic', enabled: hasActiveNode,
+    pressed: s => s.style.fontStyle === 'italic',
+    run: app => app.toggleStyle('fontStyle', 'italic', 'normal', s => s.style.fontStyle === 'italic')
+  },
+  'format.underline': {
+    label: 'Subrayado', shortcut: 'Ctrl+U', icon: 'underline', enabled: hasActiveNode,
+    pressed: s => hasDecoration(s.style.textDecoration, 'underline'),
+    run: app => app.toggleDecoration('underline')
+  },
+  'format.strike': {
+    label: 'Tachado', icon: 'strike', enabled: hasActiveNode,
+    pressed: s => hasDecoration(s.style.textDecoration, 'line-through'),
+    run: app => app.toggleDecoration('line-through')
+  },
+  'format.fillColor': {
+    label: 'Color de relleno', icon: 'fillColor', control: 'color', enabled: hasActiveNode,
+    value: s => s.style.fillColor,
+    // El tema usa degradados: hay que desactivarlos para que se vea el color elegido.
+    // `null` = Automático: vuelve al relleno del tema (incluido su degradado).
+    run: (app, color) => app.applyStyle(color === null
+      ? { fillColor: undefined, gradientStyle: undefined }
+      : { fillColor: color, gradientStyle: false })
+  },
+  'format.borderColor': {
+    label: 'Color de línea', tooltip: 'Color de línea (borde del tema)', icon: 'borderColor', control: 'color', enabled: hasActiveNode,
+    value: s => s.style.borderColor,
+    // Los subtemas no tienen borde (grosor 0): se le da grosor 1 para que el color se vea
+    run: (app, color) => app.applyStyle(node => color === null
+      ? { borderColor: undefined, borderWidth: undefined }
+      : { borderColor: color, ...(Number(node.style.merge('borderWidth')) > 0 ? {} : { borderWidth: 1 }) })
+  },
+  'format.fontColor': {
+    label: 'Color de fuente', icon: 'fontColor', control: 'color', enabled: hasActiveNode,
+    value: s => s.style.color,
+    run: (app, color) => app.applyStyle({ color: color === null ? undefined : color })
+  },
+  'format.alignLeft': {
+    label: 'Alinear a la izquierda', icon: 'alignLeft', enabled: hasActiveNode,
+    pressed: s => s.style.textAlign === 'left',
+    run: app => app.applyStyle({ textAlign: 'left' })
+  },
+  'format.alignCenter': {
+    label: 'Centrar', icon: 'alignCenter', enabled: hasActiveNode,
+    pressed: s => s.style.textAlign === 'center',
+    run: app => app.applyStyle({ textAlign: 'center' })
+  },
+  'format.alignRight': {
+    label: 'Alinear a la derecha', icon: 'alignRight', enabled: hasActiveNode,
+    pressed: s => s.style.textAlign === 'right',
+    run: app => app.applyStyle({ textAlign: 'right' })
+  },
+
+  // ---- Estilo ----
+  'style.shape': {
+    label: 'Forma del tema', tooltip: 'Cambiar la forma del tema', icon: 'shape', control: 'gallery', enabled: hasActiveNode,
+    options: () => SHAPES,
+    value: s => s.style.shape,
+    run: (app, shape) => app.applyStyle({ shape })
   },
 
   // ---- Marcadores ----
@@ -175,11 +266,19 @@ const CommandRegistry = {
   icon(id) {
     return ICONS[this.get(id).icon] || ''
   },
+  options(id, selection) {
+    const cmd = this.get(id)
+    return cmd.options ? cmd.options(selection) : []
+  },
+  value(id, selection) {
+    const cmd = this.get(id)
+    return cmd.value ? cmd.value(selection) : undefined
+  },
   // Devuelve lo que devuelva el comando (una promesa en los asíncronos) o false si no se
   // ejecutó por estar deshabilitado
-  run(id, app) {
+  run(id, app, value) {
     if (!this.isEnabled(id, app.selection)) return false
-    const result = this.get(id).run(app)
+    const result = this.get(id).run(app, value)
     return result === undefined ? true : result
   }
 }

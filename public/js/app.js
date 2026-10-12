@@ -125,11 +125,41 @@ function mindMapApp() {
     pane: 'maps',
     logo: BRAIN_LOGO,
     painterActive: false,
-    // Desplegable abierto de la cinta: { owner, items, x, y } o null
+    // Desplegable abierto de la cinta o null:
+    //   { owner, kind: 'commands' | 'palette' | 'options', items, x, y }
     menu: null,
+    colorPalette: COLOR_PALETTE,
+    shapeIcons: SHAPE_ICONS,
+    // Último color usado por cada botón de color (el botón principal lo vuelve a aplicar)
+    lastColors: { 'format.fillColor': '#ffff00', 'format.borderColor': '#c00000', 'format.fontColor': '#c00000' },
+    // Cambia en cada render del mapa; `selection` lo lee para recalcular el estilo del tema
+    // activo (los estilos viven en simple-mind-map, fuera de la reactividad de Alpine)
+    renderTick: 0,
 
     get hasActiveNode() {
       return this.activeNodeList.length > 0
+    },
+
+    // Estilo efectivo (propio o heredado del tema) del primer tema seleccionado
+    get activeStyle() {
+      void this.renderTick
+      // Nodo sin el proxy de Alpine: style.merge() escribe node.effectiveStyles, y hacerlo
+      // sobre un proxy reactivo dentro de un getter dispararía reactividad en bucle
+      const node = this.activeNodeList[0] && Alpine.raw(this.activeNodeList[0])
+      if (!node) return {}
+      const read = prop => node.style.merge(prop)
+      return {
+        fontFamily: read('fontFamily'),
+        fontSize: read('fontSize'),
+        fontWeight: read('fontWeight'),
+        fontStyle: read('fontStyle'),
+        textDecoration: read('textDecoration'),
+        color: read('color'),
+        fillColor: read('fillColor'),
+        borderColor: read('borderColor'),
+        textAlign: read('textAlign'),
+        shape: read('shape')
+      }
     },
 
     // Estado de selección centralizado: lo único que consultan los comandos para decidir
@@ -141,6 +171,7 @@ function mindMapApp() {
         hasActiveNode: this.activeNodeList.length > 0,
         hasNonRootActiveNode: this.activeNodeList.some(node => !node.isRoot),
         activeCount: this.activeNodeList.length,
+        style: this.activeStyle,
         painterActive: this.painterActive,
         layout: this.currentLayout,
         pane: this.pane
@@ -154,11 +185,27 @@ function mindMapApp() {
     menuLabelOf(id) { return CommandRegistry.menuLabel(id) },
     shortcutOf(id) { return CommandRegistry.shortcut(id) },
     iconOf(id) { return CommandRegistry.icon(id) },
+    controlOf(id) { return CommandRegistry.get(id).control || null },
+    optionsOf(id) { return CommandRegistry.options(id, this.selection) },
+    currentValueOf(id) { return CommandRegistry.value(id, this.selection) },
 
-    runCommand(id) {
+    // Opciones de un selector como HTML, con `selected` en la actual. Se genera entero (x-html)
+    // porque con x-for + :selected Alpine volvía a pintar las opciones después de fijar el
+    // valor y el selector quedaba vacío. Sin tema seleccionado se muestra vacío.
+    selectOptionsHtml(id) {
+      const enabled = this.isEnabled(id)
+      const current = enabled ? String(this.currentValueOf(id) ?? '') : ''
+      const esc = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+      const options = this.optionsOf(id).map(o =>
+        `<option value="${esc(o.value)}"${String(o.value) === current ? ' selected' : ''}>${esc(o.label)}</option>`)
+      if (!enabled) options.unshift('<option value="" selected></option>')
+      return options.join('')
+    },
+
+    runCommand(id, value) {
       this.menu = null
       try {
-        const result = CommandRegistry.run(id, this)
+        const result = CommandRegistry.run(id, this, value)
         // Algunos comandos son asíncronos (p. ej. Pegar lee el portapapeles)
         if (result && typeof result.catch === 'function') {
           result.catch(err => this.reportCommandError(id, err))
@@ -176,21 +223,51 @@ function mindMapApp() {
     // ---- Desplegables de la cinta ----
     // El menú se pinta fuera de la cinta (position: fixed) porque la cinta recorta su
     // contenido para poder desplazarse en pantallas estrechas.
-    toggleMenu(owner, items, event) {
+    toggleMenu(owner, items, event, kind = 'commands') {
       if (this.menu && this.menu.owner === owner) {
         this.menu = null
         return
       }
-      const rect = event.currentTarget.getBoundingClientRect()
-      this.menu = { owner, items, x: Math.round(rect.left), y: Math.round(rect.bottom + 2) }
+      // Posicionar respecto al control completo (botón + flecha), no solo a la flecha
+      const anchor = event.currentTarget.closest('.rb-item, .rb-color') || event.currentTarget
+      const rect = anchor.getBoundingClientRect()
+      this.menu = { owner, kind, items, x: Math.round(rect.left), y: Math.round(rect.bottom + 2) }
       this.$nextTick(() => {
-        const first = document.querySelector('.ribbon-menu [role="menuitem"]:not([disabled])')
+        const first = document.querySelector('.ribbon-menu [role="menuitem"]:not([disabled]), .ribbon-menu [role="menuitemradio"]:not([disabled])')
         if (first) first.focus()
       })
     },
 
     closeMenu() {
       this.menu = null
+    },
+
+    // ---- Formato ----
+    // `style` puede ser un objeto o una función (tema) => objeto, para cambios relativos
+    applyStyle(style) {
+      if (!this.mindMap || !this.hasActiveNode) return
+      this.mindMap.execCommand('SET_ACTIVE_NODES_STYLE', style)
+    },
+
+    // Alterna una propiedad según el estado del primer tema seleccionado (como Office):
+    // si está activa se desactiva en todos los seleccionados, y si no, se activa en todos
+    toggleStyle(prop, onValue, offValue, isOn) {
+      this.applyStyle({ [prop]: isOn(this.selection) ? offValue : onValue })
+    },
+
+    toggleDecoration(part) {
+      this.applyStyle({ textDecoration: toggleDecorationValue(this.selection.style.textDecoration, part) })
+    },
+
+    // Botón principal de un color: vuelve a aplicar el último color elegido
+    applyLastColor(cmd) {
+      this.runCommand(cmd, this.lastColors[cmd])
+    },
+
+    // Elección desde la paleta: `null` = Automático (estilo del tema)
+    chooseColor(cmd, color) {
+      if (color) this.lastColors[cmd] = color
+      this.runCommand(cmd, color)
     },
 
     // ---- Copiar formato ----
@@ -292,12 +369,17 @@ function mindMapApp() {
           defaultGeneralizationText: 'Resumen',
           defaultAssociativeLineText: 'Relación',
           defaultOuterFrameText: 'Marco',
+          // Por defecto la librería solo atiende atajos con el ratón sobre el lienzo; tras usar
+          // la cinta (ratón fuera) Ctrl+B, Tab… no harían nada. Como en Office, se atienden
+          // siempre que el foco no esté en un campo (la librería ya ignora inputs y selects).
+          enableShortcutOnlyWhenMouseInSvg: false,
           errorHandler: createMindMapErrorHandler(() => this.mindMap, (code, error) => {
             console.error(code, error)
             this.errorMsg = `Error en el mapa (${code}): ${(error && error.message) || error || ''}`
           })
         })
         extendMindMap(this.mindMap)
+        bindFormatShortcuts(this.mindMap, id => this.runCommand(id))
 
         if (map.data.view && Object.keys(map.data.view).length) {
           this.mindMap.view.setTransformData(map.data.view)
@@ -311,6 +393,7 @@ function mindMapApp() {
         this.mindMap.on('node_active', (node, activeNodeList) => {
           this.activeNodeList = [...activeNodeList]
         })
+        this.mindMap.on('node_tree_render_end', () => { this.renderTick++ })
         this.mindMap.on('painter_start', () => { this.painterActive = true })
         this.mindMap.on('painter_end', () => { this.painterActive = false })
       } catch (err) {

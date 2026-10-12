@@ -38,7 +38,7 @@ test.describe('Registro de comandos y cinta', () => {
     const { domCmds, menuCmds, registry } = await page.evaluate(() => ({
       domCmds: [...new Set([...document.querySelectorAll('[data-cmd]')].map(el => el.dataset.cmd))],
       // Los comandos de los desplegables solo están en el DOM con el menú abierto
-      menuCmds: RIBBON_TABS.flatMap(t => t.groups.flatMap(g => g.items.flatMap(i => i.menu || []))),
+      menuCmds: RIBBON_TABS.flatMap(t => t.groups.flatMap(g => (g.items || []).flatMap(i => i.menu || []))),
       registry: CommandRegistry.ids()
     }))
     const reachable = new Set([...domCmds, ...menuCmds])
@@ -57,7 +57,7 @@ test.describe('Registro de comandos y cinta', () => {
 
   test('Inicio tiene los grupos de MindManager en orden', async ({ app, page }) => {
     const groups = await app.ribbonPanel('home').locator('.ribbon-group-label').allTextContents()
-    expect(groups).toEqual(['Portapapeles', 'Insertar', 'Marcadores', 'Edición'])
+    expect(groups).toEqual(['Portapapeles', 'Insertar', 'Marcadores', 'Formato', 'Estilo', 'Edición'])
   })
 
   test('los tooltips incluyen el atajo de teclado', async ({ app }) => {

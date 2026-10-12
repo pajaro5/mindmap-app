@@ -4,6 +4,9 @@
 // con texto a la derecha; se apilan de 3 en 3 en una columna, como en Office).
 // Un elemento con `menu` es un botón dividido: el botón ejecuta `cmd` y la flecha abre
 // un desplegable con los comandos de `menu`.
+// Un grupo puede usar `rows` en lugar de `items`: filas de controles compactos (botones
+// solo-icono, selectores y botones de color), como el grupo Fuente de Office. En las filas,
+// `{ separator: true }` dibuja un separador y `width` fija el ancho de un selector.
 
 const QUICK_ACCESS = ['map.new', 'edit.undo', 'edit.redo']
 
@@ -29,6 +32,20 @@ const RIBBON_TABS = [
         ]
       },
       { label: 'Marcadores', items: [{ cmd: 'markers.icons' }] },
+      {
+        label: 'Formato',
+        rows: [
+          [{ cmd: 'format.fontFamily', width: 128 }, { cmd: 'format.fontSize', width: 54 }, { cmd: 'format.growFont' }, { cmd: 'format.shrinkFont' }],
+          [
+            { cmd: 'format.bold' }, { cmd: 'format.italic' }, { cmd: 'format.underline' }, { cmd: 'format.strike' },
+            { separator: true },
+            { cmd: 'format.fillColor' }, { cmd: 'format.borderColor' }, { cmd: 'format.fontColor' },
+            { separator: true },
+            { cmd: 'format.alignLeft' }, { cmd: 'format.alignCenter' }, { cmd: 'format.alignRight' }
+          ]
+        ]
+      },
+      { label: 'Estilo', items: [{ cmd: 'style.shape' }] },
       { label: 'Edición', items: [{ cmd: 'topic.remove' }] }
     ]
   },
@@ -88,6 +105,15 @@ function buildRibbon(tabs = RIBBON_TABS, quickAccess = QUICK_ACCESS) {
     if (!CommandRegistry.has(id)) problems.push(`${where}: comando desconocido "${id}"`)
   }
 
+  // Los controles con valor necesitan las funciones que los alimentan
+  const checkControl = (id, where) => {
+    if (!CommandRegistry.has(id)) return
+    const cmd = CommandRegistry.get(id)
+    if ((cmd.control === 'select' || cmd.control === 'gallery') && typeof cmd.options !== 'function') {
+      problems.push(`${where}: el comando "${id}" (${cmd.control}) no define options()`)
+    }
+  }
+
   quickAccess.forEach(id => checkCmd(id, 'Acceso rápido'))
   const built = tabs.map(tab => {
     if (seenTabs.has(tab.id)) problems.push(`Pestaña repetida "${tab.id}"`)
@@ -97,11 +123,21 @@ function buildRibbon(tabs = RIBBON_TABS, quickAccess = QUICK_ACCESS) {
       label: tab.label,
       groups: tab.groups.map(group => {
         const where = `${tab.label} › ${group.label}`
+        if (group.rows) {
+          const rows = group.rows.map((row, r) => row.map((item, i) => {
+            if (item.separator) return { key: `sep${r}-${i}`, separator: true }
+            checkCmd(item.cmd, where)
+            checkControl(item.cmd, where)
+            return { key: item.cmd, cmd: item.cmd, width: item.width || null }
+          }))
+          return { label: group.label, rows, columns: [] }
+        }
         group.items.forEach(item => {
           checkCmd(item.cmd, where)
+          checkControl(item.cmd, where)
           ;(item.menu || []).forEach(id => checkCmd(id, `${where} (menú de ${item.cmd})`))
         })
-        return { label: group.label, columns: layoutGroupColumns(group.items) }
+        return { label: group.label, rows: null, columns: layoutGroupColumns(group.items) }
       })
     }
   })

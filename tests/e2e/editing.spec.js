@@ -41,6 +41,22 @@ test('deshacer y rehacer desde la barra de acceso rápido', async ({ openMap, pa
   await app.expectNodeCount(2)
 })
 
+test('escribir en el título del mapa no dispara los atajos del mapa', async ({ openMap, page }) => {
+  const { app } = openMap
+  await app.selectRoot()
+  await page.keyboard.press('Tab')
+  await app.typeNewTopic('No me borres')
+  await app.node('No me borres').click()
+  // Con un tema seleccionado, teclear en el título no debe borrarlo ni crear temas
+  await app.titleInput.click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Backspace')
+  await page.keyboard.press('Delete')
+  await page.keyboard.press('Tab')
+  await app.expectNodeCount(2)
+  await expect(app.node('No me borres')).toHaveCount(1)
+})
+
 test('cinta: Subtema, Tema y Eliminar', async ({ openMap, page }) => {
   const { app } = openMap
   await app.selectRoot()

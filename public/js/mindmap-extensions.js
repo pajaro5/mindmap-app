@@ -66,8 +66,30 @@ function makePainterOneShot(mindMap) {
   })
 }
 
+// Aplica estilos a todos los temas activos como UNA sola entrada del historial (con
+// SET_NODE_STYLES habría una por tema). `styleFor(node)` devuelve el objeto de estilo de
+// cada tema, para operaciones relativas como alternar negrita o agrandar la fuente.
+// Un valor `undefined` elimina el estilo propio y el tema vuelve al estilo de su nivel.
+function setActiveNodesStyle(mindMap, styleFor) {
+  const renderer = mindMap.renderer
+  renderer.activeNodeList.forEach(node => {
+    const style = typeof styleFor === 'function' ? styleFor(node) : styleFor
+    if (style && Object.keys(style).length) renderer.setNodeStyles(node, style)
+  })
+}
+
 function extendMindMap(mindMap) {
   mindMap.command.add('INSERT_NODE_BEFORE', () => insertNodeBefore(mindMap))
+  mindMap.command.add('SET_ACTIVE_NODES_STYLE', styleFor => setActiveNodesStyle(mindMap, styleFor))
   mindMap.keyCommand.addShortcut('Shift+Enter', () => mindMap.execCommand('INSERT_NODE_BEFORE'))
   makePainterOneShot(mindMap)
+}
+
+// Atajos de formato de Office/MindManager. La librería usa Ctrl+I para "ajustar a la
+// ventana"; aquí pasa a ser cursiva (ajustar sigue en la cinta y en la barra de estado).
+function bindFormatShortcuts(mindMap, runCommand) {
+  mindMap.keyCommand.removeShortcut('Control+i')
+  mindMap.keyCommand.addShortcut('Control+b', () => runCommand('format.bold'))
+  mindMap.keyCommand.addShortcut('Control+i', () => runCommand('format.italic'))
+  mindMap.keyCommand.addShortcut('Control+u', () => runCommand('format.underline'))
 }
