@@ -90,6 +90,19 @@ class AppPage {
     return this.page.evaluate(() => window.Alpine.$data(document.body).painterActive)
   }
 
+  historyIndex() {
+    return this.page.evaluate(() => window.Alpine.$data(document.body).mindMap.command.activeHistoryIndex)
+  }
+
+  // simple-mind-map registra el historial con un retardo (addHistoryTime = 100 ms) y funde
+  // los cambios que caen en esa ventana. Antes de deshacer hay que esperar a que la acción
+  // haya creado su entrada; si no, "Deshacer" revierte la entrada anterior (pasaba en CI).
+  async recordsHistory(action) {
+    const before = await this.historyIndex()
+    await action()
+    await expect.poll(() => this.historyIndex(), { message: 'la acción debe crear una entrada de historial' }).toBeGreaterThan(before)
+  }
+
   async goto() {
     await this.page.goto('/')
     await this.page.waitForFunction(() => window.Alpine && window.Alpine.$data(document.body).ribbon.tabs.length > 0)
@@ -146,7 +159,12 @@ class AppPage {
     await this.showMapsPane()
     await this.page.locator('.map-list li', { hasText: title }).click()
     await expect(this.rootNode).toBeVisible()
-    await this.page.waitForFunction(() => !!window.Alpine.$data(document.body).mindMap)
+    // Esperar también a la entrada inicial del historial (llega con 100 ms de retardo); si la
+    // prueba cambia algo antes, ese cambio se funde con el estado inicial y no se puede deshacer
+    await this.page.waitForFunction(() => {
+      const mm = window.Alpine.$data(document.body).mindMap
+      return !!mm && mm.command.history.length > 0
+    })
   }
 
   async selectRoot() {

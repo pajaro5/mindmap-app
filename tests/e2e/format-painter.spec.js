@@ -51,8 +51,8 @@ test.describe('Copiar formato', () => {
     await app.setNodeStyle('Alfa', 'fillColor', '#123456')
     await app.selectNode('Alfa')
     await app.ribbonCmd('home', 'clipboard.formatPainter').click()
-    await app.node('Beta').click()
-    await expect.poll(() => app.nodeData('Beta', 'fillColor')).toBe('#123456')
+    await app.recordsHistory(() => app.node('Beta').click())
+    expect(await app.nodeData('Beta', 'fillColor')).toBe('#123456')
 
     await app.qat('edit.undo').click()
     await expect.poll(() => app.nodeData('Beta', 'fillColor')).toBeUndefined()

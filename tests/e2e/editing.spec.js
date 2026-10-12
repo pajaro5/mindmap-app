@@ -29,9 +29,11 @@ test('Tab crea un subtema y Enter un tema hermano', async ({ openMap, page }) =>
 test('deshacer y rehacer desde la barra de acceso rápido', async ({ openMap, page }) => {
   const { app } = openMap
   await app.selectRoot()
-  await page.keyboard.press('Tab')
-  await app.expectNodeCount(2)
-  await app.clickEmptyCanvas()
+  await app.recordsHistory(async () => {
+    await page.keyboard.press('Tab')
+    await app.expectNodeCount(2)
+    await app.clickEmptyCanvas()
+  })
 
   await app.qat('edit.undo').click()
   await app.expectNodeCount(1)

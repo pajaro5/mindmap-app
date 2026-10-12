@@ -79,12 +79,14 @@ test.describe('Desplegable de Tema', () => {
   test('Tema antes queda en el historial', async ({ page, maps }) => {
     const { app } = await setupMap(page, maps)
     await app.selectNode('Beta')
-    await app.chooseFromMenu('home', 'topic.insertSibling', 'topic.insertBefore')
-    await app.typeNewTopic('Temporal')
-    await expect.poll(() => rootChildren(app)).toContain('Temporal')
+    // Solo la inserción (sin escribir texto), para tener exactamente una entrada de historial
+    await app.recordsHistory(async () => {
+      await app.chooseFromMenu('home', 'topic.insertSibling', 'topic.insertBefore')
+      await expect(app.editBox).toBeVisible()
+      await page.keyboard.press('Escape')
+    })
+    expect(await rootChildren(app)).toEqual(['Alfa', 'Tema principal', 'Beta', 'Gamma'])
 
-    // Una entrada para el texto y otra para la inserción
-    await app.qat('edit.undo').click()
     await app.qat('edit.undo').click()
     await expect.poll(() => rootChildren(app)).toEqual(['Alfa', 'Beta', 'Gamma'])
   })

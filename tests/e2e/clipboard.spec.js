@@ -70,8 +70,8 @@ test.describe('Portapapeles', () => {
     await app.selectNode('Gamma')
     await app.ribbonCmd('home', 'clipboard.copy').click()
     await app.selectNode('Beta')
-    await app.ribbonCmd('home', 'clipboard.paste').click()
-    await expect.poll(async () => childrenOf(await app.tree(), 'Beta')).toEqual(['Gamma'])
+    await app.recordsHistory(() => app.ribbonCmd('home', 'clipboard.paste').click())
+    expect(childrenOf(await app.tree(), 'Beta')).toEqual(['Gamma'])
 
     await app.qat('edit.undo').click()
     await expect.poll(async () => childrenOf(await app.tree(), 'Beta')).toEqual([])
