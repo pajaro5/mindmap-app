@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mis Mapas Mentales</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="/vendor/simple-mind-map.umd.min.js"></script>
+</head>
+<body x-data="mindMapApp()" x-init="init()">
+
+  <div class="app-shell">
+    <!-- Sidebar: lista de mapas -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>Mis Mapas</h1>
+        <button class="btn btn-primary" @click="createMap()">+ Nuevo</button>
+      </div>
+      <ul class="map-list">
+        <template x-for="m in maps" :key="m.id">
+          <li :class="{ active: m.id === currentId }" @click="openMap(m.id)">
+            <span class="map-title" x-text="m.title"></span>
+            <button class="btn-icon" title="Eliminar" @click.stop="deleteMap(m.id)">✕</button>
+          </li>
+        </template>
+        <li x-show="maps.length === 0" class="empty-hint">Aún no tienes mapas. Crea uno.</li>
+      </ul>
+    </aside>
+
+    <!-- Main: toolbar + canvas -->
+    <main class="main-area">
+      <div class="toolbar" x-show="currentId">
+        <input class="title-input" type="text" x-model="currentTitle" @change="renameMap()" />
+        <div class="toolbar-group">
+          <button class="btn" @click="zoomOut()" title="Alejar">−</button>
+          <button class="btn" @click="resetZoom()" title="Restablecer zoom">100%</button>
+          <button class="btn" @click="zoomIn()" title="Acercar">+</button>
+        </div>
+        <div class="toolbar-group">
+          <button class="btn" @click="undo()" title="Deshacer">↶</button>
+          <button class="btn" @click="redo()" title="Rehacer">↷</button>
+        </div>
+        <div class="toolbar-group">
+          <select class="layout-select" x-model="currentLayout" @change="setLayout(currentLayout)" title="Estilo del mapa">
+            <option value="logicalStructure">Estilo: Árbol</option>
+            <option value="mindMap">Estilo: Radial</option>
+          </select>
+        </div>
+        <div class="toolbar-group">
+          <button class="btn" @click="exportMap('png')">Exportar PNG</button>
+          <button class="btn" @click="exportMap('pdf')">Exportar PDF</button>
+        </div>
+        <span class="save-status" x-text="saveStatus"></span>
+      </div>
+
+      <div class="content-row">
+        <div class="canvas-wrap">
+          <div id="mindMapContainer"></div>
+          <div class="placeholder" x-show="!currentId">
+            <p>Selecciona un mapa de la izquierda o crea uno nuevo para empezar.</p>
+          </div>
+          <div class="error-banner" x-show="errorMsg" x-text="errorMsg"></div>
+        </div>
+
+        <!-- Barra vertical de iconos -->
+        <aside class="icon-sidebar" x-show="currentId">
+          <div class="icon-sidebar-header">Iconos</div>
+          <div class="icon-sidebar-hint" x-show="activeNodeList.length === 0">
+            Selecciona un nodo para asignarle un icono.
+          </div>
+          <template x-for="cat in iconCategories" :key="cat.type">
+            <div class="icon-category">
+              <div class="icon-category-title" x-text="cat.label"></div>
+              <div class="icon-grid">
+                <template x-for="item in cat.items" :key="item.id">
+                  <button
+                    class="icon-btn"
+                    :class="{ active: isIconActive(item.id) }"
+                    :disabled="activeNodeList.length === 0"
+                    :title="item.id"
+                    @click="toggleIcon(item.id)"
+                    x-html="item.svg"
+                  ></button>
+                </template>
+              </div>
+            </div>
+          </template>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.3/cdn.min.js" defer></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

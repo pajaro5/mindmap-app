@@ -1,0 +1,265 @@
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+
+/* simple-mind-map no incluye su propio reset de CSS para el contenido de texto
+   enriquecido de los nodos; sin esto el <p> hereda el margen por defecto del
+   navegador (~16px) y el texto queda recortado fuera del nodo, invisible hasta
+   que algo (como entrar en edición) fuerza otro layout. */
+.smm-richtext-node-wrap,
+.smm-richtext-node-wrap p,
+.smm-richtext-node-wrap h1,
+.smm-richtext-node-wrap h2,
+.smm-richtext-node-wrap h3,
+.smm-richtext-node-wrap ul,
+.smm-richtext-node-wrap ol,
+.smm-richtext-node-wrap blockquote {
+  margin: 0;
+  padding: 0;
+}
+
+.app-shell {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: #1f2430;
+  color: #e6e6e6;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #333a47;
+}
+
+.sidebar-header h1 {
+  font-size: 15px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.map-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  flex: 1;
+}
+
+.map-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 2px;
+  font-size: 14px;
+}
+
+.map-list li:hover { background: #2a3040; }
+.map-list li.active { background: #3a5ba0; color: #fff; }
+
+.map-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 12px;
+}
+.btn-icon:hover { opacity: 1; }
+
+.empty-hint {
+  opacity: 0.6;
+  font-size: 13px;
+  padding: 10px;
+  cursor: default;
+}
+.empty-hint:hover { background: none; }
+
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #ddd;
+  background: #fafafa;
+}
+
+.title-input {
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  padding: 4px 8px;
+  border-radius: 4px;
+  min-width: 160px;
+}
+.title-input:hover, .title-input:focus {
+  border-color: #ccc;
+  outline: none;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 4px;
+  padding: 0 8px;
+  border-left: 1px solid #ddd;
+}
+
+.btn {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.btn:hover { background: #f0f0f0; }
+
+.btn-primary {
+  background: #3a5ba0;
+  color: #fff;
+  border-color: #3a5ba0;
+}
+.btn-primary:hover { background: #2f4a85; }
+
+.save-status {
+  margin-left: auto;
+  font-size: 12px;
+  color: #888;
+}
+
+.layout-select {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.content-row {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.canvas-wrap {
+  flex: 1;
+  position: relative;
+  background: #f5f6f8;
+  min-width: 0;
+}
+
+#mindMapContainer {
+  position: absolute;
+  inset: 0;
+}
+
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 14px;
+  background: #f5f6f8;
+  z-index: 1;
+}
+
+.error-banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fdecea;
+  color: #a33;
+  border: 1px solid #f3b4ac;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  max-width: 80%;
+  z-index: 2;
+}
+
+.icon-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: #fafafa;
+  border-left: 1px solid #ddd;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.icon-sidebar-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 8px;
+}
+
+.icon-sidebar-hint {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.icon-category {
+  margin-bottom: 14px;
+}
+
+.icon-category-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #999;
+  margin-bottom: 6px;
+}
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.icon-btn svg { width: 100%; height: 100%; }
+.icon-btn:hover { background: #eee; }
+.icon-btn.active { border-color: #3a5ba0; background: #e8edf7; }
+.icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.icon-btn:disabled:hover { background: transparent; }
