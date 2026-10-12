@@ -1,0 +1,178 @@
+// Fixtures compartidas por todas las pruebas e2e.
+//  - pageErrors: recoge errores JS y de consola; la prueba falla si queda alguno.
+//  - maps:       crea mapas vía API con título único y los borra al terminar.
+//  - app:        página con la app cargada (page object AppPage).
+//  - openMap:    crea un mapa, carga la app y lo abre; devuelve { app, map }.
+const base = require('@playwright/test')
+const { expect } = base
+
+class AppPage {
+  constructor(page) {
+    this.page = page
+    this.nodes = page.locator('#mindMapContainer .smm-node')
+    this.rootNode = this.nodes.first()
+    this.titleInput = page.locator('.title-input')
+    this.errorBanner = page.locator('.error-banner')
+    this.mapList = page.locator('.map-list')
+    this.zoomValue = page.locator('.zoom-value')
+    this.zoomSlider = page.locator('.zoom-slider')
+  }
+
+  async goto() {
+    await this.page.goto('/')
+    await this.page.waitForFunction(() => window.Alpine && window.Alpine.$data(document.body).ribbon.tabs.length > 0)
+  }
+
+  // ---- Localizadores por comando (atributo data-cmd generado desde el registro) ----
+  ribbonTab(tabId) { return this.page.locator(`.ribbon-tab[data-tab="${tabId}"]`) }
+  ribbonPanel(tabId) { return this.page.locator(`.ribbon-panel[data-tab-panel="${tabId}"]`) }
+  ribbonCmd(tabId, cmd) { return this.ribbonPanel(tabId).locator(`[data-cmd="${cmd}"]`) }
+  qat(cmd) { return this.page.locator(`.qat [data-cmd="${cmd}"]`) }
+  status(cmd) { return this.page.locator(`.statusbar [data-cmd="${cmd}"]`) }
+  strip(cmd) { return this.page.locator(`.task-strip [data-cmd="${cmd}"]`) }
+
+  async clickRibbon(tabId, cmd) {
+    await this.ribbonTab(tabId).click()
+    await this.ribbonCmd(tabId, cmd).click()
+  }
+
+  // ---- Estado de la app ----
+  state() {
+    return this.page.evaluate(() => {
+      const d = window.Alpine.$data(document.body)
+      return {
+        currentId: d.currentId,
+        currentTitle: d.currentTitle,
+        mapsCount: d.maps.length,
+        errorMsg: d.errorMsg,
+        pane: d.pane,
+        layout: d.currentLayout,
+        activeCount: d.activeNodeList.length
+      }
+    })
+  }
+
+  scale() {
+    return this.page.evaluate(() => window.Alpine.$data(document.body).mindMap.view.scale)
+  }
+
+  async nodeCount() {
+    return this.nodes.count()
+  }
+
+  async expectNodeCount(n) {
+    await expect(this.nodes).toHaveCount(n)
+  }
+
+  // ---- Acciones ----
+  async showMapsPane() {
+    if (!(await this.mapList.isVisible())) await this.strip('pane.maps').click()
+    await expect(this.mapList).toBeVisible()
+  }
+
+  async openMapByTitle(title) {
+    await this.showMapsPane()
+    await this.page.locator('.map-list li', { hasText: title }).click()
+    await expect(this.rootNode).toBeVisible()
+    await this.page.waitForFunction(() => !!window.Alpine.$data(document.body).mindMap)
+  }
+
+  async selectRoot() {
+    await this.rootNode.click()
+    await this.page.waitForFunction(() => window.Alpine.$data(document.body).activeNodeList.length > 0)
+  }
+
+  // Clic en una zona vacía del lienzo (esquina superior izquierda) para deseleccionar
+  async clickEmptyCanvas() {
+    const box = await this.page.locator('#mindMapContainer').boundingBox()
+    await this.page.mouse.click(box.x + 15, box.y + 15)
+    await this.page.waitForFunction(() => window.Alpine.$data(document.body).activeNodeList.length === 0)
+  }
+
+  // Compara el <svg> del mapa con su contenedor y el scroll del documento
+  geometry() {
+    return this.page.evaluate(() => {
+      const el = document.getElementById('mindMapContainer')
+      const svg = el.querySelector(':scope > svg')
+      const c = el.getBoundingClientRect()
+      const s = svg ? svg.getBoundingClientRect() : { width: -1, height: -1 }
+      return {
+        container: { w: Math.round(c.width), h: Math.round(c.height) },
+        svg: { w: Math.round(s.width), h: Math.round(s.height) },
+        scrollX: window.scrollX,
+        scrollY: window.scrollY,
+        docH: document.documentElement.scrollHeight,
+        winH: window.innerHeight
+      }
+    })
+  }
+
+  async expectSvgFitsContainer() {
+    await expect.poll(async () => {
+      const g = await this.geometry()
+      return Math.abs(g.svg.w - g.container.w) <= 1 && Math.abs(g.svg.h - g.container.h) <= 1
+    }, { message: 'el SVG del mapa debe medir lo mismo que su contenedor' }).toBe(true)
+  }
+}
+
+function uniqueTitle(testInfo, prefix = 'E2E') {
+  return `${prefix} ${testInfo.project.name} ${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
+}
+
+const test = base.test.extend({
+  // Depende de `maps` a propósito: así se desmonta ANTES que `maps`. Si los mapas se
+  // borraran primero, el autoguardado pendiente de la página haría un PUT a un mapa ya
+  // eliminado (404) y contaminaría la comprobación de errores.
+  pageErrors: [async ({ page, maps }, use) => {
+    const errors = []
+    page.on('pageerror', err => errors.push(err.message))
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()) })
+    page.on('dialog', dialog => dialog.accept())
+    await use(errors)
+    expect(errors, 'No debe haber errores JS ni de consola').toEqual([])
+    // Salir de la app detiene su autoguardado antes de borrar los mapas. No se usa
+    // page.close(): cerrar la página a mano deja Firefox en mal estado al cerrar el contexto.
+    await page.goto('about:blank')
+  }, { auto: true }],
+
+  maps: async ({ request }, use, testInfo) => {
+    const ids = new Set()
+    const api = {
+      async create({ title = uniqueTitle(testInfo), data } = {}) {
+        const res = await request.post('/api/maps', { data: { title } })
+        expect(res.status()).toBe(201)
+        const map = await res.json()
+        ids.add(map.id)
+        if (data) {
+          const put = await request.put(`/api/maps/${map.id}`, { data: { data } })
+          expect(put.ok()).toBeTruthy()
+        }
+        return map
+      },
+      async get(id) {
+        const res = await request.get(`/api/maps/${id}`)
+        return res.ok() ? res.json() : null
+      },
+      track(id) { ids.add(id) },
+      forget(id) { ids.delete(id) }
+    }
+    await use(api)
+    for (const id of ids) await request.delete(`/api/maps/${id}`)
+  },
+
+  app: async ({ page }, use) => {
+    const app = new AppPage(page)
+    await app.goto()
+    await use(app)
+  },
+
+  openMap: async ({ page, maps }, use) => {
+    const map = await maps.create()
+    const app = new AppPage(page)
+    await app.goto()
+    await app.openMapByTitle(map.title)
+    await use({ app, map })
+  }
+})
+
+module.exports = { test, expect, AppPage, uniqueTitle }

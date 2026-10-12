@@ -1,7 +1,10 @@
+const fs = require('fs')
 const path = require('path')
 const Database = require('better-sqlite3')
 
-const dbPath = path.join(__dirname, '..', 'data', 'mindmaps.db')
+// DB_PATH permite aislar la base de datos (p. ej. ':memory:' en las pruebas e2e)
+const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'mindmaps.db')
+if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(dbPath), { recursive: true })
 const db = new Database(dbPath)
 
 db.pragma('journal_mode = WAL')

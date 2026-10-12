@@ -120,22 +120,52 @@ function mindMapApp() {
     activeNodeList: [],
     iconCategories: [],
     zoomPercent: 100,
-    ribbonTabs: [
-      { id: 'home', label: 'Inicio' },
-      { id: 'view', label: 'Vista' },
-      { id: 'export', label: 'Exportar' }
-    ],
+    ribbon: { tabs: [], quickAccess: [], problems: [] },
     ribbonTab: 'home',
     pane: 'maps',
+    logo: BRAIN_LOGO,
 
     get hasActiveNode() {
       return this.activeNodeList.length > 0
+    },
+
+    // Estado de selección centralizado: lo único que consultan los comandos para decidir
+    // si están habilitados o pulsados. Las fases siguientes añadirán aquí los estilos del
+    // tema activo (fuente, negrita…) para reflejarlos en la cinta.
+    get selection() {
+      return {
+        hasMap: !!this.currentId && !!this.mindMap,
+        hasActiveNode: this.activeNodeList.length > 0,
+        activeCount: this.activeNodeList.length,
+        layout: this.currentLayout,
+        pane: this.pane
+      }
+    },
+
+    isEnabled(id) { return CommandRegistry.isEnabled(id, this.selection) },
+    isPressed(id) { return CommandRegistry.isPressed(id, this.selection) },
+    tooltipOf(id) { return CommandRegistry.tooltip(id) },
+    labelOf(id) { return CommandRegistry.get(id).label },
+    iconOf(id) { return CommandRegistry.icon(id) },
+
+    runCommand(id) {
+      try {
+        CommandRegistry.run(id, this)
+      } catch (err) {
+        console.error(err)
+        this.errorMsg = `No se pudo ejecutar "${this.labelOf(id)}": ${err.message || err}`
+      }
     },
 
     async init() {
       window.addEventListener('error', e => {
         this.errorMsg = 'Error JS: ' + e.message
       })
+      this.ribbon = buildRibbon()
+      if (this.ribbon.problems.length) {
+        console.error('Configuración de la cinta inválida:', this.ribbon.problems)
+        this.errorMsg = 'Configuración de la cinta inválida: ' + this.ribbon.problems.join('; ')
+      }
       this.iconCategories = buildIconCategories()
 
       // El lienzo cambia de tamaño al abrir/cerrar paneles o redimensionar la ventana.
@@ -241,11 +271,23 @@ function mindMapApp() {
     async saveCurrentMap() {
       if (!this.mindMap || !this.currentId) return
       const data = this.mindMap.getData(true)
-      await fetch(`/api/maps/${this.currentId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data })
-      })
+      let res
+      try {
+        res = await fetch(`/api/maps/${this.currentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data })
+        })
+      } catch (err) {
+        this.saveStatus = 'Error al guardar: sin conexión con el servidor'
+        return
+      }
+      if (!res.ok) {
+        this.saveStatus = res.status === 404
+          ? 'Error al guardar: el mapa ya no existe'
+          : `Error al guardar (HTTP ${res.status})`
+        return
+      }
       this.saveStatus = 'Guardado'
       setTimeout(() => { this.saveStatus = '' }, 1500)
     },
@@ -279,19 +321,9 @@ function mindMapApp() {
       this.pane = this.pane === name ? null : name
     },
 
-    insertChild() { if (this.mindMap && this.hasActiveNode) this.mindMap.execCommand('INSERT_CHILD_NODE') },
-    insertSibling() { if (this.mindMap && this.hasActiveNode) this.mindMap.execCommand('INSERT_NODE') },
-    removeNode() { if (this.mindMap && this.hasActiveNode) this.mindMap.execCommand('REMOVE_NODE') },
-
-    zoomIn() { if (this.mindMap) this.mindMap.view.enlarge() },
-    zoomOut() { if (this.mindMap) this.mindMap.view.narrow() },
-    resetZoom() { if (this.mindMap) this.mindMap.view.reset() },
-    fitView() { if (this.mindMap) this.mindMap.view.fit() },
     setZoomPercent(value) {
       if (this.mindMap) this.mindMap.view.setScale(Number(value) / 100)
     },
-    undo() { if (this.mindMap) this.mindMap.execCommand('BACK') },
-    redo() { if (this.mindMap) this.mindMap.execCommand('FORWARD') },
 
     setLayout(layout) {
       if (!this.mindMap) return

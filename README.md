@@ -49,14 +49,23 @@ server/
   index.js    Servidor Express y API REST
   db.js       Conexión y esquema SQLite (better-sqlite3)
 public/
-  index.html  Interfaz (Alpine.js)
-  js/app.js   Lógica del frontend
-  css/        Estilos
-  vendor/     simple-mind-map (build UMD)
-tests/
-  e2e-frontend.js  Pruebas end-to-end con Playwright
-data/         Base de datos SQLite (ignorada por git)
+  index.html      Interfaz (Alpine.js); la cinta se genera desde ribbon.js
+  js/commands.js  Registro de comandos: cada acción definida una sola vez
+  js/ribbon.js    Cinta declarativa (pestañas → grupos → botones) y barra de acceso rápido
+  js/icons.js     Iconos SVG y logo
+  js/app.js       Estado de la app, mapa y persistencia
+  css/            Estilos
+  vendor/         simple-mind-map (build UMD)
+tests/e2e/        Pruebas end-to-end (@playwright/test), un archivo por área
+docs/             Plan de producto
+data/             Base de datos SQLite (ignorada por git)
 ```
+
+### Añadir una función a la cinta
+
+1. Define el comando en `public/js/commands.js` (etiqueta, icono, atajo, `enabled`, `run`).
+2. Colócalo en un grupo de `public/js/ribbon.js`.
+3. Añade su prueba en `tests/e2e/`. La prueba de la cinta falla si hay un comando sin botón o un botón sin comando.
 
 ## API
 
@@ -70,18 +79,21 @@ data/         Base de datos SQLite (ignorada por git)
 
 ## Pruebas
 
-Las pruebas end-to-end usan Playwright y necesitan el servidor en marcha:
+Las pruebas end-to-end usan `@playwright/test` en **Chromium y Firefox**. Playwright arranca su propio servidor en el puerto 3101 con una base de datos **en memoria**, así que no hace falta tener la app abierta y las pruebas nunca tocan tus mapas.
 
 ```bash
-npx playwright install chromium   # solo la primera vez
-npm start                         # en otra terminal
-npm run test:e2e
+npx playwright install chromium firefox   # solo la primera vez
+npm test                                  # todas las pruebas, ambos navegadores
+npm run test:chromium                     # solo Chromium (más rápido)
+npm run test:report                       # ver el informe HTML de la última ejecución
 ```
 
-Para probar contra otra URL, define `BASE_URL` (por defecto `http://localhost:3001`).
+En GitHub, el workflow `.github/workflows/e2e.yml` ejecuta las pruebas en cada push a `main` y en cada pull request.
+
+Firefox se ejecuta con un solo worker: en paralelo, Playwright 1.63 falla de forma intermitente al cerrar contextos de Firefox.
 
 ## Tecnologías
 
 - **Backend:** Node.js, Express 5, better-sqlite3
 - **Frontend:** Alpine.js, simple-mind-map
-- **Pruebas:** Playwright
+- **Pruebas:** @playwright/test (Chromium + Firefox), GitHub Actions

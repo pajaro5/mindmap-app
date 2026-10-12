@@ -73,16 +73,12 @@ button { font-family: inherit; }
 .app-logo {
   width: 30px;
   height: 30px;
+  flex-shrink: 0;
   border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  font-size: 15px;
-  color: #fff;
-  background: radial-gradient(circle at 35% 30%, #ff8a73, #d9412b 60%, #9e2414);
   border: 2px solid #f3f6fb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
 }
+.app-logo svg { display: block; width: 100%; height: 100%; }
 
 .qat {
   display: flex;
@@ -104,7 +100,7 @@ button { font-family: inherit; }
   background: transparent;
   cursor: pointer;
 }
-.qat-btn svg { width: 15px; height: 15px; }
+.qat-btn svg { display: block; width: 15px; height: 15px; }
 .qat-btn:hover:not(:disabled) { background: linear-gradient(var(--hover-1), var(--hover-2)); border-color: var(--hover-border); }
 .qat-btn:disabled { opacity: .4; cursor: default; }
 
@@ -209,33 +205,51 @@ button { font-family: inherit; }
   white-space: nowrap;
 }
 
-.rb-large {
+.rb-col-large { display: flex; }
+.rb-col-stack { display: flex; flex-direction: column; justify-content: flex-start; gap: 1px; }
+
+.rb-large, .rb-small {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 2px;
-  min-width: 52px;
-  padding: 3px 5px;
-  font-size: 11.5px;
-  line-height: 1.15;
   color: var(--text);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 3px;
   cursor: pointer;
+  line-height: 1.15;
 }
-.rb-large svg { width: 32px; height: 32px; flex-shrink: 0; }
-.rb-large span { text-align: center; }
-.rb-large:hover:not(:disabled) {
+
+.rb-large {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 2px;
+  min-width: 52px;
+  max-width: 78px;
+  padding: 3px 5px;
+  font-size: 11.5px;
+}
+.rb-large .rb-icon svg { display: block; width: 32px; height: 32px; }
+.rb-large .rb-label { text-align: center; }
+
+.rb-small {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 3px;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.rb-small .rb-icon svg { display: block; width: 16px; height: 16px; }
+
+.rb-large:hover:not(:disabled), .rb-small:hover:not(:disabled) {
   background: linear-gradient(var(--hover-1), #ffe9a8 50%, var(--hover-2));
   border-color: var(--hover-border);
 }
-.rb-large.pressed {
+.rb-large.pressed, .rb-small.pressed {
   background: linear-gradient(#ffd99a, #fbbf5d 50%, #f6a93a);
   border-color: #c2862a;
 }
-.rb-large:disabled { opacity: .45; cursor: default; }
+.rb-large:disabled, .rb-small:disabled { opacity: .45; cursor: default; }
 
 /* ---------- Área de trabajo ---------- */
 .workspace {
@@ -364,11 +378,10 @@ button { font-family: inherit; }
 .map-list li.active { background: linear-gradient(#ffd99a, #f8b955); border-color: #c2862a; }
 
 .map-doc-icon {
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ff8a73, #d9412b 70%);
+  background: url(/favicon.svg) center / contain no-repeat;
 }
 
 .map-title {
@@ -461,7 +474,7 @@ button { font-family: inherit; }
   border-radius: 0 4px 4px 0;
   cursor: pointer;
 }
-.task-strip-tab svg { width: 15px; height: 15px; }
+.task-strip-tab .strip-icon svg { display: block; width: 15px; height: 15px; }
 .task-strip-tab:hover { background: linear-gradient(90deg, var(--hover-1), var(--hover-2)); }
 .task-strip-tab.active { background: linear-gradient(90deg, #ffe2a8, #f8b955); border-color: #c2862a; }
 

@@ -108,7 +108,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 
 | Fase | Contenido | Esfuerzo estimado |
 |---|---|---|
-| **0. Cimientos** | Registro de comandos, cinta declarativa, estado de selección, migración a `@playwright/test` + CI. Reorganizar la pestaña Inicio con los grupos de MindManager. Sustituir el logo. | M |
+| **0. Cimientos** ✅ | Registro de comandos, cinta declarativa, estado de selección, migración a `@playwright/test` + CI. Reorganizar la pestaña Inicio con los grupos de MindManager. Sustituir el logo (cerebro estilizado). | M |
 | **1. Portapapeles e Insertar básico** | Pegar/Cortar/Copiar, Copiar formato, desplegable de Tema (antes, después, padre) | S–M |
 | **2. Formato y Estilo** | Fuente, tamaño, B/I/U/S, colores, alineación, galería de estilos de tema | M |
 | **3. Elementos del tema** | Hipervínculo, Notas (editor + panel), Imagen; Adjunto con la API de archivos | M–L |
@@ -117,6 +117,13 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | **6. Edición** | Dividir, Seleccionar (por nivel, hermanos, marcador), Limpiar | M |
 | **7. Información de tarea** | Modelo, panel "Info. de tarea", renderizado en el tema (fechas, %) | L |
 | **8. Llamadas** | Temas flotantes anclados | L |
+
+### Deuda técnica detectada en la Fase 0
+| Problema | Impacto | Propuesta |
+|---|---|---|
+| `vendor/simple-mind-map.umd.min.js` pesa 6,7 MB y **no está minificado**: es un build de desarrollo de webpack con `eval()`, y así viene publicado en npm. | Carga y parseo lentos en cada visita. | El paquete incluye `simpleMindMap.esm.min.js` (1,5 MB) con los mismos 21 plugins. Medir con rigor el tiempo de carga antes de cambiar, porque la primera medición fue ruidosa. |
+| La instancia de `mindMap` vive dentro del proxy reactivo de Alpine. | Cada acceso interno de la librería pasa por el seguimiento de dependencias de Alpine; posible sobrecoste en mapas grandes. | Guardarla fuera de la reactividad (variable de cierre + `getMindMap()`) y medir antes y después. |
+| Firefox + Playwright 1.63 es inestable en paralelo en Windows. | Pruebas lentas e intermitentes. | Mitigado con `workers: 1` en el proyecto Firefox. Revisar al actualizar Playwright. |
 
 **Siguientes pestañas (fuera de este plan, por definir):**
 - **Insertar:** tema flotante, imagen desde biblioteca y otros elementos.
