@@ -344,6 +344,8 @@ function extendMindMap(mindMap) {
   mindMap.command.add('SET_ACTIVE_NODES_STYLE', styleFor => setActiveNodesStyle(mindMap, styleFor))
   mindMap.command.add('SET_ACTIVE_NODES_DATA', dataFor => setActiveNodesData(mindMap, dataFor))
   mindMap.command.add('SPLIT_TOPICS', () => splitTopics(mindMap))
+  mindMap.command.add('REPLACE_TOPIC_TEXT', (uids, query, replacement, options) =>
+    replaceTopicText(mindMap, uids, query, replacement, options))
   mindMap.command.add('SET_CALLOUTS', (uids, change) => setCallouts(mindMap, uids, change))
   mindMap.command.add('CLEAR_TOPICS', part => clearTopics(mindMap, part))
   mindMap.command.add('SET_TEXT_MARKERS', (defs, assignName) => setTextMarkers(mindMap, defs, assignName))

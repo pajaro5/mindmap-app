@@ -371,6 +371,28 @@ const COMMANDS = {
     run: app => app.mindMap.view.reset()
   },
 
+  // ---- Buscar y filtrar ----
+  'view.find': {
+    label: 'Buscar', tooltip: 'Buscar texto en los temas', shortcut: 'Ctrl+F', icon: 'find', enabled: hasMap,
+    pressed: s => s.findOpen && !s.findReplace,
+    run: app => app.openFind(false)
+  },
+  'view.replace': {
+    label: 'Reemplazar', tooltip: 'Buscar y reemplazar texto en los temas', shortcut: 'Ctrl+H', icon: 'replace', enabled: hasMap,
+    pressed: s => s.findOpen && s.findReplace,
+    run: app => app.openFind(true)
+  },
+  'pane.filter': {
+    label: 'Filtro', tooltip: 'Mostrar solo los temas que cumplan unos criterios (marcadores, recursos, fechas…)', icon: 'filter',
+    enabled: hasMap,
+    pressed: s => s.pane === 'filter' || s.filterActive,
+    run: app => app.togglePane('filter')
+  },
+  'view.filter.clear': {
+    label: 'Quitar filtro', icon: 'filterClear', enabled: s => s.filterActive,
+    run: app => app.clearFilter()
+  },
+
   // ---- Paneles ----
   'pane.maps': {
     label: 'Mis mapas', tooltip: 'Mostrar u ocultar Mis mapas', icon: 'paneMaps',

@@ -251,11 +251,35 @@
           <p>Selecciona un mapa en <strong>Mis mapas</strong> o crea uno nuevo para empezar.</p>
         </div>
         <div class="error-banner" x-show="errorMsg" x-text="errorMsg"></div>
+
+        <!-- Barra Buscar / Reemplazar (Ctrl+F / Ctrl+H). Enter: siguiente; Mayús+Enter: anterior -->
+        <div class="find-bar" role="search" x-show="find.open" x-cloak @keydown.escape.prevent.stop="closeFind()">
+          <div class="find-row">
+            <input type="search" name="findText" x-model="find.query" @input="onFindInput()" placeholder="Buscar en los temas"
+                   aria-label="Buscar" autocomplete="off" @keydown.enter.prevent="findStep($event.shiftKey ? -1 : 1)" />
+            <span class="find-status" role="status" x-text="findStatus"></span>
+            <button type="button" class="find-btn" data-action="find-prev" title="Anterior (Mayús+Enter)" aria-label="Anterior"
+                    :disabled="!find.matches.length" @click="findStep(-1)">▲</button>
+            <button type="button" class="find-btn" data-action="find-next" title="Siguiente (Enter)" aria-label="Siguiente"
+                    :disabled="!find.matches.length" @click="findStep(1)">▼</button>
+            <button type="button" class="find-btn find-toggle" data-action="match-case" title="Coincidir mayúsculas y minúsculas"
+                    :aria-pressed="find.matchCase" @click="find.matchCase = !find.matchCase; onFindInput()">Aa</button>
+            <button type="button" class="find-btn find-toggle" data-action="include-notes" title="Buscar también en las notas"
+                    :aria-pressed="find.includeNotes" @click="find.includeNotes = !find.includeNotes; onFindInput()">Notas</button>
+            <button type="button" class="find-btn" data-action="find-close" title="Cerrar (Esc)" aria-label="Cerrar" @click="closeFind()">✕</button>
+          </div>
+          <div class="find-row" x-show="find.replace">
+            <input type="text" name="replaceText" x-model="find.replacement" placeholder="Reemplazar por" aria-label="Reemplazar por"
+                   autocomplete="off" @keydown.enter.prevent="replaceCurrent()" />
+            <button type="button" class="btn" data-action="replace-one" :disabled="!find.matches.length" @click="replaceCurrent()">Reemplazar</button>
+            <button type="button" class="btn" data-action="replace-all" :disabled="!find.matches.length" @click="replaceAll()">Reemplazar todo</button>
+          </div>
+        </div>
       </main>
 
       <aside class="task-pane" x-show="pane">
         <div class="task-pane-header">
-          <span x-text="{ maps: 'Mis mapas', markers: 'Marcadores', taskInfo: 'Info. de tarea', notes: 'Notas' }[pane] || ''"></span>
+          <span x-text="{ maps: 'Mis mapas', markers: 'Marcadores', taskInfo: 'Info. de tarea', filter: 'Filtro', notes: 'Notas' }[pane] || ''"></span>
           <button class="task-pane-close" title="Cerrar panel" @click="togglePane(pane)">✕</button>
         </div>
 
@@ -408,6 +432,71 @@
           </template>
         </div>
 
+        <!-- Filtro: se aplica al momento; atenúa los temas que no cumplen -->
+        <div class="task-pane-body filter-pane" x-show="pane === 'filter'">
+          <form class="task-form" @submit.prevent>
+            <label class="dialog-field">
+              <span>Mostrar los temas que cumplan</span>
+              <select name="filterMode" x-model="filter.mode">
+                <option value="all">todos los criterios</option>
+                <option value="any">alguno de los criterios</option>
+              </select>
+            </label>
+            <label class="dialog-field">
+              <span>Texto (en el tema o sus notas)</span>
+              <input type="search" name="filterText" x-model="filter.text" autocomplete="off" class="filter-input" />
+            </label>
+            <div class="dialog-field" x-show="filterOptions.icons.length">
+              <span>Marcadores de icono</span>
+              <div class="icon-grid">
+                <template x-for="id in filterOptions.icons" :key="id">
+                  <button type="button" class="icon-btn filter-icon" :data-icon="id" :title="(iconById[id] || {}).label || id"
+                          :aria-pressed="filter.icons.includes(id)" :class="{ active: filter.icons.includes(id) }"
+                          @click="toggleFilterValue('icons', id)" x-html="(iconById[id] || {}).svg || ''"></button>
+                </template>
+              </div>
+            </div>
+            <div class="dialog-field" x-show="filterOptions.tags.length">
+              <span>Marcadores de texto</span>
+              <div class="tag-chips">
+                <template x-for="t in filterOptions.tags" :key="t">
+                  <button type="button" class="tag-chip filter-tag" :data-tag="t" style="--tag-color:#2b6fbd"
+                          :aria-pressed="filter.tags.includes(t)" :class="{ active: filter.tags.includes(t) }"
+                          @click="toggleFilterValue('tags', t)" x-text="t"></button>
+                </template>
+              </div>
+            </div>
+            <div class="dialog-field" x-show="filterOptions.resources.length">
+              <span>Recursos</span>
+              <div class="tag-chips">
+                <template x-for="r in filterOptions.resources" :key="r">
+                  <button type="button" class="tag-chip filter-resource" :data-resource="r" style="--tag-color:#1d4f8a"
+                          :aria-pressed="filter.resources.includes(r)" :class="{ active: filter.resources.includes(r) }"
+                          @click="toggleFilterValue('resources', r)" x-text="r"></button>
+                </template>
+              </div>
+            </div>
+            <label class="dialog-field">
+              <span>Estado de la tarea</span>
+              <select name="filterStatus" x-model="filter.status">
+                <option value="">Cualquiera</option>
+                <option value="overdue">Vencidas</option>
+                <option value="dueSoon">Vencen en los próximos 7 días</option>
+                <option value="pending">Sin completar</option>
+                <option value="done">Completadas</option>
+                <option value="dated">Con fechas</option>
+              </select>
+            </label>
+            <label class="task-check">
+              <input type="checkbox" name="withSubtopics" x-model="filter.withSubtopics" />
+              <span>Mostrar también los subtemas de los que cumplen</span>
+            </label>
+            <p class="filter-summary" role="status" x-show="isFilterActive(filter)"
+               x-text="`Cumplen ${filterSummary.matched} de ${filterSummary.total} temas`"></p>
+            <button type="button" class="btn" data-action="clear-filter" :disabled="!isFilterActive(filter)" @click="clearFilter()">Quitar filtro</button>
+          </form>
+        </div>
+
         <!-- Notas del tema seleccionado (texto plano; se guarda al pausar la escritura) -->
         <div class="task-pane-body notes-pane" x-show="pane === 'notes'">
           <template x-if="activeNodeList.length === 1">
@@ -558,6 +647,10 @@
     <footer class="statusbar">
       <span class="status-item" x-text="maps.length + (maps.length === 1 ? ' mapa' : ' mapas')"></span>
       <span class="status-item save-status" x-text="saveStatus"></span>
+      <span class="status-item filter-status" x-show="isFilterActive(filter)" x-cloak>
+        <span x-text="`Filtro: ${filterSummary.matched} de ${filterSummary.total} temas`"></span>
+        <button type="button" class="status-link" data-action="status-clear-filter" @click="clearFilter()">Quitar filtro</button>
+      </span>
       <span class="status-item status-hint" role="status" x-show="creatingRelationship">
         Relación: haz clic en el tema de destino · Esc para cancelar
       </span>
@@ -578,6 +671,7 @@
   <script src="/js/markers.js"></script>
   <script src="/js/task-info.js"></script>
   <script src="/js/callouts.js"></script>
+  <script src="/js/search-filter.js"></script>
   <script src="/js/elements.js"></script>
   <script src="/js/mindmap-extensions.js"></script>
   <script src="/js/commands.js"></script>

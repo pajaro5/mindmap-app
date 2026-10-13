@@ -8,7 +8,7 @@ const tagsOf = async (app, text) => ((await app.nodeData(text, 'tag')) || []).ma
 const tagColorsOf = async (app, text) => ((await app.nodeData(text, 'tag')) || []).map(t => t.style && t.style.fill)
 const defsOf = page => page.evaluate(() => window.Alpine.$data(document.body).mindMap.renderer.root.getData('_textMarkers') || [])
 const dialog = page => page.locator('#appDialog')
-const paneChip = (page, name) => page.locator(`.task-pane .tag-chip[data-tag="${name}"]`)
+const paneChip = (page, name) => page.locator(`.task-pane .markers .tag-chip[data-tag="${name}"]`)
 
 async function openDropdown(app, owner) {
   await app.ribbonTab('home').click()
@@ -18,7 +18,7 @@ async function openDropdown(app, owner) {
 
 // Crea una categoría desde el panel con los marcadores dados
 async function createCategory(page, app, name, markers, color) {
-  if (!(await page.locator('.task-pane .text-markers').isVisible())) await app.strip('pane.markers').click()
+  if (!(await page.locator('.task-pane .markers .text-markers').isVisible())) await app.strip('pane.markers').click()
   await page.locator('[data-action="new-category"]').click()
   await expect(dialog(page)).toBeVisible()
   await dialog(page).locator('[name="categoryName"]').fill(name)
@@ -36,13 +36,13 @@ test.describe('Marcadores de icono', () => {
     const { app } = openMap
     await cmd(app, 'markers.icons').click()
     await expect(page.locator('.task-pane-header')).toHaveText(/Marcadores/)
-    await expect(page.locator('.task-pane .icon-btn').first()).toBeVisible()
+    await expect(page.locator('.task-pane .markers .icon-btn').first()).toBeVisible()
   })
 
   test('asignar y quitar un marcador desde el panel', async ({ openMap, page }) => {
     const { app } = openMap
     await app.strip('pane.markers').click()
-    const firstIcon = page.locator('.task-pane .icon-btn').first()
+    const firstIcon = page.locator('.task-pane .markers .icon-btn').first()
     await expect(firstIcon).toBeDisabled()
 
     await app.selectRoot()
@@ -121,13 +121,13 @@ test.describe('Biblioteca de iconos', () => {
   test('los grupos nuevos aparecen con nombres en español y se pintan en el tema', async ({ page, maps }) => {
     const { app } = await setupMap(page, maps)
     await app.strip('pane.markers').click()
-    const groups = await page.locator('.task-pane details.icon-category > summary').allTextContents()
+    const groups = await page.locator('.task-pane .markers details.icon-category > summary').allTextContents()
     expect(groups).toEqual(['Prioridad', 'Progreso', 'Banderas', 'Semáforo', 'Caras', 'Flechas', 'Símbolos', 'Personas', 'Emojis clásicos', 'Símbolos clásicos'])
-    await expect(page.locator('.task-pane [data-icon="flag_red"]')).toHaveAttribute('title', 'Bandera roja')
-    await expect(page.locator('.task-pane [data-icon="progress_8"]')).toHaveAttribute('title', 'Completado')
+    await expect(page.locator('.task-pane .markers [data-icon="flag_red"]')).toHaveAttribute('title', 'Bandera roja')
+    await expect(page.locator('.task-pane .markers [data-icon="progress_8"]')).toHaveAttribute('title', 'Completado')
 
     await app.selectNode('Beta')
-    await page.locator('.task-pane [data-icon="symbol_idea"]').click()
+    await page.locator('.task-pane .markers [data-icon="symbol_idea"]').click()
     await expect.poll(() => iconsOf(app, 'Beta')).toEqual(['symbol_idea'])
     // La librería resuelve el icono propio y lo pinta como SVG dentro del tema
     await expect.poll(() => app.node('Beta').locator('svg').count()).toBeGreaterThan(0)
@@ -138,7 +138,7 @@ test.describe('Biblioteca de iconos', () => {
     await app.strip('pane.markers').click()
     await app.selectNode('Gamma')
     for (const id of ['flag_red', 'flag_green', 'traffic_red', 'traffic_green', 'face_happy', 'face_sad', 'arrow_up', 'arrow_down', 'symbol_star', 'symbol_heart']) {
-      await page.locator(`.task-pane [data-icon="${id}"]`).click()
+      await page.locator(`.task-pane .markers [data-icon="${id}"]`).click()
     }
     await expect.poll(() => iconsOf(app, 'Gamma'))
       .toEqual(['flag_green', 'traffic_green', 'face_sad', 'arrow_up', 'arrow_down', 'symbol_star', 'symbol_heart'])
@@ -149,16 +149,16 @@ test.describe('Biblioteca de iconos', () => {
     await app.strip('pane.markers').click()
     const search = page.locator('.icon-search')
     await search.fill('TELEFONO')
-    await expect(page.locator('.task-pane .icon-btn')).toHaveCount(1)
-    await expect(page.locator('.task-pane .icon-btn')).toHaveAttribute('data-icon', 'symbol_phone')
+    await expect(page.locator('.task-pane .markers .icon-btn')).toHaveCount(1)
+    await expect(page.locator('.task-pane .markers .icon-btn')).toHaveAttribute('data-icon', 'symbol_phone')
 
     await search.fill('bandera')
-    await expect(page.locator('.task-pane .icon-btn')).toHaveCount(8)
+    await expect(page.locator('.task-pane .markers .icon-btn')).toHaveCount(8)
     await search.fill('clásico')
     // Al buscar, los grupos clásicos se despliegan
-    await expect(page.locator('.task-pane details.icon-category.classic[open]')).toHaveCount(2)
+    await expect(page.locator('.task-pane .markers details.icon-category.classic[open]')).toHaveCount(2)
     await search.fill('zzz')
-    await expect(page.locator('.task-pane .icon-btn')).toHaveCount(0)
+    await expect(page.locator('.task-pane .markers .icon-btn')).toHaveCount(0)
     await expect(page.locator('.task-pane .markers .empty-hint', { hasText: 'Ningún icono' })).toBeVisible()
   })
 
@@ -168,7 +168,7 @@ test.describe('Biblioteca de iconos', () => {
     const { app } = await setupMap(page, maps, { data })
     await expect.poll(() => app.node('Beta').locator('svg').count()).toBeGreaterThan(0)
     await app.strip('pane.markers').click()
-    await expect(page.locator('.task-pane details[data-group="expression"]')).not.toHaveAttribute('open')
+    await expect(page.locator('.task-pane .markers details[data-group="expression"]')).not.toHaveAttribute('open')
 
     await app.selectNode('Beta')
     await openDropdown(app, 'markers.icons')
@@ -176,8 +176,8 @@ test.describe('Biblioteca de iconos', () => {
     await expect(app.menu.locator('[data-icon="flag_red"]')).toBeVisible()
     await page.keyboard.press('Escape')
     // Se puede quitar desde el panel
-    await page.locator('.task-pane details[data-group="expression"] > summary').click()
-    await page.locator('.task-pane [data-icon="expression_1"]').click()
+    await page.locator('.task-pane .markers details[data-group="expression"] > summary').click()
+    await page.locator('.task-pane .markers [data-icon="expression_1"]').click()
     await expect.poll(() => iconsOf(app, 'Beta')).toEqual([])
   })
 })

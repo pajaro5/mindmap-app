@@ -131,6 +131,10 @@ function mindMapApp() {
     creatingRelationship: false,
     // Llamada seleccionada: { uid del tema, id de la llamada } o null
     calloutActive: null,
+    // Barra Buscar/Reemplazar. matches: uids de los temas que coinciden; index: el actual
+    find: { open: false, replace: false, query: '', replacement: '', matchCase: false, includeNotes: false, matches: [], index: -1 },
+    // Criterios del filtro (estado de la vista: no se guarda en el mapa)
+    filter: emptyFilter(),
     // Diálogo modal abierto: { kind: 'hyperlink', url, title, error, canRemove } o null
     dialog: null,
     // Texto de la nota del tema seleccionado en el panel Notas
@@ -279,6 +283,9 @@ function mindMapApp() {
         relationshipActive: this.relationshipActive,
         boundaryActive: this.boundaryActive,
         calloutActive: !!this.calloutActive,
+        findOpen: this.find.open,
+        findReplace: this.find.replace,
+        filterActive: isFilterActive(this.filter),
         painterActive: this.painterActive,
         layout: this.currentLayout,
         pane: this.pane
@@ -416,6 +423,136 @@ function mindMapApp() {
       const plugin = this.mindMap.associativeLine
       if (!plugin.activeLine) return
       plugin.showEditTextBox(plugin.activeLine[2])
+    },
+
+    // ---- Buscar y reemplazar ----
+    get findOptions() {
+      return { matchCase: this.find.matchCase, includeNotes: this.find.includeNotes }
+    },
+
+    // "2 de 5", "Sin resultados" o nada
+    get findStatus() {
+      if (!this.find.query.trim()) return ''
+      const n = this.find.matches.length
+      return n ? `${this.find.index + 1} de ${n}` : 'Sin resultados'
+    },
+
+    openFind(replace) {
+      if (!this.mindMap) return
+      this.menu = null
+      this.find.open = true
+      this.find.replace = !!replace
+      this.$nextTick(() => {
+        const input = document.querySelector('.find-bar [name="findText"]')
+        if (input) { input.focus(); input.select() }
+      })
+      this.updateFindMatches()
+    },
+
+    closeFind() {
+      this.find.open = false
+      this.find.matches = []
+      this.find.index = -1
+      this.refreshViewMarks()
+      if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur()
+    },
+
+    // Recalcula las coincidencias (tras escribir o cambiar el mapa) conservando la actual
+    updateFindMatches() {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      if (!mindMap || !this.find.open) return
+      const current = this.find.matches[this.find.index]
+      const matches = searchTopics(mindMap.renderer.renderTree, this.find.query, this.findOptions)
+      this.find.matches = matches
+      const kept = matches.indexOf(current)
+      this.find.index = kept >= 0 ? kept : (matches.length ? 0 : -1)
+      this.refreshViewMarks()
+    },
+
+    // Al escribir se salta a la primera coincidencia, como en los navegadores
+    onFindInput() {
+      this.find.index = -1
+      this.find.matches = []
+      this.updateFindMatches()
+      if (this.find.matches.length) this.goToFindMatch()
+    },
+
+    findStep(direction) {
+      const n = this.find.matches.length
+      if (!n) return
+      this.find.index = ((this.find.index + direction) % n + n) % n
+      this.goToFindMatch()
+    },
+
+    // Selecciona el tema (desplegando su rama si está contraída) y lo centra
+    goToFindMatch() {
+      const uid = this.find.matches[this.find.index]
+      if (!uid || !this.mindMap) return
+      this.mindMap.execCommand('GO_TARGET_NODE', uid, () => this.refreshViewMarks())
+    },
+
+    replaceCurrent() {
+      const uid = this.find.matches[this.find.index]
+      if (!uid) return
+      this.mindMap.execCommand('REPLACE_TOPIC_TEXT', [uid], this.find.query, this.find.replacement, this.findOptions)
+      this.updateFindMatches()
+      if (this.find.matches.length) this.goToFindMatch()
+    },
+
+    replaceAll() {
+      if (!this.find.matches.length) return
+      this.mindMap.execCommand('REPLACE_TOPIC_TEXT', [...this.find.matches], this.find.query, this.find.replacement, this.findOptions)
+      this.updateFindMatches()
+    },
+
+    // ---- Filtro ----
+    get filterOptions() {
+      void this.renderTick
+      const tree = this.mindMap && Alpine.raw(this.mindMap).renderer.renderTree
+      return tree ? filterOptionsInTree(tree) : { icons: [], tags: [], resources: [] }
+    },
+
+    get filterResult() {
+      void this.renderTick
+      const tree = this.mindMap && Alpine.raw(this.mindMap).renderer.renderTree
+      if (!tree || !isFilterActive(this.filter)) return null
+      return computeFilter(tree, this.filter)
+    },
+
+    get filterSummary() {
+      void this.renderTick
+      const tree = this.mindMap && Alpine.raw(this.mindMap).renderer.renderTree
+      let total = 0
+      const count = n => { if (n) { total++; (n.children || []).forEach(count) } }
+      count(tree)
+      const result = this.filterResult
+      return { matched: result ? result.matched.size : total, total }
+    },
+
+    // Iconos por id, para pintar los del filtro con su nombre
+    get iconById() {
+      return Object.fromEntries(this.iconCategories.flatMap(c => c.items.map(i => [i.id, i])))
+    },
+
+    toggleFilterValue(list, value) {
+      const i = this.filter[list].indexOf(value)
+      if (i >= 0) this.filter[list].splice(i, 1)
+      else this.filter[list].push(value)
+    },
+
+    clearFilter() {
+      this.filter = emptyFilter()
+    },
+
+    // Resaltado de búsqueda y atenuado del filtro sobre los temas pintados
+    refreshViewMarks() {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      if (!mindMap) return
+      applyViewMarks(mindMap, {
+        searchMatches: this.find.open ? this.find.matches : [],
+        searchCurrent: this.find.open ? this.find.matches[this.find.index] : null,
+        filter: this.filterResult
+      })
     },
 
     // ---- Llamadas ----
@@ -777,6 +914,12 @@ function mindMapApp() {
         this.errorMsg = 'Error JS: ' + e.message
       })
       window.addEventListener('keydown', e => {
+        // Ctrl+F / Ctrl+H: Buscar / Reemplazar (en lugar de la búsqueda del navegador)
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && ['f', 'h'].includes(e.key.toLowerCase()) && this.mindMap && !this.dialog) {
+          e.preventDefault()
+          this.runCommand(e.key.toLowerCase() === 'f' ? 'view.find' : 'view.replace')
+          return
+        }
         // Supr con una llamada seleccionada la elimina (no hay temas seleccionados)
         if ((e.key === 'Delete' || e.key === 'Backspace') && this.calloutActive && e.target === document.body && !this.dialog) {
           e.preventDefault()
@@ -789,6 +932,8 @@ function mindMapApp() {
         if (this.painterActive) this.togglePainter()
         if (this.creatingRelationship) this.cancelRelationship()
       })
+      // El filtro se aplica en cuanto cambia cualquier criterio
+      this.$watch('filter', () => this.refreshViewMarks())
       this.ribbon = buildRibbon()
       if (this.ribbon.problems.length) {
         console.error('Configuración de la cinta inválida:', this.ribbon.problems)
@@ -832,6 +977,9 @@ function mindMapApp() {
       const map = await res.json()
       this.noteNodeUid = null
       this.noteDraft = ''
+      // Búsqueda y filtro son de la vista del mapa anterior
+      this.find = { ...this.find, open: false, query: '', replacement: '', matches: [], index: -1 }
+      this.filter = emptyFilter()
 
       this.currentId = map.id
       this.currentTitle = map.title
@@ -935,6 +1083,9 @@ function mindMapApp() {
             if (!list.some(c => c.id === this.calloutActive.id)) this.calloutActive = null
           }
           this.renderCalloutLayer()
+          // La librería recrea los elementos: hay que volver a marcar búsqueda y filtro
+          if (this.find.open) this.updateFindMatches()
+          else this.refreshViewMarks()
         })
         // Seleccionar un tema o hacer clic en el lienzo deselecciona la llamada
         const clearCallout = () => {

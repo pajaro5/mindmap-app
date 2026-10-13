@@ -96,6 +96,8 @@ const RIBBON_TABS = [
     label: 'Vista',
     groups: [
       { label: 'Zoom', items: [{ cmd: 'view.zoomIn' }, { cmd: 'view.zoomOut' }, { cmd: 'view.fit' }, { cmd: 'view.actualSize' }] },
+      { label: 'Buscar', items: [{ cmd: 'view.find' }, { cmd: 'view.replace' }] },
+      { label: 'Filtro', items: [{ cmd: 'pane.filter' }, { cmd: 'view.filter.clear' }] },
       { label: 'Paneles', items: [{ cmd: 'pane.maps' }, { cmd: 'pane.markers' }, { cmd: 'pane.taskInfo' }, { cmd: 'pane.notes' }] }
     ]
   },

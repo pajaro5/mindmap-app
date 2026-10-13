@@ -706,7 +706,8 @@ body.painter-active #mindMapContainer { cursor: copy; }
   cursor: pointer;
 }
 .tag-chip:hover:not(:disabled) { background: #f2f6fb; }
-.tag-chip.active { color: #fff; background: var(--tag-color); }
+.tag-chip.active, .tag-chip.active:hover:not(:disabled) { color: #fff; background: var(--tag-color); }
+.tag-chip.active:hover:not(:disabled) { filter: brightness(1.12); }
 .tag-chip:disabled { opacity: .45; cursor: not-allowed; }
 
 .icon-search {
@@ -746,6 +747,66 @@ details.icon-category.classic > summary { color: var(--muted); font-weight: 400;
 .category-marker-row { display: flex; align-items: center; gap: 4px; }
 .category-marker-row input { flex: 1; }
 .category-markers .btn-link { align-self: flex-start; margin-top: 2px; }
+
+/* ---------- Buscar / Reemplazar y Filtro ---------- */
+.find-bar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  padding: 6px;
+  background: #fafcff;
+  border: 1px solid #8a9fbf;
+  border-radius: 3px;
+  box-shadow: 2px 3px 8px rgba(0, 0, 0, .2);
+}
+.find-row { display: flex; align-items: center; gap: 4px; }
+.find-row input {
+  width: 220px;
+  min-width: 0;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 12.5px;
+  border: 1px solid #a9c3e4;
+  border-radius: 3px;
+}
+.find-row input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.find-status { min-width: 74px; font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; }
+.find-btn {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 5px;
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.find-btn:hover:not(:disabled) { background: linear-gradient(var(--hover-1), var(--hover-2)); border-color: var(--hover-border); }
+.find-btn:disabled { opacity: .4; cursor: default; }
+.find-toggle[aria-pressed="true"] { background: linear-gradient(#ffd99a, #f8b955); border-color: #c2862a; }
+
+.smm-search-match { filter: drop-shadow(0 0 2px #ffb000) drop-shadow(0 0 3px #ffb000); }
+.smm-search-current { filter: drop-shadow(0 0 3px #e8590c) drop-shadow(0 0 6px #e8590c); }
+.smm-filter-dim { opacity: .18; transition: opacity .15s; }
+
+.filter-input, .filter-pane select {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 4px 6px;
+  border: 1px solid #a9c3e4;
+  border-radius: 3px;
+  background: #fff;
+}
+.filter-summary { margin: 0; font-size: 12px; font-weight: 600; color: var(--group-label); }
+.filter-status { display: inline-flex; align-items: center; gap: 6px; color: #2b6a2b; font-weight: 600; }
+.status-link { padding: 0; font: inherit; font-weight: 400; color: var(--accent); background: none; border: none; cursor: pointer; text-decoration: underline; }
 
 /* ---------- Llamadas ---------- */
 .callout-textarea {

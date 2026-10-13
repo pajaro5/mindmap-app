@@ -21,6 +21,8 @@ Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista,
 - Marcadores de icono desde la cinta o el panel **Marcadores**: prioridad, progreso, banderas, semáforo, caras, flechas, símbolos y personas, con buscador.
 - Marcadores de texto agrupados en categorías con color (por ejemplo «Responsable: Ana, Juan»). Renombrar o recolorear una categoría actualiza todos los temas del mapa.
 - Zoom con botones, slider y "ajustar a la ventana".
+- Buscar y reemplazar (Ctrl+F, Ctrl+H), sin distinguir tildes ni mayúsculas.
+- Filtro (pestaña Vista): muestra los temas que cumplen unos criterios (texto, marcadores, recursos, tareas vencidas…) y atenúa el resto.
 - Autoguardado mientras editas.
 - Exportación a **PNG** y **PDF**.
 
@@ -66,6 +68,7 @@ public/
   js/icon-library.js  Biblioteca de iconos (grupos, nombres, búsqueda)
   js/task-info.js     Información de tarea (modelo, validación y etiqueta en el tema)
   js/callouts.js      Llamadas (modelo y capa de dibujo)
+  js/search-filter.js Buscar / Reemplazar y Filtro
   js/app.js       Estado de la app, mapa y persistencia
   css/            Estilos
   vendor/         simple-mind-map (build UMD)
