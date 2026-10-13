@@ -171,6 +171,38 @@ const COMMANDS = {
     run: (app, shape) => app.applyStyle({ shape })
   },
 
+  // ---- Relación (flecha entre dos temas cualesquiera) ----
+  'insert.relationship': {
+    label: 'Relación', menuLabel: 'Dibujar relación',
+    tooltip: 'Dibujar una relación desde el tema seleccionado (con dos temas seleccionados, los une)',
+    icon: 'relationship', enabled: hasActiveNode,
+    run: app => app.startRelationship()
+  },
+  'relationship.text': {
+    label: 'Texto de la relación', icon: 'editText', enabled: s => s.relationshipActive,
+    run: app => app.editRelationshipText()
+  },
+  'relationship.remove': {
+    label: 'Eliminar relación', shortcut: 'Supr', icon: 'removeElement', enabled: s => s.relationshipActive,
+    run: app => app.mindMap.associativeLine.removeLine()
+  },
+
+  // ---- Límite (marco alrededor de temas hermanos) ----
+  'insert.boundary': {
+    label: 'Límite', menuLabel: 'Límite con el estilo por defecto',
+    tooltip: 'Rodear los temas seleccionados con un límite', icon: 'boundary',
+    enabled: s => s.hasNonRootActiveNode || s.boundaryActive,
+    run: app => app.applyBoundaryStyle(DEFAULT_BOUNDARY_STYLE.config)
+  },
+  'boundary.text': {
+    label: 'Texto del límite', icon: 'editText', enabled: s => s.boundaryActive,
+    run: app => app.editBoundaryText()
+  },
+  'boundary.remove': {
+    label: 'Eliminar límite', shortcut: 'Supr', icon: 'removeElement', enabled: s => s.boundaryActive,
+    run: app => app.mindMap.outerFrame.removeActiveOuterFrame()
+  },
+
   // ---- Elementos del tema ----
   'element.hyperlink': {
     label: 'Hipervínculo', tooltip: 'Insertar o editar un hipervínculo', shortcut: 'Ctrl+K', icon: 'hyperlink', enabled: hasActiveNode,
@@ -268,6 +300,17 @@ const COMMANDS = {
     run: app => app.exportMap('pdf')
   }
 }
+
+// Un comando por estilo de límite (con su vista previa como icono): aplica el estilo al límite
+// seleccionado o, si no hay ninguno, crea un límite nuevo con ese estilo
+BOUNDARY_STYLES.forEach(style => {
+  ICONS[`boundary_${style.id}`] = boundaryPreview(style.config)
+  COMMANDS[`boundary.style.${style.id}`] = {
+    label: style.label, tooltip: `Límite: ${style.label.toLowerCase()}`, icon: `boundary_${style.id}`,
+    enabled: s => s.hasNonRootActiveNode || s.boundaryActive,
+    run: app => app.applyBoundaryStyle(style.config)
+  }
+})
 
 const CommandRegistry = {
   get(id) {

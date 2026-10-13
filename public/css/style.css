@@ -709,6 +709,13 @@ body.painter-active #mindMapContainer { cursor: copy; }
 }
 
 .save-status { color: var(--muted); }
+.status-hint {
+  padding: 1px 8px;
+  color: #6b4e00;
+  background: linear-gradient(var(--hover-1), var(--hover-2));
+  border: 1px solid var(--hover-border);
+  border-radius: 3px;
+}
 
 .zoom-control {
   margin-left: auto;

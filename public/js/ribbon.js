@@ -28,7 +28,13 @@ const RIBBON_TABS = [
         label: 'Insertar',
         items: [
           { cmd: 'topic.insertSibling', menu: ['topic.insertSibling', 'topic.insertBefore', 'topic.insertParent'] },
-          { cmd: 'topic.insertChild' }
+          { cmd: 'topic.insertChild' },
+          { cmd: 'insert.relationship', size: 'small', menu: ['insert.relationship', 'relationship.text', 'relationship.remove'] },
+          {
+            cmd: 'insert.boundary',
+            size: 'small',
+            menu: [...BOUNDARY_STYLES.map(s => `boundary.style.${s.id}`), 'boundary.text', 'boundary.remove']
+          }
         ]
       },
       { label: 'Marcadores', items: [{ cmd: 'markers.icons' }] },

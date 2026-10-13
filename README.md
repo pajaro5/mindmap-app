@@ -13,6 +13,7 @@ Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista,
 - Portapapeles: cortar, copiar, pegar (también texto de otras aplicaciones) y copiar formato.
 - Formato de los temas: fuente, tamaño, negrita/cursiva/subrayado/tachado (Ctrl+B/I/U), colores de relleno, línea y fuente, alineación y forma del tema.
 - Elementos del tema: hipervínculos (Ctrl+K), notas (panel Notas), imágenes y archivos adjuntos.
+- Relaciones (flechas entre temas cualesquiera, con texto) y límites (marcos alrededor de temas, con 5 estilos).
 - Funciona sin conexión: todas las librerías se sirven en local.
 - Panel **Marcadores** para asignar iconos de prioridad, progreso, emojis y marcas a los temas.
 - Zoom con botones, slider y "ajustar a la ventana".

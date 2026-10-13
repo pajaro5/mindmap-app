@@ -100,13 +100,63 @@ function openHyperlinkSafely(url) {
   return true
 }
 
+// Los cuadros de edición del texto de una relación y de un límite se rellenan con
+// innerHTML a partir del texto guardado: un mapa con texto "<img onerror=…>" ejecutaría
+// código al editarlo. Mientras se rellena el cuadro, getText devuelve el texto escapado;
+// al guardar, la librería lo decodifica (textContent), así que el texto no cambia.
+// Estos métodos se enlazan por instancia en el constructor del plugin, por eso se parchean
+// sobre cada instancia y no sobre el prototipo.
+function guardTextEditBoxes(mindMap) {
+  for (const plugin of [mindMap.associativeLine, mindMap.outerFrame]) {
+    if (!plugin || plugin.__mmEditGuarded) continue
+    const show = plugin.showEditTextBox
+    const getText = plugin.getText
+    plugin.showEditTextBox = function (...args) {
+      this.getText = (...a) => {
+        const text = getText.apply(this, a)
+        return text ? escapeXml(text) : text
+      }
+      try {
+        return show.apply(this, args)
+      } finally {
+        this.getText = getText
+      }
+    }
+    plugin.__mmEditGuarded = true
+  }
+}
+
 function extendMindMap(mindMap) {
+  guardTextEditBoxes(mindMap)
   mindMap.command.add('INSERT_NODE_BEFORE', () => insertNodeBefore(mindMap))
   mindMap.command.add('SET_ACTIVE_NODES_STYLE', styleFor => setActiveNodesStyle(mindMap, styleFor))
   mindMap.command.add('SET_ACTIVE_NODES_DATA', dataFor => setActiveNodesData(mindMap, dataFor))
   mindMap.keyCommand.addShortcut('Shift+Enter', () => mindMap.execCommand('INSERT_NODE_BEFORE'))
   makePainterOneShot(mindMap)
 }
+
+// ---- Correcciones de errores de la librería (simple-mind-map 0.14.0-fix.3) ----
+// Se aplican una vez, al cargar, sobre los prototipos de los plugins: los constructores
+// envuelven algunos métodos en throttle() y capturan la versión del prototipo, así que el
+// parche tiene que estar antes de crear cualquier mapa. Revisar al actualizar la librería.
+function patchLibraryBugs(MindMap) {
+  const plugin = name => (MindMap.pluginList || []).find(p => p.instanceName === name)
+
+  // AssociativeLine.checkOverlapNode va con throttle (100 ms): la llamada diferida puede
+  // ejecutarse después de terminar la relación, con creatingStartNode ya a null, y lanza
+  // "Cannot read properties of null (reading 'uid')".
+  const AssociativeLine = plugin('associativeLine')
+  if (AssociativeLine && !AssociativeLine.prototype.__mmPatched) {
+    const original = AssociativeLine.prototype.checkOverlapNode
+    AssociativeLine.prototype.checkOverlapNode = function (...args) {
+      if (!this.isCreatingLine || !this.creatingStartNode) return
+      return original.apply(this, args)
+    }
+    AssociativeLine.prototype.__mmPatched = true
+  }
+}
+
+if (typeof simpleMindMap !== 'undefined') patchLibraryBugs(simpleMindMap.default || simpleMindMap)
 
 // Atajos de formato de Office/MindManager. La librería usa Ctrl+I para "ajustar a la
 // ventana"; aquí pasa a ser cursiva (ajustar sigue en la cinta y en la barra de estado).

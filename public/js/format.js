@@ -34,6 +34,24 @@ const SHAPES = [
   { value: 'innerTriangularRectangle', label: 'Banderín' }
 ]
 
+// Estilos de límite (marco alrededor de una rama). Son la configuración del plugin
+// outerFrame de simple-mind-map: radius, strokeWidth, strokeColor, strokeDasharray, fill
+const BOUNDARY_STYLES = [
+  { id: 'rounded', label: 'Redondeado', config: { radius: 14, strokeWidth: 2, strokeColor: '#3d8fd8', strokeDasharray: 'none', fill: 'rgba(61, 143, 216, 0.06)' } },
+  { id: 'rect', label: 'Rectángulo', config: { radius: 0, strokeWidth: 2, strokeColor: '#1f497d', strokeDasharray: 'none', fill: 'rgba(31, 73, 125, 0.04)' } },
+  { id: 'dashed', label: 'Discontinuo', config: { radius: 8, strokeWidth: 2, strokeColor: '#7f7f7f', strokeDasharray: '6,4', fill: 'transparent' } },
+  { id: 'green', label: 'Relleno verde', config: { radius: 14, strokeWidth: 2, strokeColor: '#57962a', strokeDasharray: 'none', fill: 'rgba(125, 193, 66, 0.15)' } },
+  { id: 'orange', label: 'Relleno naranja', config: { radius: 14, strokeWidth: 2, strokeColor: '#e3b33b', strokeDasharray: 'none', fill: 'rgba(245, 200, 76, 0.18)' } }
+]
+const DEFAULT_BOUNDARY_STYLE = BOUNDARY_STYLES[0]
+
+// Vista previa SVG de un estilo de límite (para el desplegable)
+function boundaryPreview({ radius, strokeWidth, strokeColor, strokeDasharray, fill }) {
+  const r = Math.min(radius, 8)
+  const dash = strokeDasharray && strokeDasharray !== 'none' ? ` stroke-dasharray="4,3"` : ''
+  return `<svg viewBox="0 0 32 20"><rect x="2" y="2" width="28" height="16" rx="${r}" fill="${fill}" stroke="${strokeColor}" stroke-width="${Math.min(strokeWidth, 2)}"${dash}/><rect x="9" y="7" width="14" height="6" rx="2" fill="#7dc142"/></svg>`
+}
+
 // Primera familia de una lista CSS ("Georgia, serif" → "Georgia")
 function firstFontFamily(value) {
   return String(value || '').split(',')[0].replace(/["']/g, '').trim()

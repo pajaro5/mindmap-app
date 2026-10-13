@@ -170,6 +170,31 @@ class AppPage {
     return Buffer.from(b64, 'base64')
   }
 
+  // Clic en el punto medio de la relación `index` (su trazo ancho e invisible para clics)
+  async clickRelationship(index = 0) {
+    const pt = await this.page.evaluate(i => {
+      const plugin = window.Alpine.$data(document.body).mindMap.associativeLine
+      const path = plugin.lineList[i][1].node
+      const p = path.getPointAtLength(path.getTotalLength() / 2)
+      const m = path.getScreenCTM()
+      return { x: p.x * m.a + p.y * m.c + m.e, y: p.x * m.b + p.y * m.d + m.f }
+    }, index)
+    await this.page.mouse.click(pt.x, pt.y)
+    await this.page.waitForFunction(() => window.Alpine.$data(document.body).relationshipActive)
+  }
+
+  relationshipCount() {
+    return this.page.evaluate(() => window.Alpine.$data(document.body).mindMap.associativeLine.lineList.length)
+  }
+
+  // Clic en el margen izquierdo del límite `index` (fuera de los temas que rodea)
+  async clickBoundary(index = 0) {
+    const rect = this.page.locator('.smm-outer-frame-container > rect').nth(index)
+    const box = await rect.boundingBox()
+    await this.page.mouse.click(box.x + 4, box.y + box.height / 2)
+    await this.page.waitForFunction(() => window.Alpine.$data(document.body).boundaryActive)
+  }
+
   historyIndex() {
     return this.page.evaluate(() => window.Alpine.$data(document.body).mindMap.command.activeHistoryIndex)
   }

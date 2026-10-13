@@ -135,6 +135,10 @@ function mindMapApp() {
     // Cambia en cada render del mapa; `selection` lo lee para recalcular el estilo del tema
     // activo (los estilos viven en simple-mind-map, fuera de la reactividad de Alpine)
     renderTick: 0,
+    // Relaciones y límites: hay uno seleccionado / se está dibujando una relación
+    relationshipActive: false,
+    boundaryActive: false,
+    creatingRelationship: false,
     // Diálogo modal abierto: { kind: 'hyperlink', url, title, error, canRemove } o null
     dialog: null,
     // Texto de la nota del tema seleccionado en el panel Notas
@@ -195,6 +199,8 @@ function mindMapApp() {
         activeCount: this.activeNodeList.length,
         style: this.activeStyle,
         elements: this.activeElements,
+        relationshipActive: this.relationshipActive,
+        boundaryActive: this.boundaryActive,
         painterActive: this.painterActive,
         layout: this.currentLayout,
         pane: this.pane
@@ -293,6 +299,58 @@ function mindMapApp() {
 
     toggleDecoration(part) {
       this.applyStyle({ textDecoration: toggleDecorationValue(this.selection.style.textDecoration, part) })
+    },
+
+    // ---- Relación ----
+    // Con dos temas seleccionados se unen directamente (del primero al segundo). Con uno, se
+    // entra en modo "dibujar": la flecha sigue al ratón hasta hacer clic en el tema destino.
+    startRelationship() {
+      const plugin = this.mindMap && this.mindMap.associativeLine
+      if (!plugin) return
+      const nodes = this.mindMap.renderer.activeNodeList
+      if (nodes.length === 2) {
+        this.mindMap.execCommand('ADD_ASSOCIATIVE_LINE', nodes[0], nodes[1])
+        return
+      }
+      plugin.createLineFromActiveNode()
+      this.creatingRelationship = !!plugin.isCreatingLine
+    },
+
+    cancelRelationship() {
+      const plugin = this.mindMap && this.mindMap.associativeLine
+      if (plugin && plugin.isCreatingLine) plugin.cancelCreateLine()
+      this.creatingRelationship = false
+    },
+
+    // El plugin termina el modo dibujar al hacer clic en un tema o en el lienzo
+    refreshRelationshipMode() {
+      const plugin = this.mindMap && this.mindMap.associativeLine
+      this.creatingRelationship = !!(plugin && plugin.isCreatingLine)
+    },
+
+    editRelationshipText() {
+      const plugin = this.mindMap.associativeLine
+      if (!plugin.activeLine) return
+      plugin.showEditTextBox(plugin.activeLine[2])
+    },
+
+    // ---- Límite ----
+    // Si hay un límite seleccionado se le cambia el estilo; si no, se crea uno nuevo
+    // alrededor de los temas seleccionados con ese estilo
+    applyBoundaryStyle(config) {
+      const plugin = this.mindMap && this.mindMap.outerFrame
+      if (!plugin) return
+      if (plugin.activeOuterFrame) {
+        plugin.updateActiveOuterFrame({ ...config })
+        return
+      }
+      this.mindMap.execCommand('ADD_OUTER_FRAME', [], { ...config })
+    },
+
+    editBoundaryText() {
+      const plugin = this.mindMap.outerFrame
+      if (!plugin.activeOuterFrame) return
+      plugin.showEditTextBox(plugin.activeOuterFrame.textNode)
     },
 
     // ---- Elementos del tema ----
@@ -446,6 +504,7 @@ function mindMapApp() {
         if (e.key !== 'Escape') return
         if (this.menu) this.closeMenu()
         if (this.painterActive) this.togglePainter()
+        if (this.creatingRelationship) this.cancelRelationship()
       })
       this.ribbon = buildRibbon()
       if (this.ribbon.problems.length) {
@@ -570,6 +629,17 @@ function mindMapApp() {
           this.$nextTick(() => this.openNotes())
         })
         this.mindMap.on('node_attachmentClick', node => this.openAttachment(node))
+        this.relationshipActive = false
+        this.boundaryActive = false
+        this.creatingRelationship = false
+        this.mindMap.on('associative_line_click', () => { this.relationshipActive = true })
+        this.mindMap.on('associative_line_deactivate', () => { this.relationshipActive = false })
+        this.mindMap.on('outer_frame_active', () => { this.boundaryActive = true })
+        this.mindMap.on('outer_frame_deactivate', () => { this.boundaryActive = false })
+        this.mindMap.on('outer_frame_delete', () => { this.boundaryActive = false })
+        // Tras un clic en un tema o en el lienzo el plugin puede haber terminado de dibujar
+        this.mindMap.on('node_click', () => setTimeout(() => this.refreshRelationshipMode()))
+        this.mindMap.on('draw_click', () => setTimeout(() => this.refreshRelationshipMode()))
         this.mindMap.on('node_tree_render_end', () => { this.renderTick++ })
         this.mindMap.on('painter_start', () => { this.painterActive = true })
         this.mindMap.on('painter_end', () => { this.painterActive = false })

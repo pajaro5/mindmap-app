@@ -299,6 +299,9 @@
     <footer class="statusbar">
       <span class="status-item" x-text="maps.length + (maps.length === 1 ? ' mapa' : ' mapas')"></span>
       <span class="status-item save-status" x-text="saveStatus"></span>
+      <span class="status-item status-hint" role="status" x-show="creatingRelationship">
+        Relación: haz clic en el tema de destino · Esc para cancelar
+      </span>
       <div class="zoom-control" x-show="currentId">
         <button class="zoom-btn" @mousedown.prevent data-cmd="view.zoomOut" :title="tooltipOf('view.zoomOut')" @click="runCommand('view.zoomOut')">−</button>
         <input class="zoom-slider" type="range" min="20" max="400" step="5"

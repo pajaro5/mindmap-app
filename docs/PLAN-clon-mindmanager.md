@@ -48,8 +48,8 @@ Soporte en simple-mind-map: **Nativo** (comando/plugin existente) · **Parcial**
 | Tema (+ desplegable) | Tema al mismo nivel; el desplegable inserta antes, después o como tema padre | ✅ (Tema antes = comando propio `INSERT_NODE_BEFORE`, Shift+Enter) | Nativo (`INSERT_NODE`, `INSERT_PARENT_NODE`) + propio | S |
 | Subtema | Tema hijo | ✅ | Nativo | — |
 | Llamada (Callout) | Nota flotante anclada a un tema, fuera de la jerarquía | ❌ | Propio (posición libre + conector) | L |
-| Relación | Flecha curva entre dos temas cualesquiera, con texto | ❌ | Nativo (plugin `associativeLine`) | M |
-| Límite (+ desplegable) | Marco alrededor de una rama, con varias formas | ❌ | Nativo (plugin `outerFrame`) | M |
+| Relación | Flecha curva entre dos temas cualesquiera, con texto | ✅ dibujar, unir 2 seleccionados, texto, eliminar | Nativo (plugin `associativeLine`) | M |
+| Límite (+ desplegable) | Marco alrededor de una rama, con varias formas | ✅ 5 estilos, texto, eliminar · ❌ formas tipo nube | Nativo (plugin `outerFrame`) | M |
 
 ### 2.3 Marcadores del mapa
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
@@ -112,7 +112,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | **1. Portapapeles e Insertar básico** ✅ | Pegar/Cortar/Copiar, Copiar formato, desplegable de Tema (antes, después, padre). Pendiente: pegado especial. | S–M |
 | **2. Formato y Estilo** ✅ | Fuente, tamaño, B/I/U/S, colores, alineación, galería de formas. Pendiente: sombra y estilos predefinidos de tema. | M |
 | **3. Elementos del tema** ✅ | Hipervínculo, Notas (panel), Imagen, Adjunto con API de archivos; saneado de mapas al abrirlos. Pendiente: notas con formato y vínculos a temas. | M–L |
-| **4. Relación y Límite** | Plugins `associativeLine` y `outerFrame` con sus desplegables | M |
+| **4. Relación y Límite** ✅ | Plugins `associativeLine` y `outerFrame` con sus desplegables; 2 errores de la librería corregidos. Pendiente: formato de la relación (color, grosor) y formas de límite tipo nube. | M |
 | **5. Marcadores** | Desplegable de iconos en la cinta, marcadores de texto con categorías | M |
 | **6. Edición** | Dividir, Seleccionar (por nivel, hermanos, marcador), Limpiar | M |
 | **7. Información de tarea** | Modelo, panel "Info. de tarea", renderizado en el tema (fechas, %) | L |
@@ -125,6 +125,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | La instancia de `mindMap` vive dentro del proxy reactivo de Alpine. | Cada acceso interno de la librería pasa por el seguimiento de dependencias de Alpine; posible sobrecoste en mapas grandes. | Guardarla fuera de la reactividad (variable de cierre + `getMindMap()`) y medir antes y después. |
 | ~~Alpine.js se cargaba desde un CDN~~ ✅ resuelto en la Fase 2 | La app no funcionaba sin conexión y las pruebas fallaban si el CDN tardaba. | Servido en local (public/vendor/alpine-3.14.3.min.js); una prueba impide volver a depender de dominios externos. |
 | Adjuntos huérfanos: al quitar un adjunto de un tema el archivo sigue en disco hasta que se borra el mapa (no se borra al momento para que Deshacer funcione). | Espacio en disco. | Limpieza periódica: borrar archivos que ningún tema del mapa referencia desde hace N días. |
+| Parches sobre simple-mind-map 0.14.0-fix.3 (`patchLibraryBugs` y `guardTextEditBoxes` en `mindmap-extensions.js`): error JS al terminar una relación y XSS al editar textos de relación/límite. | Al actualizar la librería pueden dejar de aplicar o volverse innecesarios. | Revisar los parches al actualizar; las pruebas de regresión fallan si el error vuelve. Valorar reportarlos al proyecto original. |
 | Firefox + Playwright 1.63 es inestable en paralelo en Windows. | Pruebas lentas e intermitentes. | Mitigado con `workers: 1` en el proyecto Firefox. Revisar al actualizar Playwright. |
 
 **Siguientes pestañas (fuera de este plan, por definir):**
