@@ -255,7 +255,7 @@
 
       <aside class="task-pane" x-show="pane">
         <div class="task-pane-header">
-          <span x-text="{ maps: 'Mis mapas', markers: 'Marcadores', notes: 'Notas' }[pane] || ''"></span>
+          <span x-text="{ maps: 'Mis mapas', markers: 'Marcadores', taskInfo: 'Info. de tarea', notes: 'Notas' }[pane] || ''"></span>
           <button class="task-pane-close" title="Cerrar panel" @click="togglePane(pane)">✕</button>
         </div>
 
@@ -348,6 +348,66 @@
           <p class="empty-hint" x-show="iconQuery && !paneIconCategories.length">Ningún icono coincide con la búsqueda.</p>
         </div>
 
+        <!-- Información de tarea de los temas seleccionados. Cada campo se guarda al cambiarlo.
+             Prioridad y % completado son los marcadores de icono de prioridad y progreso. -->
+        <div class="task-pane-body task-info-pane" x-show="pane === 'taskInfo'">
+          <div class="icon-sidebar-hint" x-show="!hasActiveNode">Selecciona uno o varios temas para ver o editar su información de tarea.</div>
+          <template x-if="hasActiveNode">
+            <form class="task-form" @submit.prevent>
+              <p class="task-count" x-show="activeNodeList.length > 1"
+                 x-text="`Los cambios se aplican a ${activeNodeList.length} temas`"></p>
+              <div class="task-row">
+                <label class="dialog-field">
+                  <span>Prioridad</span>
+                  <select name="priority" x-html="taskSelectHtml('priority')" @change="setTaskPriority($event.target.value)"></select>
+                </label>
+                <label class="dialog-field">
+                  <span>% completado</span>
+                  <select name="progress" x-html="taskSelectHtml('progress')" @change="setTaskProgress($event.target.value)"></select>
+                </label>
+              </div>
+              <div class="task-row">
+                <label class="dialog-field">
+                  <span>Inicio</span>
+                  <input type="date" name="start" :value="taskInfo.start" @change="setTaskDate('start', $event)" />
+                </label>
+                <label class="dialog-field">
+                  <span>Vencimiento</span>
+                  <input type="date" name="due" :value="taskInfo.due" @change="setTaskDate('due', $event)" />
+                </label>
+              </div>
+              <p class="task-duration" x-show="taskInfo.duration"
+                 x-text="`Duración: ${taskInfo.duration} ${taskInfo.duration === 1 ? 'día' : 'días'}`"></p>
+              <p class="dialog-error task-error" role="alert" x-show="taskError" x-text="taskError"></p>
+              <label class="task-check">
+                <input type="checkbox" name="milestone" :checked="taskInfo.milestone" @change="setTaskMilestone($event.target.checked)" />
+                <span>Hito</span>
+              </label>
+              <div class="dialog-field">
+                <span>Recursos</span>
+                <div class="tag-chips">
+                  <template x-for="r in taskInfo.resources" :key="r">
+                    <span class="resource-chip" :data-resource="r">
+                      <span x-text="r"></span>
+                      <button type="button" :title="'Quitar ' + r" :aria-label="'Quitar ' + r" @click="removeResource(r)">✕</button>
+                    </span>
+                  </template>
+                </div>
+                <div class="task-resource-add">
+                  <input type="text" name="resource" x-model="resourceDraft" list="taskResources" maxlength="40" autocomplete="off"
+                         placeholder="Nombre y Enter" @keydown.enter.prevent="addResource()" />
+                  <button type="button" class="btn" @click="addResource()">Añadir</button>
+                </div>
+                <datalist id="taskResources">
+                  <template x-for="r in knownResources" :key="r"><option :value="r"></option></template>
+                </datalist>
+              </div>
+              <button type="button" class="btn task-clear" data-cmd="clear.task" :disabled="!isEnabled('clear.task')"
+                      @click="runCommand('clear.task')">Quitar información de tarea</button>
+            </form>
+          </template>
+        </div>
+
         <!-- Notas del tema seleccionado (texto plano; se guarda al pausar la escritura) -->
         <div class="task-pane-body notes-pane" x-show="pane === 'notes'">
           <template x-if="activeNodeList.length === 1">
@@ -363,7 +423,7 @@
       </aside>
 
       <nav class="task-strip" aria-label="Paneles">
-        <template x-for="id in ['pane.maps', 'pane.markers', 'pane.notes']" :key="id">
+        <template x-for="id in ['pane.maps', 'pane.markers', 'pane.taskInfo', 'pane.notes']" :key="id">
           <button class="task-strip-tab" :data-cmd="id" :class="{ active: isPressed(id) }"
                   :title="tooltipOf(id)" @click="runCommand(id)">
             <span class="strip-icon" x-html="iconOf(id)"></span>
@@ -495,6 +555,7 @@
   <script src="/js/format.js"></script>
   <script src="/js/icon-library.js"></script>
   <script src="/js/markers.js"></script>
+  <script src="/js/task-info.js"></script>
   <script src="/js/elements.js"></script>
   <script src="/js/mindmap-extensions.js"></script>
   <script src="/js/commands.js"></script>

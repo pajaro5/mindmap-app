@@ -99,6 +99,14 @@ function sanitizeMapTree(root) {
       const icons = Array.isArray(d.icon) ? d.icon.filter(isIconId) : []
       if (!Array.isArray(d.icon) || icons.length !== d.icon.length) { d.icon = icons; fixed++ }
     }
+    if (d[TASK_KEY] !== undefined) {
+      const task = normalizeTask(d[TASK_KEY])
+      if (JSON.stringify(task) !== JSON.stringify(d[TASK_KEY])) {
+        if (task) d[TASK_KEY] = task
+        else delete d[TASK_KEY]
+        fixed++
+      }
+    }
     if (d.tag !== undefined) {
       const tags = normalizeTags(d.tag)
       if (!sameTags(tags, d.tag)) { d.tag = tags; fixed++ }

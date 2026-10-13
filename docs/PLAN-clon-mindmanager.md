@@ -56,7 +56,7 @@ Soporte en simple-mind-map: **Nativo** (comando/plugin existente) · **Parcial**
 |---|---|---|---|---|
 | Marcadores de icono | Iconos de prioridad, progreso, banderas, emoticonos… | ✅ panel y desplegable en la cinta | Nativo (datos `icon`) | S |
 | Marcadores de texto | Etiquetas de texto agrupadas por categorías, para filtrar | ✅ categorías con color, diálogo, panel y desplegable · ❌ filtrar | Parcial (datos `tag`; las categorías son propias, en `root.data._textMarkers`) | M |
-| Información de tarea | Prioridad, % completado, fecha de inicio y fin, duración, recursos | ❌ | Propio (datos del nodo + renderizado + panel) | L |
+| Información de tarea | Prioridad, % completado, fecha de inicio y fin, duración, recursos | ✅ panel y etiqueta en el tema | Propio (`_task` + extensión `nodeInnerPostfixList` + panel) | L |
 
 ### 2.4 Elementos del tema
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
@@ -115,7 +115,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | **4. Relación y Límite** ✅ | Plugins `associativeLine` y `outerFrame` con sus desplegables; 2 errores de la librería corregidos. Pendiente: formato de la relación (color, grosor) y formas de límite tipo nube. | M |
 | **5. Marcadores** ✅ | Desplegable de iconos en la cinta (prioridad y progreso excluyentes), marcadores de texto con categorías: diálogo, panel, desplegable; renombrar, recolorear y borrar se aplican a todo el mapa en un paso deshacible. Pendiente: filtrar por marcador (Vista) y cambiar la prioridad con clic en el icono del tema. | M |
 | **6. Edición** ✅ | Dividir (un tema por línea), Seleccionar (todo, hermanos, mismo nivel, rama, mismos marcadores), Limpiar (formato, marcadores, notas, vínculos, todo). Además: biblioteca de iconos propia (banderas, semáforo, caras, flechas, símbolos, personas) con nombres en español y buscador; los iconos de la librería quedan como "clásicos". Pendiente: Buscar y reemplazar. | M |
-| **7. Información de tarea** | Modelo, panel "Info. de tarea", renderizado en el tema (fechas, %) | L |
+| **7. Información de tarea** ✅ | Panel "Info. de tarea": prioridad y % completado (son los iconos de prioridad y progreso), inicio, vencimiento, duración, hito y recursos; etiqueta en el tema (roja si vence, verde si está completada) con la extensión `nodeInnerPostfixList` de la librería; datos en `_task`. Pendiente: vista de Gantt, calendario laborable y filtrar por recurso. | L |
 | **8. Llamadas** | Temas flotantes anclados | L |
 
 ### Deuda técnica detectada en la Fase 0
@@ -125,7 +125,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | La instancia de `mindMap` vive dentro del proxy reactivo de Alpine. | Cada acceso interno de la librería pasa por el seguimiento de dependencias de Alpine; posible sobrecoste en mapas grandes. | Guardarla fuera de la reactividad (variable de cierre + `getMindMap()`) y medir antes y después. |
 | ~~Alpine.js se cargaba desde un CDN~~ ✅ resuelto en la Fase 2 | La app no funcionaba sin conexión y las pruebas fallaban si el CDN tardaba. | Servido en local (public/vendor/alpine-3.14.3.min.js); una prueba impide volver a depender de dominios externos. |
 | Adjuntos huérfanos: al quitar un adjunto de un tema el archivo sigue en disco hasta que se borra el mapa (no se borra al momento para que Deshacer funcione). | Espacio en disco. | Limpieza periódica: borrar archivos que ningún tema del mapa referencia desde hace N días. |
-| Parches sobre simple-mind-map 0.14.0-fix.3 (`patchLibraryBugs` y `guardTextEditBoxes` en `mindmap-extensions.js`): error JS al terminar una relación y XSS al editar textos de relación/límite. | Al actualizar la librería pueden dejar de aplicar o volverse innecesarios. | Revisar los parches al actualizar; las pruebas de regresión fallan si el error vuelve. Valorar reportarlos al proyecto original. |
+| Parches sobre simple-mind-map 0.14.0-fix.3 (en `mindmap-extensions.js`): `patchLibraryBugs` (error JS al terminar una relación), `guardTextEditBoxes` (XSS al editar textos de relación/límite), `stripTransientHistoryFlags` (con el equipo lento, Deshacer no quitaba un tema recién insertado porque el historial guardaba la marca `inserting`) y `bindEscapeToEndEditing` (Esc no terminaba la edición de un tema y los atajos dejaban de responder). | Al actualizar la librería pueden dejar de aplicar o volverse innecesarios. | Revisar los parches al actualizar; las pruebas de regresión fallan si el error vuelve. Valorar reportarlos al proyecto original. |
 | simple-mind-map trata como **estilo** cualquier campo del tema que no conozca, salvo los que empiezan por `_`. | Un dato propio sin `_` lo borra "Quitar formato" y lo copia "Copiar formato". Le pasaba a las categorías de marcadores de la Fase 5. | **Regla:** todo dato propio en `node.data` empieza por `_` (p. ej. `_textMarkers`; la Información de tarea de la Fase 7 también). Los mapas con `textMarkers` se migran al abrirlos. |
 | Firefox + Playwright 1.63 es inestable en paralelo en Windows. | Pruebas lentas e intermitentes. | Mitigado con `workers: 1` en el proyecto Firefox. Revisar al actualizar Playwright. |
 

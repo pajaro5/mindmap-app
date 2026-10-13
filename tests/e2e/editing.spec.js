@@ -45,6 +45,50 @@ test('deshacer y rehacer desde la barra de acceso rápido', async ({ openMap, pa
   await app.expectNodeCount(2)
 })
 
+test('Esc termina la edición del tema, conserva el texto y los atajos vuelven a funcionar', async ({ openMap, page }) => {
+  const { app } = openMap
+  await app.selectRoot()
+  await page.keyboard.press('Tab')
+  await expect(app.editBox).toBeVisible()
+  await page.keyboard.type('Escrito')
+  await page.keyboard.press('Escape')
+  await expect(app.editBox).toBeHidden()
+  await expect.poll(() => app.page.evaluate(() => document.activeElement === document.body)).toBe(true)
+  await expect(app.node('Escrito')).toBeVisible()
+  await app.settleHistory()
+
+  // Ctrl+Z responde enseguida (antes el foco seguía dentro del cuadro de edición)
+  await page.keyboard.press('Control+z')
+  await expect(app.node('Escrito')).toHaveCount(0)
+})
+
+// Error de la librería corregido en stripTransientHistoryFlags: con el equipo lento, la
+// entrada de historial del tema nuevo guardaba `inserting: true` y Deshacer no lo quitaba
+// (Era intermitente y dependía de la velocidad del equipo; aquí se comprueba la causa de
+// forma determinista: la instantánea tomada justo después de insertar no lleva la marca)
+test('el historial no guarda la marca temporal de "tema recién insertado"', async ({ openMap, page }) => {
+  const { app } = openMap
+  await app.selectRoot()
+  const snapshot = await page.evaluate(() => {
+    const mm = window.Alpine.$data(document.body).mindMap
+    mm.execCommand('INSERT_CHILD_NODE')
+    // En el mismo instante en que la librería tomaría la instantánea del historial
+    const hasFlag = n => !!n && (n.inserting === true || (n.children || []).some(hasFlag))
+    return { liveHasFlag: hasFlag(mm.renderer.renderTree), copy: JSON.stringify(mm.command.getCopyData()) }
+  })
+  // La marca existe en los datos vivos (si no, la prueba no probaría nada)…
+  expect(snapshot.liveHasFlag).toBe(true)
+  // …pero no en lo que se guarda en el historial
+  expect(snapshot.copy).not.toContain('"inserting"')
+
+  await expect(app.editBox).toBeVisible()
+  await page.keyboard.press('Escape')
+  await app.expectNodeCount(2)
+  await app.settleHistory()
+  await app.qat('edit.undo').click()
+  await app.expectNodeCount(1)
+})
+
 test('escribir en el título del mapa no dispara los atajos del mapa', async ({ openMap, page }) => {
   const { app } = openMap
   await app.selectRoot()

@@ -130,6 +130,11 @@ const COMMANDS = {
     label: 'Quitar hipervínculos', icon: 'hyperlink', enabled: s => s.elements.anyHyperlink,
     run: app => app.clearTopics('links')
   },
+  'clear.task': {
+    label: 'Quitar información de tarea', tooltip: 'Quitar fechas, recursos, hito, prioridad y % completado', icon: 'taskInfo',
+    enabled: s => s.task.any,
+    run: app => app.clearTopics('task')
+  },
   'clear.all': {
     label: 'Limpiar todo', tooltip: 'Quitar formato, marcadores, notas, vínculos, adjuntos e imágenes', icon: 'clearAll',
     enabled: hasActiveNode,
@@ -360,6 +365,11 @@ const COMMANDS = {
     label: 'Notas', tooltip: 'Mostrar u ocultar las Notas del tema', icon: 'notes',
     pressed: s => s.pane === 'notes',
     run: app => app.togglePane('notes')
+  },
+  'pane.taskInfo': {
+    label: 'Info. de tarea', tooltip: 'Prioridad, % completado, fechas, hito y recursos del tema', icon: 'taskInfo',
+    pressed: s => s.pane === 'taskInfo',
+    run: app => app.togglePane('taskInfo')
   },
   'pane.markers': {
     label: 'Marcadores', tooltip: 'Mostrar u ocultar Marcadores', icon: 'iconMarkers',

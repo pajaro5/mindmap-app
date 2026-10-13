@@ -228,7 +228,9 @@ const CLEAR_PARTS = {
   markers: { keys: ['icon', 'tag'] },
   notes: { keys: ['note'] },
   links: { keys: ['hyperlink', 'hyperlinkTitle'] },
-  all: { format: true, keys: ['icon', 'tag', 'note', 'hyperlink', 'hyperlinkTitle', 'attachmentUrl', 'attachmentName', 'image', 'imageTitle', 'imageSize'] }
+  // Información de tarea: sus datos y los iconos de prioridad y progreso (el resto se queda)
+  task: { keys: [TASK_KEY], taskIcons: true },
+  all: { format: true, keys: ['icon', 'tag', 'note', 'hyperlink', 'hyperlinkTitle', 'attachmentUrl', 'attachmentName', 'image', 'imageTitle', 'imageSize', TASK_KEY] }
 }
 
 function clearTopics(mindMap, part) {
@@ -240,8 +242,12 @@ function clearTopics(mindMap, part) {
     // propios que empiezan por "_" (p. ej. las categorías de marcadores) no se tocan
     if (spec.format) renderer.removeCustomStyles(node)
     const present = spec.keys.filter(key => node.getData(key) !== undefined)
-    if (present.length) {
-      renderer.setNodeData(node, Object.fromEntries(present.map(key => [key, undefined])))
+    const changes = Object.fromEntries(present.map(key => [key, undefined]))
+    if (spec.taskIcons && node.getData('icon')) {
+      changes.icon = withProgress(withPriority(node.getData('icon'), 0), 0)
+    }
+    if (Object.keys(changes).length) {
+      renderer.setNodeData(node, changes)
       node.reRender()
     }
   })
@@ -286,8 +292,54 @@ function guardTextEditBoxes(mindMap) {
   }
 }
 
+// Esc termina la edición del texto de un tema (la librería solo la termina con Enter o
+// con un clic fuera). Sin esto, tras pulsar Esc el cuadro seguía abierto con el foco
+// dentro y los atajos (Ctrl+Z, Tab, Supr…) no respondían. Se conserva lo escrito, como al
+// pulsar Enter: así un Esc no hace perder texto.
+function bindEscapeToEndEditing(mindMap) {
+  const onKeydown = e => {
+    if (e.key !== 'Escape') return
+    const textEdit = mindMap.renderer && mindMap.renderer.textEdit
+    if (!textEdit || !textEdit.isShowTextEdit()) return
+    e.preventDefault()
+    e.stopPropagation()
+    textEdit.hideEditTextBox()
+    // El foco vuelve al documento para que los atajos del mapa funcionen
+    if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur()
+  }
+  // Fase de captura: el editor de texto enriquecido no debe quedarse con la tecla
+  window.addEventListener('keydown', onKeydown, true)
+  mindMap.on('beforeDestroy', () => window.removeEventListener('keydown', onKeydown, true))
+}
+
+// Error de la librería: un tema recién insertado lleva la marca temporal `inserting: true`
+// (para abrir su cuadro de edición) hasta que se pinta. Si la entrada de historial se toma
+// antes (pasa cuando el equipo va lento), la guarda; al deshacer hasta esa entrada la
+// librería trata el tema como "recién insertado" otra vez, quita la marca y añade una
+// entrada nueva: Deshacer parecía no hacer nada y el tema no se iba.
+// Solución: las instantáneas del historial nunca guardan esa marca.
+function stripTransientHistoryFlags(mindMap) {
+  const command = mindMap.command
+  if (!command || command.__mmStripped) return
+  const getCopyData = command.getCopyData
+  const strip = node => {
+    if (!node || typeof node !== 'object') return
+    delete node.inserting
+    ;(node.children || []).forEach(strip)
+  }
+  // addHistory llama a this.getCopyData(): el método de la instancia tiene prioridad
+  command.getCopyData = function (...args) {
+    const data = getCopyData.apply(this, args)
+    strip(data)
+    return data
+  }
+  command.__mmStripped = true
+}
+
 function extendMindMap(mindMap) {
   guardTextEditBoxes(mindMap)
+  bindEscapeToEndEditing(mindMap)
+  stripTransientHistoryFlags(mindMap)
   mindMap.command.add('INSERT_NODE_BEFORE', () => insertNodeBefore(mindMap))
   mindMap.command.add('SET_ACTIVE_NODES_STYLE', styleFor => setActiveNodesStyle(mindMap, styleFor))
   mindMap.command.add('SET_ACTIVE_NODES_DATA', dataFor => setActiveNodesData(mindMap, dataFor))

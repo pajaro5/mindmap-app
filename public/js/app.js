@@ -82,6 +82,10 @@ const MINDMANAGER_THEME = {
 if (MindMapCtor && typeof MindMapCtor.defineTheme === 'function') {
   MindMapCtor.defineTheme(THEME_NAME, MINDMANAGER_THEME)
 }
+// Etiqueta de Información de tarea en los temas (task-info.js)
+if (MindMapCtor && typeof MindMapCtor.usePlugin === 'function') {
+  MindMapCtor.usePlugin(TaskInfoPlugin)
+}
 
 // Espera a que el navegador haya aplicado el layout pendiente (tras cambios de Alpine)
 function nextFrame() {
@@ -102,6 +106,9 @@ function mindMapApp() {
     iconCategories: [],
     // Texto del buscador de iconos del panel Marcadores
     iconQuery: '',
+    // Panel Info. de tarea: recurso que se está escribiendo y último error de validación
+    resourceDraft: '',
+    taskError: '',
     zoomPercent: 100,
     ribbon: { tabs: [], quickAccess: [], problems: [] },
     ribbonTab: 'home',
@@ -151,6 +158,36 @@ function mindMapApp() {
         anyNote: nodes.some(n => has(n, 'note')),
         anyHyperlink: nodes.some(n => has(n, 'hyperlink'))
       }
+    },
+
+    // Información de tarea del primer tema seleccionado (lo que muestra el panel)
+    get taskInfo() {
+      void this.renderTick
+      const nodes = this.activeNodeList.map(n => Alpine.raw(n))
+      const first = nodes[0]
+      const task = (first && normalizeTask(first.getData(TASK_KEY))) || {}
+      const icons = (first && first.getData('icon')) || []
+      return {
+        priority: priorityOf(icons),
+        progress: progressOf(icons),
+        start: task.start || '',
+        due: task.due || '',
+        milestone: !!task.milestone,
+        resources: task.resources || [],
+        duration: taskDurationDays(task.start, task.due),
+        // Para habilitar "Quitar información de tarea"
+        any: nodes.some(n => {
+          const i = n.getData('icon') || []
+          return !!normalizeTask(n.getData(TASK_KEY)) || priorityOf(i) > 0 || progressOf(i) > 0
+        })
+      }
+    },
+
+    // Recursos usados en el mapa, para sugerirlos en el panel
+    get knownResources() {
+      void this.renderTick
+      const tree = this.mindMap && Alpine.raw(this.mindMap).renderer.renderTree
+      return tree ? resourcesInTree(tree) : []
     },
 
     // Algún tema seleccionado (que no sea el central) tiene varias líneas
@@ -236,6 +273,7 @@ function mindMapApp() {
         elements: this.activeElements,
         markers: this.activeMarkers,
         canSplit: this.canSplit,
+        task: { any: this.taskInfo.any },
         relationshipActive: this.relationshipActive,
         boundaryActive: this.boundaryActive,
         painterActive: this.painterActive,
@@ -394,6 +432,66 @@ function mindMapApp() {
       const plugin = this.mindMap.outerFrame
       if (!plugin.activeOuterFrame) return
       plugin.showEditTextBox(plugin.activeOuterFrame.textNode)
+    },
+
+    // ---- Información de tarea ----
+    // Cada cambio se aplica a todos los temas seleccionados, campo a campo (no se copian los
+    // demás datos del primero), como una sola entrada de historial
+    updateTask(change) {
+      this.syncSelection()
+      if (!this.mindMap || !this.hasActiveNode) return false
+      const nodes = this.activeNodeList.map(n => Alpine.raw(n))
+      const next = new Map(nodes.map(node => [node.uid, change(normalizeTask(node.getData(TASK_KEY)) || {})]))
+      const error = [...next.values()].map(validateTask).find(Boolean)
+      if (error) {
+        this.taskError = error
+        return false
+      }
+      this.taskError = ''
+      this.setElementData(node => next.has(node.uid) ? { [TASK_KEY]: normalizeTask(next.get(node.uid)) } : {})
+      return true
+    },
+
+    // Fechas desde <input type="date">; si no es válida, el campo vuelve a su valor
+    setTaskDate(field, event) {
+      const value = event.target.value
+      const ok = this.updateTask(task => ({ ...task, [field]: value || undefined }))
+      if (!ok) event.target.value = this.taskInfo[field]
+    },
+
+    setTaskMilestone(on) {
+      this.updateTask(task => ({ ...task, milestone: on || undefined }))
+    },
+
+    addResource() {
+      const name = cleanName(this.resourceDraft)
+      if (!name) return
+      this.updateTask(task => ({ ...task, resources: [...(task.resources || []), name] }))
+      this.resourceDraft = ''
+    },
+
+    removeResource(name) {
+      this.updateTask(task => ({ ...task, resources: (task.resources || []).filter(r => markerKey(r) !== markerKey(name)) }))
+    },
+
+    setTaskPriority(value) {
+      this.syncSelection()
+      this.setElementData(node => ({ icon: withPriority(node.getData('icon'), Number(value)) }))
+    },
+
+    setTaskProgress(value) {
+      this.syncSelection()
+      this.setElementData(node => ({ icon: withProgress(node.getData('icon'), Number(value)) }))
+    },
+
+    // Opciones de los selectores del panel, generadas como HTML (ver selectOptionsHtml)
+    taskSelectHtml(kind) {
+      const info = this.taskInfo
+      const options = kind === 'priority'
+        ? [{ value: 0, label: 'Ninguna' }, ...Array.from({ length: PRIORITY_MAX }, (_, i) => ({ value: i + 1, label: `Prioridad ${i + 1}` }))]
+        : progressOptions(info.progress)
+      const current = kind === 'priority' ? info.priority : info.progress
+      return options.map(o => `<option value="${o.value}"${o.value === current ? ' selected' : ''}>${o.label}</option>`).join('')
     },
 
     // ---- Edición ----

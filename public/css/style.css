@@ -747,6 +747,39 @@ details.icon-category.classic > summary { color: var(--muted); font-weight: 400;
 .category-marker-row input { flex: 1; }
 .category-markers .btn-link { align-self: flex-start; margin-top: 2px; }
 
+/* ---------- Panel Info. de tarea ---------- */
+.task-form { display: flex; flex-direction: column; gap: 10px; }
+.task-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.task-row .dialog-field { min-width: 0; }
+.task-form select, .task-form input[type="date"], .task-resource-add input {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: 12.5px;
+  padding: 4px 5px;
+  border: 1px solid #a9c3e4;
+  border-radius: 3px;
+  background: #fff;
+}
+.task-count { margin: 0; font-size: 12px; font-weight: 600; color: var(--group-label); }
+.task-duration { margin: -4px 0 0; font-size: 12px; color: var(--muted); }
+.task-check { display: flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.task-resource-add { display: flex; gap: 4px; margin-top: 4px; }
+.resource-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 4px 1px 8px;
+  font-size: 12px;
+  color: #1d4f8a;
+  background: #eef4fb;
+  border: 1px solid #9ab7d8;
+  border-radius: 10px;
+}
+.resource-chip button { padding: 0 2px; font-size: 10px; color: inherit; background: none; border: none; cursor: pointer; opacity: .6; }
+.resource-chip button:hover { opacity: 1; color: #b3261e; }
+.task-clear { align-self: flex-start; color: #b3261e; }
+
 /* Tira vertical de pestañas, como el borde derecho de MindManager */
 .task-strip {
   width: 26px;

@@ -45,7 +45,8 @@ const RIBBON_TABS = [
         label: 'Marcadores',
         items: [
           { cmd: 'markers.icons', dropdown: 'iconMarkers', menu: ['markers.icons.clear', 'markers.manage'] },
-          { cmd: 'markers.tags', dropdown: 'textMarkers', menu: ['markers.tags', 'markers.tags.clear', 'markers.tags.newCategory', 'markers.manage'] }
+          { cmd: 'markers.tags', dropdown: 'textMarkers', menu: ['markers.tags', 'markers.tags.clear', 'markers.tags.newCategory', 'markers.manage'] },
+          { cmd: 'pane.taskInfo' }
         ]
       },
       {
@@ -76,7 +77,7 @@ const RIBBON_TABS = [
         items: [
           { cmd: 'topic.remove' },
           { cmd: 'select.all', size: 'small', menu: ['select.all', 'select.siblings', 'select.level', 'select.branch', 'select.sameMarkers'] },
-          { cmd: 'clear.format', size: 'small', menu: ['clear.format', 'clear.markers', 'clear.notes', 'clear.links', 'clear.all'] },
+          { cmd: 'clear.format', size: 'small', menu: ['clear.format', 'clear.markers', 'clear.notes', 'clear.links', 'clear.task', 'clear.all'] },
           { cmd: 'topic.split', size: 'small' }
         ]
       }
@@ -94,7 +95,7 @@ const RIBBON_TABS = [
     label: 'Vista',
     groups: [
       { label: 'Zoom', items: [{ cmd: 'view.zoomIn' }, { cmd: 'view.zoomOut' }, { cmd: 'view.fit' }, { cmd: 'view.actualSize' }] },
-      { label: 'Paneles', items: [{ cmd: 'pane.maps' }, { cmd: 'pane.markers' }, { cmd: 'pane.notes' }] }
+      { label: 'Paneles', items: [{ cmd: 'pane.maps' }, { cmd: 'pane.markers' }, { cmd: 'pane.taskInfo' }, { cmd: 'pane.notes' }] }
     ]
   },
   {
