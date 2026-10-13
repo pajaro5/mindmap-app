@@ -665,6 +665,72 @@ body.painter-active #mindMapContainer { cursor: copy; }
 .icon-btn.active { background: linear-gradient(#ffd99a, #f8b955); border-color: #c2862a; }
 .icon-btn:disabled { opacity: .35; cursor: not-allowed; }
 
+/* ---------- Marcadores de texto (panel, desplegable y diálogo) ---------- */
+.pane-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+.text-markers { margin-bottom: 14px; }
+.btn-link {
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.btn-link:hover { text-decoration: underline; }
+.marker-category { margin-bottom: 10px; }
+.marker-category-title { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; font-size: 11.5px; font-weight: 600; color: var(--group-label); }
+.marker-category-title .btn-icon { font-size: 13px; }
+.marker-category-title .btn-icon:hover { color: var(--accent); }
+.marker-category-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-dot { display: inline-block; flex-shrink: 0; width: 10px; height: 10px; border-radius: 2px; }
+.tag-dot-none { background: #7f7f7f; }
+.tag-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag-chip {
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--tag-color);
+  background: #fff;
+  border: 1px solid var(--tag-color);
+  border-radius: 3px;
+  cursor: pointer;
+}
+.tag-chip:hover:not(:disabled) { background: #f2f6fb; }
+.tag-chip.active { color: #fff; background: var(--tag-color); }
+.tag-chip:disabled { opacity: .45; cursor: not-allowed; }
+
+.marker-menu { max-width: 300px; padding: 2px 4px; }
+.marker-menu-group + .marker-menu-group { margin-top: 4px; }
+.marker-menu-icons { display: flex; flex-wrap: wrap; gap: 1px; }
+.menu-check { width: 12px; text-align: center; font-weight: 700; }
+.menu-empty { padding: 6px; font-size: 12px; color: var(--muted); }
+.menu-footer { margin-top: 3px; padding-top: 3px; border-top: 1px solid var(--group-border); }
+
+.dialog-field select {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 6px;
+  border: 1px solid #a9c3e4;
+  border-radius: 3px;
+}
+.dialog-hint { margin: -4px 0 0; font-size: 12px; color: var(--muted); }
+.category-colors { display: flex; gap: 6px; }
+.category-colors .swatch { width: 22px; height: 22px; border-radius: 3px; }
+.category-markers { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; padding: 2px; }
+.category-marker-row { display: flex; align-items: center; gap: 4px; }
+.category-marker-row input { flex: 1; }
+.category-markers .btn-link { align-self: flex-start; margin-top: 2px; }
+
 /* Tira vertical de pestañas, como el borde derecho de MindManager */
 .task-strip {
   width: 26px;

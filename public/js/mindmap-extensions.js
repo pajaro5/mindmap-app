@@ -88,6 +88,47 @@ function setActiveNodesData(mindMap, dataFor) {
   })
 }
 
+// Cambia las definiciones de los marcadores de texto (en el tema central) y lleva los
+// renombrados, borrados y colores a todos los temas del mapa, también a los que están
+// dentro de ramas contraídas. Con `assignName`, además asigna ese marcador a los temas
+// seleccionados (crear un marcador desde el diálogo y aplicarlo es un solo paso al deshacer).
+// Una sola entrada de historial.
+function setTextMarkers(mindMap, newDefs, assignName) {
+  const renderer = mindMap.renderer
+  const root = renderer.root
+  if (!root) return
+  // Copia plana y normalizada: lo que llega puede traer proxies de Alpine
+  newDefs = normalizeMarkerDefs(JSON.parse(JSON.stringify(newDefs)))
+  const oldDefs = normalizeMarkerDefs(root.getData('textMarkers'))
+  const migrate = tagMigration(oldDefs, newDefs)
+  const walk = nodeData => {
+    const current = nodeData.data.tag
+    if (current && current.length) {
+      const next = migrate(current)
+      if (!sameTags(next, current)) {
+        // Los temas pintados se vuelven a dibujar; los de ramas contraídas solo cambian el dato
+        const node = renderer.findNodeByUid(nodeData.data.uid)
+        if (node) {
+          renderer.setNodeData(node, { tag: next })
+          node.reRender()
+        } else {
+          nodeData.data.tag = next
+        }
+      }
+    }
+    ;(nodeData.children || []).forEach(walk)
+  }
+  walk(renderer.renderTree)
+  renderer.setNodeData(root, { textMarkers: newDefs })
+  if (assignName) {
+    renderer.activeNodeList.forEach(node => {
+      renderer.setNodeData(node, { tag: toggleTagList(node.getData('tag'), newDefs, assignName, true) })
+      node.reRender()
+    })
+  }
+  mindMap.render()
+}
+
 // Apertura segura de hipervínculos: la librería pinta <a href> con el valor tal cual; aquí
 // se vuelve a validar el esquema en el momento del clic (defensa en profundidad) y se abre
 // sin dar acceso a window.opener.
@@ -131,6 +172,7 @@ function extendMindMap(mindMap) {
   mindMap.command.add('INSERT_NODE_BEFORE', () => insertNodeBefore(mindMap))
   mindMap.command.add('SET_ACTIVE_NODES_STYLE', styleFor => setActiveNodesStyle(mindMap, styleFor))
   mindMap.command.add('SET_ACTIVE_NODES_DATA', dataFor => setActiveNodesData(mindMap, dataFor))
+  mindMap.command.add('SET_TEXT_MARKERS', (defs, assignName) => setTextMarkers(mindMap, defs, assignName))
   mindMap.keyCommand.addShortcut('Shift+Enter', () => mindMap.execCommand('INSERT_NODE_BEFORE'))
   makePainterOneShot(mindMap)
 }

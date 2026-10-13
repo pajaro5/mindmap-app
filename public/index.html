@@ -117,7 +117,7 @@
                           <button class="rb-menu-arrow" @mousedown.prevent :data-menu-for="item.cmd" aria-haspopup="menu"
                                   :aria-expanded="!!(menu && menu.owner === item.cmd)"
                                   :title="'Más opciones de ' + labelOf(item.cmd)"
-                                  @click.stop="toggleMenu(item.cmd, item.menu, $event)">▾</button>
+                                  @click.stop="toggleMenu(item.cmd, item.menu, $event, item.dropdown || 'commands')">▾</button>
                         </template>
                       </div>
                     </template>
@@ -135,9 +135,60 @@
     <div class="ribbon-menu" role="menu" x-show="menu" x-cloak
          :style="menu ? `left:${menu.x}px;top:${menu.y}px` : ''"
          @click.outside="closeMenu()" @keydown.escape.stop="closeMenu()">
-      <!-- Lista de comandos (botones divididos) -->
-      <template x-if="menu && menu.kind === 'commands'">
-        <div>
+      <!-- Marcadores de icono: galería por grupos -->
+      <template x-if="menu && menu.kind === 'iconMarkers'">
+        <div class="marker-menu" data-dropdown="iconMarkers">
+          <template x-for="cat in iconCategories" :key="cat.type">
+            <div class="marker-menu-group">
+              <div class="palette-title" x-text="cat.label"></div>
+              <div class="marker-menu-icons">
+                <template x-for="item in cat.items" :key="item.id">
+                  <button class="icon-btn" role="menuitemcheckbox" :data-icon="item.id" :title="item.id"
+                          :aria-checked="isIconActive(item.id)" :class="{ active: isIconActive(item.id) }"
+                          :disabled="!hasActiveNode" @click="toggleIcon(item.id)" x-html="item.svg"></button>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- Marcadores de texto: por categorías -->
+      <template x-if="menu && menu.kind === 'textMarkers'">
+        <div class="marker-menu" data-dropdown="textMarkers">
+          <template x-for="cat in textMarkerDefs" :key="cat.id">
+            <div class="marker-menu-group" x-show="cat.markers.length">
+              <div class="palette-title" x-text="cat.name"></div>
+              <template x-for="m in cat.markers" :key="m.id">
+                <button class="ribbon-menu-item" role="menuitemcheckbox" :data-tag="m.name"
+                        :aria-checked="isTagActive(m.name)" :disabled="!hasActiveNode" @click="toggleTextMarker(m.name)">
+                  <span class="menu-check" x-text="isTagActive(m.name) ? '✓' : ''"></span>
+                  <span class="tag-dot" :style="`background:${cat.color}`"></span>
+                  <span class="ribbon-menu-label" x-text="m.name"></span>
+                </button>
+              </template>
+            </div>
+          </template>
+          <div class="marker-menu-group" x-show="undefinedTextMarkers.length">
+            <div class="palette-title">Sin categoría</div>
+            <template x-for="name in undefinedTextMarkers" :key="name">
+              <button class="ribbon-menu-item" role="menuitemcheckbox" :data-tag="name"
+                      :aria-checked="isTagActive(name)" :disabled="!hasActiveNode" @click="toggleTextMarker(name)">
+                <span class="menu-check" x-text="isTagActive(name) ? '✓' : ''"></span>
+                <span class="tag-dot tag-dot-none"></span>
+                <span class="ribbon-menu-label" x-text="name"></span>
+              </button>
+            </template>
+          </div>
+          <div class="menu-empty" x-show="!textMarkerDefs.some(c => c.markers.length) && !undefinedTextMarkers.length">
+            Aún no hay marcadores de texto en este mapa.
+          </div>
+        </div>
+      </template>
+
+      <!-- Lista de comandos (botones divididos; al pie de los desplegables de marcadores) -->
+      <template x-if="menu && ['commands', 'iconMarkers', 'textMarkers'].includes(menu.kind)">
+        <div :class="{ 'menu-footer': menu && menu.kind !== 'commands' }">
           <template x-for="id in menu.items" :key="id">
             <button class="ribbon-menu-item" role="menuitem" :data-cmd="id" :disabled="!isEnabled(id)" @click="runCommand(id)">
               <span class="rb-icon" x-html="iconOf(id)"></span>
@@ -226,6 +277,50 @@
           <div class="icon-sidebar-hint" x-show="!hasActiveNode">
             Selecciona un tema del mapa para asignarle un marcador.
           </div>
+
+          <!-- Marcadores de texto por categorías: clic en un marcador lo pone o lo quita -->
+          <section class="text-markers" x-show="currentId">
+            <div class="pane-section-title">
+              <span>Marcadores de texto</span>
+              <button class="btn-link" data-action="new-category" @click="openCategoryDialog()">+ Categoría</button>
+            </div>
+            <template x-for="cat in textMarkerDefs" :key="cat.id">
+              <div class="marker-category" :data-category="cat.name">
+                <div class="marker-category-title">
+                  <span class="tag-dot" :style="`background:${cat.color}`"></span>
+                  <span class="marker-category-name" x-text="cat.name"></span>
+                  <button class="btn-icon" data-action="edit-category" :title="'Editar la categoría ' + cat.name"
+                          @click="openCategoryDialog(cat.id)">✎</button>
+                </div>
+                <div class="tag-chips">
+                  <template x-for="m in cat.markers" :key="m.id">
+                    <button class="tag-chip" :data-tag="m.name" :aria-pressed="isTagActive(m.name)"
+                            :class="{ active: isTagActive(m.name) }" :style="`--tag-color:${cat.color}`"
+                            :disabled="!hasActiveNode" @click="toggleTextMarker(m.name)" x-text="m.name"></button>
+                  </template>
+                  <span class="empty-hint" x-show="!cat.markers.length">Sin marcadores: edita la categoría para añadirlos.</span>
+                </div>
+              </div>
+            </template>
+            <div class="marker-category" x-show="undefinedTextMarkers.length">
+              <div class="marker-category-title">
+                <span class="tag-dot tag-dot-none"></span>
+                <span class="marker-category-name">Sin categoría</span>
+              </div>
+              <div class="tag-chips">
+                <template x-for="name in undefinedTextMarkers" :key="name">
+                  <button class="tag-chip" :data-tag="name" :aria-pressed="isTagActive(name)"
+                          :class="{ active: isTagActive(name) }" style="--tag-color:#7f7f7f"
+                          :disabled="!hasActiveNode" @click="toggleTextMarker(name)" x-text="name"></button>
+                </template>
+              </div>
+            </div>
+            <p class="empty-hint" x-show="!textMarkerDefs.length && !undefinedTextMarkers.length">
+              Crea una categoría (por ejemplo «Responsable» o «Estado») y añádele marcadores.
+            </p>
+          </section>
+
+          <div class="pane-section-title"><span>Marcadores de icono</span></div>
           <template x-for="cat in iconCategories" :key="cat.type">
             <div class="icon-category">
               <div class="icon-category-title" x-text="cat.label"></div>
@@ -233,6 +328,8 @@
                 <template x-for="item in cat.items" :key="item.id">
                   <button
                     class="icon-btn"
+                    :data-icon="item.id"
+                    :aria-pressed="isIconActive(item.id)"
                     :class="{ active: isIconActive(item.id) }"
                     :disabled="!hasActiveNode"
                     :title="item.id"
@@ -293,6 +390,81 @@
           </div>
         </form>
       </template>
+
+      <!-- Nuevo marcador de texto para los temas seleccionados -->
+      <template x-if="dialog && dialog.kind === 'textMarker'">
+        <form class="dialog-form" @submit.prevent="saveTextMarker()" novalidate>
+          <h2 id="appDialogTitle" class="dialog-title">Marcador de texto</h2>
+          <label class="dialog-field">
+            <span>Marcador</span>
+            <input name="markerName" type="text" x-model="dialog.name" maxlength="40" autocomplete="off" list="textMarkerNames"
+                   placeholder="Por ejemplo: Ana, Urgente, Pendiente…" :aria-invalid="!!dialog.error" @input="dialog.error = ''" />
+            <datalist id="textMarkerNames">
+              <template x-for="m in textMarkerDefs.flatMap(c => c.markers)" :key="m.id">
+                <option :value="m.name"></option>
+              </template>
+            </datalist>
+          </label>
+          <label class="dialog-field" x-show="textMarkerDefs.length && !findMarker(textMarkerDefs, dialog.name)">
+            <span>Categoría <em>(si es un marcador nuevo)</em></span>
+            <select name="categoryId" x-model="dialog.categoryId">
+              <template x-for="c in textMarkerDefs" :key="c.id">
+                <option :value="c.id" x-text="c.name" :selected="c.id === dialog.categoryId"></option>
+              </template>
+            </select>
+          </label>
+          <p class="dialog-hint" x-show="!textMarkerDefs.length">Se guardará en la categoría «General».</p>
+          <p class="dialog-error" role="alert" x-show="dialog.error" x-text="dialog.error"></p>
+          <div class="dialog-actions">
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary">Aceptar</button>
+            <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+      </template>
+
+      <!-- Categoría de marcadores de texto: nombre, color y marcadores -->
+      <template x-if="dialog && dialog.kind === 'category'">
+        <form class="dialog-form" @submit.prevent="saveCategory()" novalidate>
+          <h2 id="appDialogTitle" class="dialog-title" x-text="dialog.isNew ? 'Nueva categoría' : 'Editar categoría'"></h2>
+          <label class="dialog-field">
+            <span>Nombre</span>
+            <input name="categoryName" type="text" x-model="dialog.name" maxlength="40" autocomplete="off"
+                   placeholder="Por ejemplo: Responsable" :aria-invalid="!!dialog.error" @input="dialog.error = ''" />
+          </label>
+          <div class="dialog-field">
+            <span>Color</span>
+            <div class="category-colors" role="radiogroup" aria-label="Color de la categoría">
+              <template x-for="c in TEXT_MARKER_COLORS" :key="c">
+                <button type="button" class="swatch" role="radio" :data-color="c" :aria-checked="dialog.color === c"
+                        :class="{ current: dialog.color === c }" :style="`background:${c}`" :title="c"
+                        @click="dialog.color = c"></button>
+              </template>
+            </div>
+          </div>
+          <div class="dialog-field">
+            <span>Marcadores</span>
+            <div class="category-markers">
+              <template x-for="(m, i) in dialog.markers" :key="m.id">
+                <div class="category-marker-row">
+                  <input type="text" :name="`marker-${i}`" x-model="m.name" maxlength="40" autocomplete="off"
+                         :aria-label="`Marcador ${i + 1}`" @input="dialog.error = ''" />
+                  <button type="button" class="btn-icon" :title="'Quitar ' + (m.name || 'marcador')"
+                          @click="removeCategoryMarker(i)">✕</button>
+                </div>
+              </template>
+              <button type="button" class="btn-link" data-action="add-marker" @click="addCategoryMarker()">+ Añadir marcador</button>
+            </div>
+          </div>
+          <p class="dialog-error" role="alert" x-show="dialog.error" x-text="dialog.error"></p>
+          <div class="dialog-actions">
+            <button type="button" class="btn dialog-remove" x-show="!dialog.isNew" @click="deleteCategory()">Eliminar categoría</button>
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary">Aceptar</button>
+            <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+      </template>
     </dialog>
 
     <!-- Barra de estado -->
@@ -315,6 +487,7 @@
 
   <script src="/js/icons.js"></script>
   <script src="/js/format.js"></script>
+  <script src="/js/markers.js"></script>
   <script src="/js/elements.js"></script>
   <script src="/js/mindmap-extensions.js"></script>
   <script src="/js/commands.js"></script>

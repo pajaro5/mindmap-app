@@ -54,8 +54,8 @@ Soporte en simple-mind-map: **Nativo** (comando/plugin existente) · **Parcial**
 ### 2.3 Marcadores del mapa
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
 |---|---|---|---|---|
-| Marcadores de icono | Iconos de prioridad, progreso, banderas, emoticonos… | ✅ panel Marcadores (falta el desplegable en la cinta) | Nativo (`SET_NODE_ICON`) | S |
-| Marcadores de texto | Etiquetas de texto agrupadas por categorías, para filtrar | ❌ | Parcial (`SET_NODE_TAG`; las categorías son propias) | M |
+| Marcadores de icono | Iconos de prioridad, progreso, banderas, emoticonos… | ✅ panel y desplegable en la cinta | Nativo (datos `icon`) | S |
+| Marcadores de texto | Etiquetas de texto agrupadas por categorías, para filtrar | ✅ categorías con color, diálogo, panel y desplegable · ❌ filtrar | Parcial (datos `tag`; las categorías son propias, en `root.data.textMarkers`) | M |
 | Información de tarea | Prioridad, % completado, fecha de inicio y fin, duración, recursos | ❌ | Propio (datos del nodo + renderizado + panel) | L |
 
 ### 2.4 Elementos del tema
@@ -113,7 +113,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | **2. Formato y Estilo** ✅ | Fuente, tamaño, B/I/U/S, colores, alineación, galería de formas. Pendiente: sombra y estilos predefinidos de tema. | M |
 | **3. Elementos del tema** ✅ | Hipervínculo, Notas (panel), Imagen, Adjunto con API de archivos; saneado de mapas al abrirlos. Pendiente: notas con formato y vínculos a temas. | M–L |
 | **4. Relación y Límite** ✅ | Plugins `associativeLine` y `outerFrame` con sus desplegables; 2 errores de la librería corregidos. Pendiente: formato de la relación (color, grosor) y formas de límite tipo nube. | M |
-| **5. Marcadores** | Desplegable de iconos en la cinta, marcadores de texto con categorías | M |
+| **5. Marcadores** ✅ | Desplegable de iconos en la cinta (prioridad y progreso excluyentes), marcadores de texto con categorías: diálogo, panel, desplegable; renombrar, recolorear y borrar se aplican a todo el mapa en un paso deshacible. Pendiente: filtrar por marcador (Vista) y cambiar la prioridad con clic en el icono del tema. | M |
 | **6. Edición** | Dividir, Seleccionar (por nivel, hermanos, marcador), Limpiar | M |
 | **7. Información de tarea** | Modelo, panel "Info. de tarea", renderizado en el tema (fechas, %) | L |
 | **8. Llamadas** | Temas flotantes anclados | L |

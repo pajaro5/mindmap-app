@@ -166,6 +166,34 @@ function mindMapApp() {
       }
     },
 
+    // Definiciones de los marcadores de texto del mapa (viven en el tema central)
+    get textMarkerDefs() {
+      void this.renderTick
+      const root = this.mindMap && Alpine.raw(this.mindMap).renderer.root
+      return root ? normalizeMarkerDefs(root.getData('textMarkers')) : []
+    },
+
+    // Marcadores usados en temas pero sin definición (p. ej. de un mapa importado)
+    get undefinedTextMarkers() {
+      void this.renderTick
+      const tree = this.mindMap && Alpine.raw(this.mindMap).renderer.renderTree
+      return tree ? undefinedTagsInTree(tree, this.textMarkerDefs) : []
+    },
+
+    // Marcadores del primer tema seleccionado (lo que se muestra marcado en la cinta y el
+    // panel) y si algún seleccionado tiene alguno (para habilitar "Quitar")
+    get activeMarkers() {
+      void this.renderTick
+      const nodes = this.activeNodeList.map(n => Alpine.raw(n))
+      const first = nodes[0]
+      return {
+        icons: (first && first.getData('icon')) || [],
+        tags: ((first && first.getData('tag')) || []).map(tagText),
+        anyIcon: nodes.some(n => (n.getData('icon') || []).length > 0),
+        anyTag: nodes.some(n => (n.getData('tag') || []).length > 0)
+      }
+    },
+
     // Estilo efectivo (propio o heredado del tema) del primer tema seleccionado
     get activeStyle() {
       void this.renderTick
@@ -199,6 +227,7 @@ function mindMapApp() {
         activeCount: this.activeNodeList.length,
         style: this.activeStyle,
         elements: this.activeElements,
+        markers: this.activeMarkers,
         relationshipActive: this.relationshipActive,
         boundaryActive: this.boundaryActive,
         painterActive: this.painterActive,
@@ -275,7 +304,7 @@ function mindMapApp() {
       const rect = anchor.getBoundingClientRect()
       this.menu = { owner, kind, items, x: Math.round(rect.left), y: Math.round(rect.bottom + 2) }
       this.$nextTick(() => {
-        const first = document.querySelector('.ribbon-menu [role="menuitem"]:not([disabled]), .ribbon-menu [role="menuitemradio"]:not([disabled])')
+        const first = document.querySelector('.ribbon-menu :is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]):not([disabled])')
         if (first) first.focus()
       })
     },
@@ -362,17 +391,23 @@ function mindMapApp() {
     openHyperlinkDialog() {
       const node = Alpine.raw(this.activeNodeList[0])
       if (!node) return
-      this.dialog = {
+      this.showDialog({
         kind: 'hyperlink',
         url: node.getData('hyperlink') || '',
         title: unescapeXml(node.getData('hyperlinkTitle') || ''),
         error: '',
         canRemove: this.activeNodeList.some(n => !!Alpine.raw(n).getData('hyperlink'))
-      }
+      }, 'url')
+    },
+
+    // Abre el diálogo modal con el estado dado y selecciona el campo `focusName`
+    showDialog(state, focusName) {
+      this.menu = null
+      this.dialog = state
       this.$nextTick(() => {
         const dlg = document.getElementById('appDialog')
         if (dlg && !dlg.open) dlg.showModal()
-        const input = document.querySelector('#appDialog [name="url"]')
+        const input = document.querySelector(`#appDialog [name="${focusName}"]`)
         if (input) input.select()
       })
     },
@@ -597,6 +632,7 @@ function mindMapApp() {
           defaultGeneralizationText: 'Resumen',
           defaultAssociativeLineText: 'Relación',
           defaultOuterFrameText: 'Marco',
+          maxTag: 10,
           // Por defecto la librería solo atiende atajos con el ratón sobre el lienzo; tras usar
           // la cinta (ratón fuera) Ctrl+B, Tab… no harían nada. Como en Office, se atienden
           // siempre que el foco no esté en un campo (la librería ya ignora inputs y selects).
@@ -705,8 +741,12 @@ function mindMapApp() {
     },
 
     togglePane(name) {
+      this.showPane(this.pane === name ? null : name)
+    },
+
+    showPane(name) {
       if (this.pane === 'notes') this.flushNote()
-      this.pane = this.pane === name ? null : name
+      this.pane = name
       if (this.pane === 'notes') this.loadNoteDraft()
     },
 
@@ -720,22 +760,124 @@ function mindMapApp() {
       this.mindMap.setLayout(layout)
     },
 
+    // ---- Marcadores ----
+    // Como los formatos de Office: el estado del primer tema seleccionado decide si se
+    // pone o se quita en todos los seleccionados. Una sola entrada de historial.
     isIconActive(iconId) {
-      if (!this.hasActiveNode) return false
-      const node = this.activeNodeList[0]
-      const icons = node.getData('icon') || []
-      return icons.includes(iconId)
+      return this.activeMarkers.icons.includes(iconId)
     },
 
     toggleIcon(iconId) {
+      this.menu = null
+      this.syncSelection()
       if (!this.mindMap || !this.hasActiveNode) return
-      this.activeNodeList.forEach(node => {
-        const icons = node.getData('icon') || []
-        const next = icons.includes(iconId)
-          ? icons.filter(id => id !== iconId)
-          : [...icons, iconId]
-        this.mindMap.execCommand('SET_NODE_ICON', node, next)
+      const on = !this.isIconActive(iconId)
+      this.setElementData(node => ({ icon: toggleIconList(node.getData('icon'), iconId, on) }))
+    },
+
+    isTagActive(name) {
+      return hasTag(this.activeMarkers.tags, name)
+    },
+
+    toggleTextMarker(name) {
+      this.menu = null
+      this.syncSelection()
+      if (!this.mindMap || !this.hasActiveNode) return
+      const on = !this.isTagActive(name)
+      const defs = this.textMarkerDefs
+      this.setElementData(node => ({ tag: toggleTagList(node.getData('tag'), defs, name, on) }))
+    },
+
+    // Diálogo "Nuevo marcador de texto": escribe un nombre (o elige uno existente) y se
+    // asigna a los temas seleccionados. Si es nuevo se añade a la categoría elegida.
+    openTextMarkerDialog() {
+      const defs = this.textMarkerDefs
+      this.showDialog({
+        kind: 'textMarker',
+        name: '',
+        categoryId: defs.length ? defs[0].id : '',
+        error: ''
+      }, 'markerName')
+    },
+
+    saveTextMarker() {
+      const name = cleanName(this.dialog.name)
+      if (!name) {
+        this.dialog.error = 'Escribe el nombre del marcador.'
+        return
+      }
+      this.syncSelection()
+      const defs = this.textMarkerDefs
+      if (findMarker(defs, name)) {
+        const tagDefs = defs
+        this.setElementData(node => ({ tag: toggleTagList(node.getData('tag'), tagDefs, name, true) }))
+      } else {
+        // Sin categorías se crea una por defecto
+        if (!defs.length) defs.push({ id: newId(), name: 'General', color: TEXT_MARKER_COLORS[0], markers: [] })
+        const category = defs.find(c => c.id === this.dialog.categoryId) || defs[0]
+        category.markers.push({ id: newId(), name })
+        this.mindMap.execCommand('SET_TEXT_MARKERS', defs, name)
+      }
+      this.closeDialog()
+    },
+
+    // Diálogo de categoría (nueva o existente): nombre, color y lista de marcadores.
+    // Los marcadores conservan su id, así que cambiar un nombre lo renombra en todos los temas
+    openCategoryDialog(categoryId) {
+      const defs = this.textMarkerDefs
+      const existing = defs.find(c => c.id === categoryId)
+      const used = new Set(defs.map(c => c.color))
+      this.showDialog({
+        kind: 'category',
+        isNew: !existing,
+        id: existing ? existing.id : newId(),
+        name: existing ? existing.name : '',
+        color: existing ? existing.color : (TEXT_MARKER_COLORS.find(c => !used.has(c)) || TEXT_MARKER_COLORS[0]),
+        markers: existing ? existing.markers.map(m => ({ ...m })) : [{ id: newId(), name: '' }],
+        error: ''
+      }, 'categoryName')
+    },
+
+    addCategoryMarker() {
+      this.dialog.markers.push({ id: newId(), name: '' })
+      const index = this.dialog.markers.length - 1
+      this.$nextTick(() => {
+        const input = document.querySelector(`#appDialog [name="marker-${index}"]`)
+        if (input) input.focus()
       })
+    },
+
+    removeCategoryMarker(index) {
+      this.dialog.markers.splice(index, 1)
+    },
+
+    saveCategory() {
+      const defs = this.textMarkerDefs
+      const category = {
+        id: this.dialog.id,
+        name: cleanName(this.dialog.name),
+        color: isHexColor(this.dialog.color) ? this.dialog.color : TEXT_MARKER_COLORS[0],
+        markers: this.dialog.markers
+          .map(m => ({ id: m.id, name: cleanName(m.name) }))
+          .filter(m => m.name)
+      }
+      const error = validateCategory(defs, category)
+      if (error) {
+        this.dialog.error = error
+        return
+      }
+      const index = defs.findIndex(c => c.id === category.id)
+      if (index >= 0) defs[index] = category
+      else defs.push(category)
+      this.mindMap.execCommand('SET_TEXT_MARKERS', defs)
+      this.closeDialog()
+    },
+
+    // Borrar una categoría quita sus marcadores de todos los temas (se puede deshacer)
+    deleteCategory() {
+      const defs = this.textMarkerDefs.filter(c => c.id !== this.dialog.id)
+      this.mindMap.execCommand('SET_TEXT_MARKERS', defs)
+      this.closeDialog()
     },
 
     exportMap(type) {

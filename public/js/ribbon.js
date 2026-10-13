@@ -7,6 +7,10 @@
 // Un grupo puede usar `rows` en lugar de `items`: filas de controles compactos (botones
 // solo-icono, selectores y botones de color), como el grupo Fuente de Office. En las filas,
 // `{ separator: true }` dibuja un separador y `width` fija el ancho de un selector.
+// `dropdown` cambia el contenido del desplegable por uno generado a partir del mapa (uno de
+// DROPDOWN_KINDS); en ese caso los comandos de `menu` se muestran al pie.
+
+const DROPDOWN_KINDS = ['iconMarkers', 'textMarkers']
 
 const QUICK_ACCESS = ['map.new', 'edit.undo', 'edit.redo']
 
@@ -37,7 +41,13 @@ const RIBBON_TABS = [
           }
         ]
       },
-      { label: 'Marcadores', items: [{ cmd: 'markers.icons' }] },
+      {
+        label: 'Marcadores',
+        items: [
+          { cmd: 'markers.icons', dropdown: 'iconMarkers', menu: ['markers.icons.clear', 'markers.manage'] },
+          { cmd: 'markers.tags', dropdown: 'textMarkers', menu: ['markers.tags', 'markers.tags.clear', 'markers.tags.newCategory', 'markers.manage'] }
+        ]
+      },
       {
         label: 'Elementos del tema',
         items: [
@@ -96,7 +106,7 @@ function layoutGroupColumns(items) {
   const columns = []
   let stack = null
   items.forEach((item, i) => {
-    const entry = { cmd: item.cmd, menu: item.menu || null }
+    const entry = { cmd: item.cmd, menu: item.menu || null, dropdown: item.dropdown || null }
     if ((item.size || 'large') === 'small') {
       if (!stack || stack.items.length === SMALL_ITEMS_PER_COLUMN) {
         stack = { key: `s${i}`, type: 'small', items: [] }
@@ -151,6 +161,10 @@ function buildRibbon(tabs = RIBBON_TABS, quickAccess = QUICK_ACCESS) {
           checkCmd(item.cmd, where)
           checkControl(item.cmd, where)
           ;(item.menu || []).forEach(id => checkCmd(id, `${where} (menú de ${item.cmd})`))
+          if (item.dropdown && !DROPDOWN_KINDS.includes(item.dropdown)) {
+            problems.push(`${where}: desplegable desconocido "${item.dropdown}" en ${item.cmd}`)
+          }
+          if (item.dropdown && !item.menu) problems.push(`${where}: ${item.cmd} tiene desplegable pero no menu`)
         })
         return { label: group.label, rows: null, columns: layoutGroupColumns(group.items) }
       })

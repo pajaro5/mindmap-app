@@ -237,10 +237,35 @@ const COMMANDS = {
   },
 
   // ---- Marcadores ----
+  // Los desplegables (iconos y marcadores de texto) los pinta la cinta a partir del mapa;
+  // estos comandos son los botones principales y los pies de esos desplegables
   'markers.icons': {
     label: 'Marcadores de icono', tooltip: 'Mostrar los marcadores de icono', icon: 'iconMarkers',
     pressed: s => s.pane === 'markers',
     run: app => app.togglePane('markers')
+  },
+  'markers.icons.clear': {
+    label: 'Quitar todos los iconos', tooltip: 'Quitar los marcadores de icono de los temas seleccionados', icon: 'removeElement',
+    enabled: s => s.markers.anyIcon,
+    run: app => app.setElementData({ icon: undefined })
+  },
+  'markers.tags': {
+    label: 'Marcador de texto', menuLabel: 'Nuevo marcador de texto…',
+    tooltip: 'Añadir un marcador de texto a los temas seleccionados', icon: 'textMarker', enabled: hasActiveNode,
+    run: app => app.openTextMarkerDialog()
+  },
+  'markers.tags.clear': {
+    label: 'Quitar marcadores de texto', tooltip: 'Quitar los marcadores de texto de los temas seleccionados', icon: 'removeElement',
+    enabled: s => s.markers.anyTag,
+    run: app => app.setElementData({ tag: undefined })
+  },
+  'markers.tags.newCategory': {
+    label: 'Nueva categoría…', tooltip: 'Crear una categoría de marcadores de texto', icon: 'newCategory', enabled: hasMap,
+    run: app => app.openCategoryDialog()
+  },
+  'markers.manage': {
+    label: 'Administrar marcadores', tooltip: 'Abrir el panel Marcadores', icon: 'manageMarkers',
+    run: app => app.showPane('markers')
   },
 
   // ---- Diseño del mapa ----

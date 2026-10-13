@@ -94,10 +94,24 @@ function sanitizeMapTree(root) {
     }
     if (d.attachmentUrl !== undefined && !isAttachmentUrl(d.attachmentUrl)) { delete d.attachmentUrl; delete d.attachmentName; fixed++ }
     if (d.image !== undefined && !isValidImage(d)) { delete d.image; delete d.imageTitle; delete d.imageSize; fixed++ }
+    // Marcadores: un icono o una etiqueta con un tipo inesperado hace fallar el render
+    if (d.icon !== undefined) {
+      const icons = Array.isArray(d.icon) ? d.icon.filter(isIconId) : []
+      if (!Array.isArray(d.icon) || icons.length !== d.icon.length) { d.icon = icons; fixed++ }
+    }
+    if (d.tag !== undefined) {
+      const tags = normalizeTags(d.tag)
+      if (!sameTags(tags, d.tag)) { d.tag = tags; fixed++ }
+    }
     ;(node.children || []).forEach(walk)
     ;(d.generalization ? [].concat(d.generalization) : []).forEach(g => walk({ data: g, children: [] }))
   }
   walk(root)
+  // Definiciones de los marcadores de texto (solo en el tema central)
+  if (root && root.data && root.data.textMarkers !== undefined) {
+    const defs = normalizeMarkerDefs(root.data.textMarkers)
+    if (JSON.stringify(defs) !== JSON.stringify(root.data.textMarkers)) { root.data.textMarkers = defs; fixed++ }
+  }
   return fixed
 }
 

@@ -15,7 +15,8 @@ Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista,
 - Elementos del tema: hipervínculos (Ctrl+K), notas (panel Notas), imágenes y archivos adjuntos.
 - Relaciones (flechas entre temas cualesquiera, con texto) y límites (marcos alrededor de temas, con 5 estilos).
 - Funciona sin conexión: todas las librerías se sirven en local.
-- Panel **Marcadores** para asignar iconos de prioridad, progreso, emojis y marcas a los temas.
+- Marcadores de icono (prioridad, progreso, emojis y marcas) desde la cinta o el panel **Marcadores**.
+- Marcadores de texto agrupados en categorías con color (por ejemplo «Responsable: Ana, Juan»). Renombrar o recolorear una categoría actualiza todos los temas del mapa.
 - Zoom con botones, slider y "ajustar a la ventana".
 - Autoguardado mientras editas.
 - Exportación a **PNG** y **PDF**.
@@ -58,6 +59,7 @@ public/
   js/commands.js  Registro de comandos: cada acción definida una sola vez
   js/ribbon.js    Cinta declarativa (pestañas → grupos → botones) y barra de acceso rápido
   js/icons.js     Iconos SVG y logo
+  js/markers.js   Marcadores de icono y de texto (modelo y reglas)
   js/app.js       Estado de la app, mapa y persistencia
   css/            Estilos
   vendor/         simple-mind-map (build UMD)
