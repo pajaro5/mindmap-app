@@ -34,6 +34,10 @@ test('deshacer y rehacer desde la barra de acceso rápido', async ({ openMap, pa
     await app.expectNodeCount(2)
     await app.clickEmptyCanvas()
   })
+  // Al cerrar la edición del tema nuevo la librería añade otra entrada con retardo: si
+  // Deshacer llega antes, deshace esa y el tema sigue ahí (fallo intermitente en Firefox)
+  await expect(app.editBox).toBeHidden()
+  await app.settleHistory()
 
   await app.qat('edit.undo').click()
   await app.expectNodeCount(1)

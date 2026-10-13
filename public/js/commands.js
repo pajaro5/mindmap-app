@@ -84,6 +84,58 @@ const COMMANDS = {
     run: app => app.mindMap.execCommand('REMOVE_NODE')
   },
 
+  // ---- Edición: Dividir, Seleccionar, Limpiar ----
+  'topic.split': {
+    label: 'Dividir', tooltip: 'Dividir un tema de varias líneas en un tema por línea', icon: 'splitTopic',
+    enabled: s => s.canSplit,
+    run: app => app.mindMap.execCommand('SPLIT_TOPICS')
+  },
+  'select.all': {
+    label: 'Seleccionar', menuLabel: 'Seleccionar todo', tooltip: 'Seleccionar todos los temas', shortcut: 'Ctrl+A', icon: 'selectAll',
+    enabled: hasMap,
+    run: app => app.mindMap.execCommand('SELECT_ALL')
+  },
+  'select.siblings': {
+    label: 'Seleccionar hermanos', tooltip: 'Seleccionar los temas del mismo padre', icon: 'selectSiblings', enabled: hasNonRootActiveNode,
+    run: app => app.selectRelated('siblings')
+  },
+  'select.level': {
+    label: 'Seleccionar el mismo nivel', tooltip: 'Seleccionar todos los temas visibles del mismo nivel', icon: 'selectLevel', enabled: hasActiveNode,
+    run: app => app.selectRelated('level')
+  },
+  'select.branch': {
+    label: 'Seleccionar la rama', tooltip: 'Seleccionar el tema y todos sus subtemas', icon: 'selectBranch', enabled: hasActiveNode,
+    run: app => app.selectRelated('branch')
+  },
+  'select.sameMarkers': {
+    label: 'Seleccionar con los mismos marcadores', tooltip: 'Seleccionar los temas que comparten algún marcador con el seleccionado',
+    icon: 'selectMarkers', enabled: s => s.markers.firstHasMarkers,
+    run: app => app.selectRelated('sameMarkers')
+  },
+  'clear.format': {
+    label: 'Limpiar', menuLabel: 'Quitar formato', tooltip: 'Quitar el formato propio del tema (vuelve al estilo del mapa)', icon: 'clearFormat',
+    enabled: hasActiveNode,
+    run: app => app.clearTopics('format')
+  },
+  'clear.markers': {
+    label: 'Quitar marcadores', tooltip: 'Quitar los marcadores de icono y de texto', icon: 'iconMarkers',
+    enabled: s => s.markers.anyIcon || s.markers.anyTag,
+    run: app => app.clearTopics('markers')
+  },
+  'clear.notes': {
+    label: 'Quitar notas', icon: 'notes', enabled: s => s.elements.anyNote,
+    run: app => app.clearTopics('notes')
+  },
+  'clear.links': {
+    label: 'Quitar hipervínculos', icon: 'hyperlink', enabled: s => s.elements.anyHyperlink,
+    run: app => app.clearTopics('links')
+  },
+  'clear.all': {
+    label: 'Limpiar todo', tooltip: 'Quitar formato, marcadores, notas, vínculos, adjuntos e imágenes', icon: 'clearAll',
+    enabled: hasActiveNode,
+    run: app => app.clearTopics('all')
+  },
+
   // ---- Formato (se aplica a todos los temas seleccionados) ----
   'format.fontFamily': {
     label: 'Fuente', control: 'select', enabled: hasActiveNode,

@@ -391,7 +391,7 @@ button { font-family: inherit; }
   cursor: pointer;
 }
 .ribbon-menu-item .rb-icon svg { display: block; width: 20px; height: 20px; }
-.ribbon-menu-label { flex: 1; }
+.ribbon-menu-label { flex: 1; white-space: nowrap; }
 .ribbon-menu-shortcut { color: var(--muted); font-size: 11.5px; }
 .ribbon-menu-item:hover:not(:disabled), .ribbon-menu-item:focus-visible {
   outline: none;
@@ -709,7 +709,23 @@ body.painter-active #mindMapContainer { cursor: copy; }
 .tag-chip.active { color: #fff; background: var(--tag-color); }
 .tag-chip:disabled { opacity: .45; cursor: not-allowed; }
 
-.marker-menu { max-width: 300px; padding: 2px 4px; }
+.icon-search {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 12.5px;
+  border: 1px solid #a9c3e4;
+  border-radius: 3px;
+}
+.icon-search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+details.icon-category > summary { cursor: pointer; list-style: none; }
+details.icon-category > summary::-webkit-details-marker { display: none; }
+details.icon-category > summary::before { content: '▾ '; color: var(--muted); }
+details.icon-category:not([open]) > summary::before { content: '▸ '; }
+details.icon-category.classic > summary { color: var(--muted); font-weight: 400; }
+
+.marker-menu { max-width: 320px; padding: 2px 4px; }
 .marker-menu-group + .marker-menu-group { margin-top: 4px; }
 .marker-menu-icons { display: flex; flex-wrap: wrap; gap: 1px; }
 .menu-check { width: 12px; text-align: center; font-weight: 700; }

@@ -208,6 +208,19 @@ class AppPage {
     await expect.poll(() => this.historyIndex(), { message: 'la acción debe crear una entrada de historial' }).toBeGreaterThan(before)
   }
 
+  // Espera a que no lleguen más entradas de historial (p. ej. la que crea la librería al
+  // cerrar el cuadro de edición de un tema nuevo, con 100 ms de retardo)
+  async settleHistory(quietMs = 300) {
+    let last = await this.historyIndex()
+    await expect.poll(async () => {
+      await this.page.waitForTimeout(quietMs)
+      const now = await this.historyIndex()
+      const stable = now === last
+      last = now
+      return stable
+    }, { message: 'el historial debe dejar de cambiar' }).toBe(true)
+  }
+
   async goto() {
     await this.page.goto('/')
     await this.page.waitForFunction(() => window.Alpine && window.Alpine.$data(document.body).ribbon.tabs.length > 0)

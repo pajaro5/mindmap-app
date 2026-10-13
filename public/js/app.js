@@ -1,12 +1,5 @@
 const MindMapCtor = (typeof simpleMindMap !== 'undefined' && (simpleMindMap.default || simpleMindMap)) || null
 
-const ICON_CATEGORY_LABELS = {
-  priority: 'Prioridad',
-  progress: 'Progreso',
-  expression: 'Emojis',
-  sign: 'Marcas'
-}
-
 // Tema visual inspirado en MindManager: tema central azul, temas principales verdes
 // con texto blanco y subtemas como texto sobre ramas curvas grises.
 // Se registra como tema con nombre para que en la BD solo se guarde "mindmanager" y
@@ -90,18 +83,6 @@ if (MindMapCtor && typeof MindMapCtor.defineTheme === 'function') {
   MindMapCtor.defineTheme(THEME_NAME, MINDMANAGER_THEME)
 }
 
-function buildIconCategories() {
-  if (!MindMapCtor || !Array.isArray(MindMapCtor.iconList)) return []
-  return MindMapCtor.iconList.map(cat => ({
-    type: cat.type,
-    label: ICON_CATEGORY_LABELS[cat.type] || cat.name,
-    items: cat.list.map(item => ({
-      id: `${cat.type}_${item.name}`,
-      svg: item.icon
-    }))
-  }))
-}
-
 // Espera a que el navegador haya aplicado el layout pendiente (tras cambios de Alpine)
 function nextFrame() {
   return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
@@ -119,6 +100,8 @@ function mindMapApp() {
     currentLayout: 'mindMap',
     activeNodeList: [],
     iconCategories: [],
+    // Texto del buscador de iconos del panel Marcadores
+    iconQuery: '',
     zoomPercent: 100,
     ribbon: { tabs: [], quickAccess: [], problems: [] },
     ribbonTab: 'home',
@@ -145,6 +128,8 @@ function mindMapApp() {
     noteDraft: '',
     noteNodeUid: null,
     noteTimer: null,
+    // Hay texto escrito en el editor de notas que aún no se ha guardado en el tema
+    noteDirty: false,
 
     get hasActiveNode() {
       return this.activeNodeList.length > 0
@@ -162,15 +147,36 @@ function mindMapApp() {
         hasImage: has(first, 'image'),
         hasNote: has(first, 'note'),
         anyAttachment: nodes.some(n => has(n, 'attachmentUrl')),
-        anyImage: nodes.some(n => has(n, 'image'))
+        anyImage: nodes.some(n => has(n, 'image')),
+        anyNote: nodes.some(n => has(n, 'note')),
+        anyHyperlink: nodes.some(n => has(n, 'hyperlink'))
       }
+    },
+
+    // Algún tema seleccionado (que no sea el central) tiene varias líneas
+    get canSplit() {
+      void this.renderTick
+      return this.activeNodeList.some(n => {
+        const node = Alpine.raw(n)
+        return !node.isRoot && !node.isGeneralization && topicLines(node.getData('text')).length > 1
+      })
+    },
+
+    // Iconos del panel según el buscador; los clásicos van aparte
+    get paneIconCategories() {
+      return filterIconCategories(this.iconCategories, this.iconQuery)
+    },
+
+    // El desplegable de la cinta muestra solo la biblioteca principal
+    get menuIconCategories() {
+      return this.iconCategories.filter(c => !c.classic)
     },
 
     // Definiciones de los marcadores de texto del mapa (viven en el tema central)
     get textMarkerDefs() {
       void this.renderTick
       const root = this.mindMap && Alpine.raw(this.mindMap).renderer.root
-      return root ? normalizeMarkerDefs(root.getData('textMarkers')) : []
+      return root ? normalizeMarkerDefs(root.getData(TEXT_MARKERS_KEY)) : []
     },
 
     // Marcadores usados en temas pero sin definición (p. ej. de un mapa importado)
@@ -189,6 +195,7 @@ function mindMapApp() {
       return {
         icons: (first && first.getData('icon')) || [],
         tags: ((first && first.getData('tag')) || []).map(tagText),
+        firstHasMarkers: !!first && ((first.getData('icon') || []).length + (first.getData('tag') || []).length) > 0,
         anyIcon: nodes.some(n => (n.getData('icon') || []).length > 0),
         anyTag: nodes.some(n => (n.getData('tag') || []).length > 0)
       }
@@ -228,6 +235,7 @@ function mindMapApp() {
         style: this.activeStyle,
         elements: this.activeElements,
         markers: this.activeMarkers,
+        canSplit: this.canSplit,
         relationshipActive: this.relationshipActive,
         boundaryActive: this.boundaryActive,
         painterActive: this.painterActive,
@@ -304,6 +312,12 @@ function mindMapApp() {
       const rect = anchor.getBoundingClientRect()
       this.menu = { owner, kind, items, x: Math.round(rect.left), y: Math.round(rect.bottom + 2) }
       this.$nextTick(() => {
+        // Que no se salga de la ventana por la derecha (botones del final de la cinta)
+        const el = document.querySelector('.ribbon-menu')
+        if (el && this.menu) {
+          const overflow = el.getBoundingClientRect().right - (window.innerWidth - 4)
+          if (overflow > 0) this.menu.x = Math.max(4, this.menu.x - Math.ceil(overflow))
+        }
         const first = document.querySelector('.ribbon-menu :is([role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]):not([disabled])')
         if (first) first.focus()
       })
@@ -380,6 +394,16 @@ function mindMapApp() {
       const plugin = this.mindMap.outerFrame
       if (!plugin.activeOuterFrame) return
       plugin.showEditTextBox(plugin.activeOuterFrame.textNode)
+    },
+
+    // ---- Edición ----
+    selectRelated(kind) {
+      selectRelated(Alpine.raw(this.mindMap), kind)
+    },
+
+    clearTopics(part) {
+      if (!this.mindMap || !this.hasActiveNode) return
+      this.mindMap.execCommand('CLEAR_TOPICS', part)
     },
 
     // ---- Elementos del tema ----
@@ -493,9 +517,20 @@ function mindMapApp() {
       this.noteDraft = node ? (node.getData('note') || '') : ''
     },
 
+    // Si la nota cambió fuera del editor (Deshacer, Limpiar…) y no hay nada pendiente de
+    // guardar, el editor muestra la nota actual. Sin esto, el borrador antiguo volvía a
+    // escribirse sobre el tema al cambiar de selección.
+    refreshNoteDraft() {
+      if (this.pane !== 'notes' || this.noteDirty || !this.mindMap || !this.noteNodeUid) return
+      const node = this.mindMap.renderer.findNodeByUid(this.noteNodeUid)
+      const current = (node && node.getData('note')) || ''
+      if (current !== this.noteDraft) this.noteDraft = current
+    },
+
     // Guarda la nota con un pequeño retardo mientras se escribe (una entrada de historial
     // por pausa, no por tecla)
     onNoteInput() {
+      this.noteDirty = true
       clearTimeout(this.noteTimer)
       this.noteTimer = setTimeout(() => this.flushNote(), 500)
     },
@@ -503,6 +538,9 @@ function mindMapApp() {
     flushNote() {
       clearTimeout(this.noteTimer)
       this.noteTimer = null
+      // Solo se guarda lo que el usuario escribió
+      if (!this.noteDirty) return
+      this.noteDirty = false
       if (!this.mindMap || !this.noteNodeUid) return
       const node = this.mindMap.renderer.findNodeByUid(this.noteNodeUid)
       if (!node) return
@@ -546,7 +584,7 @@ function mindMapApp() {
         console.error('Configuración de la cinta inválida:', this.ribbon.problems)
         this.errorMsg = 'Configuración de la cinta inválida: ' + this.ribbon.problems.join('; ')
       }
-      this.iconCategories = buildIconCategories()
+      this.iconCategories = buildIconCategories((MindMapCtor && MindMapCtor.iconList) || [])
 
       // El lienzo cambia de tamaño al abrir/cerrar paneles o redimensionar la ventana.
       // simple-mind-map no lo detecta solo: hay que avisarle con resize() para que el
@@ -633,6 +671,7 @@ function mindMapApp() {
           defaultAssociativeLineText: 'Relación',
           defaultOuterFrameText: 'Marco',
           maxTag: 10,
+          iconList: libraryIconList(),
           // Por defecto la librería solo atiende atajos con el ratón sobre el lienzo; tras usar
           // la cinta (ratón fuera) Ctrl+B, Tab… no harían nada. Como en Office, se atienden
           // siempre que el foco no esté en un campo (la librería ya ignora inputs y selects).
@@ -676,7 +715,10 @@ function mindMapApp() {
         // Tras un clic en un tema o en el lienzo el plugin puede haber terminado de dibujar
         this.mindMap.on('node_click', () => setTimeout(() => this.refreshRelationshipMode()))
         this.mindMap.on('draw_click', () => setTimeout(() => this.refreshRelationshipMode()))
-        this.mindMap.on('node_tree_render_end', () => { this.renderTick++ })
+        this.mindMap.on('node_tree_render_end', () => {
+          this.renderTick++
+          this.refreshNoteDraft()
+        })
         this.mindMap.on('painter_start', () => { this.painterActive = true })
         this.mindMap.on('painter_end', () => { this.painterActive = false })
       } catch (err) {

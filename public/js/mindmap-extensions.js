@@ -99,7 +99,7 @@ function setTextMarkers(mindMap, newDefs, assignName) {
   if (!root) return
   // Copia plana y normalizada: lo que llega puede traer proxies de Alpine
   newDefs = normalizeMarkerDefs(JSON.parse(JSON.stringify(newDefs)))
-  const oldDefs = normalizeMarkerDefs(root.getData('textMarkers'))
+  const oldDefs = normalizeMarkerDefs(root.getData(TEXT_MARKERS_KEY))
   const migrate = tagMigration(oldDefs, newDefs)
   const walk = nodeData => {
     const current = nodeData.data.tag
@@ -119,13 +119,132 @@ function setTextMarkers(mindMap, newDefs, assignName) {
     ;(nodeData.children || []).forEach(walk)
   }
   walk(renderer.renderTree)
-  renderer.setNodeData(root, { textMarkers: newDefs })
+  renderer.setNodeData(root, { [TEXT_MARKERS_KEY]: newDefs })
   if (assignName) {
     renderer.activeNodeList.forEach(node => {
       renderer.setNodeData(node, { tag: toggleTagList(node.getData('tag'), newDefs, assignName, true) })
       node.reRender()
     })
   }
+  mindMap.render()
+}
+
+// ---- Edición: Dividir, Seleccionar, Limpiar ----
+
+// Líneas de texto de un tema. Con texto enriquecido el texto es HTML: cada párrafo y cada
+// <br> es una línea. Se lee con DOMParser (documento inerte: no ejecuta nada)
+function topicLines(text) {
+  const raw = String(text || '')
+  const plain = /<[a-z][\s\S]*>/i.test(raw)
+    ? new DOMParser().parseFromString(
+      raw.replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|h[1-6])>/gi, '\n'), 'text/html').body.textContent
+    : raw
+  return plain.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+}
+
+// Divide cada tema seleccionado de varias líneas: el tema se queda con la primera línea
+// (y con sus subtemas) y cada línea siguiente pasa a ser un tema hermano a continuación
+function splitTopics(mindMap) {
+  const renderer = mindMap.renderer
+  const isRichText = renderer.hasRichTextPlugin()
+  const list = renderer.activeNodeList.filter(node => !node.isRoot && !node.isGeneralization)
+  let changed = false
+  list.forEach(node => {
+    const lines = topicLines(node.getData('text'))
+    if (lines.length < 2) return
+    changed = true
+    // Con texto enriquecido el texto es HTML: hay que escapar lo que escribió el usuario
+    const textData = line => isRichText
+      ? { text: escapeXml(line), richText: true, resetRichText: true }
+      : { text: line, richText: false }
+    renderer.setNodeData(node, textData(lines[0]))
+    node.reRender()
+    const siblings = node.parent.nodeData.children
+    const index = siblings.findIndex(item => item.data.uid === node.uid)
+    const created = lines.slice(1).map(line => ({ data: { ...textData(line), uid: createUid(), expand: true }, children: [] }))
+    siblings.splice(index + 1, 0, ...created)
+  })
+  if (changed) mindMap.render()
+}
+
+// Temas pintados (los de ramas contraídas no se pueden seleccionar)
+function visibleNodes(mindMap) {
+  const result = []
+  const walk = node => {
+    if (!node) return
+    result.push(node)
+    if (node.getData('expand') !== false) (node.children || []).forEach(walk)
+  }
+  walk(mindMap.renderer.root)
+  return result
+}
+
+function selectTopics(mindMap, nodes) {
+  const renderer = mindMap.renderer
+  const unique = [...new Set(nodes)]
+  if (!unique.length) return
+  renderer.clearActiveNodeList()
+  renderer.activeMultiNode(unique)
+}
+
+// Selecciones derivadas de la actual, como el desplegable Seleccionar de MindManager
+const TOPIC_SELECTORS = {
+  // Los hermanos de cada tema seleccionado (el central no tiene: se queda él)
+  siblings: (active) => active.flatMap(node => node.parent ? node.parent.children : [node]),
+  // Todos los temas visibles del mismo nivel que alguno de los seleccionados
+  level: (active, all) => {
+    const levels = new Set(active.map(node => node.layerIndex))
+    return all.filter(node => levels.has(node.layerIndex))
+  },
+  // Los seleccionados con todos sus subtemas visibles
+  branch: (active, all) => all.filter(node => active.some(a => a === node || isDescendant(node, a))),
+  // Temas con algún marcador (icono o texto) en común con el primero seleccionado
+  sameMarkers: (active, all) => {
+    const keysOf = node => [
+      ...(node.getData('icon') || []).map(id => `i:${id}`),
+      ...(node.getData('tag') || []).map(t => `t:${markerKey(tagText(t))}`)
+    ]
+    const wanted = new Set(keysOf(active[0]))
+    if (!wanted.size) return [active[0]]
+    return all.filter(node => keysOf(node).some(k => wanted.has(k)))
+  }
+}
+
+function isDescendant(node, ancestor) {
+  for (let p = node.parent; p; p = p.parent) if (p === ancestor) return true
+  return false
+}
+
+function selectRelated(mindMap, kind) {
+  const active = mindMap.renderer.activeNodeList.filter(node => !node.isGeneralization)
+  if (!active.length) return
+  selectTopics(mindMap, TOPIC_SELECTORS[kind](active, visibleNodes(mindMap)))
+}
+
+// Qué borra cada opción de Limpiar: `format` quita el formato propio (vuelve al del tema
+// visual) y `keys` son los datos del tema que se eliminan
+const CLEAR_PARTS = {
+  format: { format: true, keys: [] },
+  markers: { keys: ['icon', 'tag'] },
+  notes: { keys: ['note'] },
+  links: { keys: ['hyperlink', 'hyperlinkTitle'] },
+  all: { format: true, keys: ['icon', 'tag', 'note', 'hyperlink', 'hyperlinkTitle', 'attachmentUrl', 'attachmentName', 'image', 'imageTitle', 'imageSize'] }
+}
+
+function clearTopics(mindMap, part) {
+  const spec = CLEAR_PARTS[part]
+  if (!spec) return
+  const renderer = mindMap.renderer
+  renderer.activeNodeList.forEach(node => {
+    // removeCustomStyles borra los campos que la librería considera estilo; los datos
+    // propios que empiezan por "_" (p. ej. las categorías de marcadores) no se tocan
+    if (spec.format) renderer.removeCustomStyles(node)
+    const present = spec.keys.filter(key => node.getData(key) !== undefined)
+    if (present.length) {
+      renderer.setNodeData(node, Object.fromEntries(present.map(key => [key, undefined])))
+      node.reRender()
+    }
+  })
   mindMap.render()
 }
 
@@ -172,6 +291,8 @@ function extendMindMap(mindMap) {
   mindMap.command.add('INSERT_NODE_BEFORE', () => insertNodeBefore(mindMap))
   mindMap.command.add('SET_ACTIVE_NODES_STYLE', styleFor => setActiveNodesStyle(mindMap, styleFor))
   mindMap.command.add('SET_ACTIVE_NODES_DATA', dataFor => setActiveNodesData(mindMap, dataFor))
+  mindMap.command.add('SPLIT_TOPICS', () => splitTopics(mindMap))
+  mindMap.command.add('CLEAR_TOPICS', part => clearTopics(mindMap, part))
   mindMap.command.add('SET_TEXT_MARKERS', (defs, assignName) => setTextMarkers(mindMap, defs, assignName))
   mindMap.keyCommand.addShortcut('Shift+Enter', () => mindMap.execCommand('INSERT_NODE_BEFORE'))
   makePainterOneShot(mindMap)

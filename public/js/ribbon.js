@@ -71,7 +71,15 @@ const RIBBON_TABS = [
         ]
       },
       { label: 'Estilo', items: [{ cmd: 'style.shape' }] },
-      { label: 'Edición', items: [{ cmd: 'topic.remove' }] }
+      {
+        label: 'Edición',
+        items: [
+          { cmd: 'topic.remove' },
+          { cmd: 'select.all', size: 'small', menu: ['select.all', 'select.siblings', 'select.level', 'select.branch', 'select.sameMarkers'] },
+          { cmd: 'clear.format', size: 'small', menu: ['clear.format', 'clear.markers', 'clear.notes', 'clear.links', 'clear.all'] },
+          { cmd: 'topic.split', size: 'small' }
+        ]
+      }
     ]
   },
   {

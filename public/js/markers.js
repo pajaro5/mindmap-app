@@ -1,19 +1,24 @@
 // Marcadores del mapa: iconos (prioridad, progreso…) y marcadores de texto con categorías.
 //
 // Modelo de datos de los marcadores de texto:
-//   - Definiciones (fuente de verdad), en el tema central: root.data.textMarkers =
+//   - Definiciones (fuente de verdad), en el tema central: root.data._textMarkers =
 //       [{ id, name, color, markers: [{ id, name }] }]
 //     Van dentro del árbol para que deshacer/rehacer y el autoguardado las incluyan.
+//     El "_" es obligatorio: simple-mind-map trata como ESTILO cualquier campo del tema que
+//     no conozca, salvo los que empiezan por "_" (Quitar formato lo borraría y Copiar
+//     formato lo copiaría a otros temas). La Fase 5 lo guardaba como `textMarkers`; esos
+//     mapas se migran al abrirlos (sanitizeMapTree).
 //   - En cada tema: data.tag = [{ text, style: { fill } }], el formato nativo de
 //     simple-mind-map (lo pinta sin configuración). El color se copia de la categoría;
 //     renombrar, recolorear o borrar en las definiciones actualiza todos los temas a la vez.
 // Los nombres de marcador son únicos en el mapa (sin distinguir mayúsculas).
 
-const TEXT_MARKER_COLORS = ['#2b6fbd', '#57962a', '#c55a11', '#7030a0', '#c00000', '#1f7f7f', '#7f6000', '#595959']
+const TEXT_MARKERS_KEY = '_textMarkers'
+const LEGACY_TEXT_MARKERS_KEY = 'textMarkers'
+const TEXT_MARKER_COLORS =['#2b6fbd', '#57962a', '#c55a11', '#7030a0', '#c00000', '#1f7f7f', '#7f6000', '#595959']
 const TEXT_MARKER_MAX_LENGTH = 40
 const UNCATEGORIZED_COLOR = '#7f7f7f'
-// Prioridad y progreso son excluyentes: un tema tiene una sola prioridad y un solo progreso
-const EXCLUSIVE_ICON_GROUPS = ['priority', 'progress']
+// Los grupos excluyentes (EXCLUSIVE_ICON_GROUPS) se definen en icon-library.js
 
 const isHexColor = c => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c)
 const markerKey = name => String(name).trim().toLowerCase()

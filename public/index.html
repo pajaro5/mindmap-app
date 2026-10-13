@@ -138,12 +138,12 @@
       <!-- Marcadores de icono: galería por grupos -->
       <template x-if="menu && menu.kind === 'iconMarkers'">
         <div class="marker-menu" data-dropdown="iconMarkers">
-          <template x-for="cat in iconCategories" :key="cat.type">
+          <template x-for="cat in menuIconCategories" :key="cat.type">
             <div class="marker-menu-group">
               <div class="palette-title" x-text="cat.label"></div>
               <div class="marker-menu-icons">
                 <template x-for="item in cat.items" :key="item.id">
-                  <button class="icon-btn" role="menuitemcheckbox" :data-icon="item.id" :title="item.id"
+                  <button class="icon-btn" role="menuitemcheckbox" :data-icon="item.id" :title="item.label" :aria-label="item.label"
                           :aria-checked="isIconActive(item.id)" :class="{ active: isIconActive(item.id) }"
                           :disabled="!hasActiveNode" @click="toggleIcon(item.id)" x-html="item.svg"></button>
                 </template>
@@ -321,9 +321,13 @@
           </section>
 
           <div class="pane-section-title"><span>Marcadores de icono</span></div>
-          <template x-for="cat in iconCategories" :key="cat.type">
-            <div class="icon-category">
-              <div class="icon-category-title" x-text="cat.label"></div>
+          <input class="icon-search" type="search" x-model="iconQuery" placeholder="Buscar icono (bandera, idea, fecha…)"
+                 aria-label="Buscar icono" autocomplete="off" />
+          <!-- Biblioteca principal y, plegados al final, los iconos clásicos de la librería
+               (al buscar se despliega todo lo que coincide) -->
+          <template x-for="cat in paneIconCategories" :key="cat.type">
+            <details class="icon-category" :class="{ classic: cat.classic }" :open="!cat.classic || !!iconQuery" :data-group="cat.type">
+              <summary class="icon-category-title" x-text="cat.label"></summary>
               <div class="icon-grid">
                 <template x-for="item in cat.items" :key="item.id">
                   <button
@@ -332,14 +336,16 @@
                     :aria-pressed="isIconActive(item.id)"
                     :class="{ active: isIconActive(item.id) }"
                     :disabled="!hasActiveNode"
-                    :title="item.id"
+                    :title="item.label"
+                    :aria-label="item.label"
                     @click="toggleIcon(item.id)"
                     x-html="item.svg"
                   ></button>
                 </template>
               </div>
-            </div>
+            </details>
           </template>
+          <p class="empty-hint" x-show="iconQuery && !paneIconCategories.length">Ningún icono coincide con la búsqueda.</p>
         </div>
 
         <!-- Notas del tema seleccionado (texto plano; se guarda al pausar la escritura) -->
@@ -487,6 +493,7 @@
 
   <script src="/js/icons.js"></script>
   <script src="/js/format.js"></script>
+  <script src="/js/icon-library.js"></script>
   <script src="/js/markers.js"></script>
   <script src="/js/elements.js"></script>
   <script src="/js/mindmap-extensions.js"></script>

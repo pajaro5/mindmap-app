@@ -108,9 +108,17 @@ function sanitizeMapTree(root) {
   }
   walk(root)
   // Definiciones de los marcadores de texto (solo en el tema central)
-  if (root && root.data && root.data.textMarkers !== undefined) {
-    const defs = normalizeMarkerDefs(root.data.textMarkers)
-    if (JSON.stringify(defs) !== JSON.stringify(root.data.textMarkers)) { root.data.textMarkers = defs; fixed++ }
+  if (root && root.data) {
+    const rd = root.data
+    if (rd[LEGACY_TEXT_MARKERS_KEY] !== undefined) {
+      if (rd[TEXT_MARKERS_KEY] === undefined) rd[TEXT_MARKERS_KEY] = rd[LEGACY_TEXT_MARKERS_KEY]
+      delete rd[LEGACY_TEXT_MARKERS_KEY]
+      fixed++
+    }
+    if (rd[TEXT_MARKERS_KEY] !== undefined) {
+      const defs = normalizeMarkerDefs(rd[TEXT_MARKERS_KEY])
+      if (JSON.stringify(defs) !== JSON.stringify(rd[TEXT_MARKERS_KEY])) { rd[TEXT_MARKERS_KEY] = defs; fixed++ }
+    }
   }
   return fixed
 }
