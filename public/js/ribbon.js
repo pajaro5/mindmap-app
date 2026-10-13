@@ -38,7 +38,8 @@ const RIBBON_TABS = [
             cmd: 'insert.boundary',
             size: 'small',
             menu: [...BOUNDARY_STYLES.map(s => `boundary.style.${s.id}`), 'boundary.text', 'boundary.remove']
-          }
+          },
+          { cmd: 'insert.callout', size: 'small', menu: ['insert.callout', 'callout.edit', 'callout.remove'] }
         ]
       },
       {

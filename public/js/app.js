@@ -129,6 +129,8 @@ function mindMapApp() {
     relationshipActive: false,
     boundaryActive: false,
     creatingRelationship: false,
+    // Llamada seleccionada: { uid del tema, id de la llamada } o null
+    calloutActive: null,
     // Diálogo modal abierto: { kind: 'hyperlink', url, title, error, canRemove } o null
     dialog: null,
     // Texto de la nota del tema seleccionado en el panel Notas
@@ -276,6 +278,7 @@ function mindMapApp() {
         task: { any: this.taskInfo.any },
         relationshipActive: this.relationshipActive,
         boundaryActive: this.boundaryActive,
+        calloutActive: !!this.calloutActive,
         painterActive: this.painterActive,
         layout: this.currentLayout,
         pane: this.pane
@@ -413,6 +416,108 @@ function mindMapApp() {
       const plugin = this.mindMap.associativeLine
       if (!plugin.activeLine) return
       plugin.showEditTextBox(plugin.activeLine[2])
+    },
+
+    // ---- Llamadas ----
+    renderCalloutLayer() {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      if (!mindMap) return
+      renderCallouts(mindMap, {
+        isActive: (uid, id) => this.isCalloutActive(uid, id),
+        onPointerDown: (e, node, callout) => this.startCalloutDrag(e, node, callout),
+        onDoubleClick: (node, callout) => this.openCalloutDialog({ uid: node.uid, id: callout.id })
+      })
+    },
+
+    selectCallout(target) {
+      this.calloutActive = target
+      // Como al elegir una relación o un límite: la llamada pasa a ser lo seleccionado
+      if (target && this.mindMap && this.mindMap.renderer.activeNodeList.length) {
+        this.mindMap.execCommand('CLEAR_ACTIVE_NODE')
+      }
+      if (this.mindMap) highlightCallouts(Alpine.raw(this.mindMap), (uid, id) => this.isCalloutActive(uid, id))
+    },
+
+    isCalloutActive(uid, id) {
+      return !!this.calloutActive && this.calloutActive.uid === uid && this.calloutActive.id === id
+    },
+
+    // Clic: selecciona. Arrastre: mueve el globo y al soltar guarda la posición (una
+    // entrada de historial). El desplazamiento en pantalla se divide por el zoom.
+    startCalloutDrag(e, node, callout) {
+      if (e.button !== 0) return
+      e.preventDefault()
+      const uid = node.uid
+      const id = callout.id
+      this.selectCallout({ uid, id })
+      const mindMap = Alpine.raw(this.mindMap)
+      const layer = mindMap.__calloutLayer
+      const group = layer && layer.findOne(`[data-callout-id="${id}"][data-node-uid="${uid}"]`)
+      const scale = mindMap.view.scale || 1
+      const start = { x: e.clientX, y: e.clientY }
+      let delta = { x: 0, y: 0 }
+      let moved = false
+      const onMove = ev => {
+        delta = { x: (ev.clientX - start.x) / scale, y: (ev.clientY - start.y) / scale }
+        if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 3) return
+        moved = true
+        if (group) group.transform({ translateX: delta.x, translateY: delta.y })
+      }
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove)
+        window.removeEventListener('mouseup', onUp)
+        if (!moved) return
+        mindMap.execCommand('SET_CALLOUTS', uid, list => list.map(c => c.id === id
+          ? { ...c, dx: c.dx + delta.x, dy: c.dy + delta.y }
+          : c))
+      }
+      window.addEventListener('mousemove', onMove)
+      window.addEventListener('mouseup', onUp)
+    },
+
+    // Sin argumento: llamada nueva en los temas seleccionados. Con { uid, id }: editar esa
+    openCalloutDialog(target) {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      if (!mindMap) return
+      let text = ''
+      if (target) {
+        const node = mindMap.renderer.findNodeByUid(target.uid)
+        const callout = node && (normalizeCallouts(node.getData(CALLOUTS_KEY)) || []).find(c => c.id === target.id)
+        if (!callout) return
+        text = callout.text
+      } else {
+        this.syncSelection()
+        if (!this.hasActiveNode) return
+      }
+      this.showDialog({
+        kind: 'callout',
+        target: target ? { ...target } : null,
+        uids: target ? [] : this.activeNodeList.map(n => Alpine.raw(n).uid),
+        text,
+        error: ''
+      }, 'calloutText')
+    },
+
+    saveCallout() {
+      const text = cleanCalloutText(this.dialog.text)
+      if (!text) {
+        this.dialog.error = 'Escribe el texto de la llamada.'
+        return
+      }
+      const { target, uids } = this.dialog
+      if (target) {
+        this.mindMap.execCommand('SET_CALLOUTS', target.uid, list => list.map(c => c.id === target.id ? { ...c, text } : c))
+      } else {
+        this.mindMap.execCommand('SET_CALLOUTS', uids, list => [...list, { id: createUid(), text, ...newCalloutOffset(list) }])
+      }
+      this.closeDialog()
+    },
+
+    removeActiveCallout() {
+      const target = this.calloutActive
+      if (!target || !this.mindMap) return
+      this.calloutActive = null
+      this.mindMap.execCommand('SET_CALLOUTS', target.uid, list => list.filter(c => c.id !== target.id))
     },
 
     // ---- Límite ----
@@ -672,7 +777,14 @@ function mindMapApp() {
         this.errorMsg = 'Error JS: ' + e.message
       })
       window.addEventListener('keydown', e => {
+        // Supr con una llamada seleccionada la elimina (no hay temas seleccionados)
+        if ((e.key === 'Delete' || e.key === 'Backspace') && this.calloutActive && e.target === document.body && !this.dialog) {
+          e.preventDefault()
+          this.runCommand('callout.remove')
+          return
+        }
         if (e.key !== 'Escape') return
+        if (this.calloutActive && !this.dialog) this.selectCallout(null)
         if (this.menu) this.closeMenu()
         if (this.painterActive) this.togglePainter()
         if (this.creatingRelationship) this.cancelRelationship()
@@ -816,7 +928,22 @@ function mindMapApp() {
         this.mindMap.on('node_tree_render_end', () => {
           this.renderTick++
           this.refreshNoteDraft()
+          // Si la llamada seleccionada ya no existe (Deshacer, Limpiar…) se deselecciona
+          if (this.calloutActive) {
+            const node = this.mindMap.renderer.findNodeByUid(this.calloutActive.uid)
+            const list = (node && normalizeCallouts(node.getData(CALLOUTS_KEY))) || []
+            if (!list.some(c => c.id === this.calloutActive.id)) this.calloutActive = null
+          }
+          this.renderCalloutLayer()
         })
+        // Seleccionar un tema o hacer clic en el lienzo deselecciona la llamada
+        const clearCallout = () => {
+          if (this.calloutActive) this.selectCallout(null)
+        }
+        this.mindMap.on('node_click', clearCallout)
+        this.mindMap.on('draw_click', clearCallout)
+        this.calloutActive = null
+        this.renderCalloutLayer()
         this.mindMap.on('painter_start', () => { this.painterActive = true })
         this.mindMap.on('painter_end', () => { this.painterActive = false })
       } catch (err) {

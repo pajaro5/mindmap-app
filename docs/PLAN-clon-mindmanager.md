@@ -47,7 +47,7 @@ Soporte en simple-mind-map: **Nativo** (comando/plugin existente) · **Parcial**
 |---|---|---|---|---|
 | Tema (+ desplegable) | Tema al mismo nivel; el desplegable inserta antes, después o como tema padre | ✅ (Tema antes = comando propio `INSERT_NODE_BEFORE`, Shift+Enter) | Nativo (`INSERT_NODE`, `INSERT_PARENT_NODE`) + propio | S |
 | Subtema | Tema hijo | ✅ | Nativo | — |
-| Llamada (Callout) | Nota flotante anclada a un tema, fuera de la jerarquía | ❌ | Propio (posición libre + conector) | L |
+| Llamada (Callout) | Nota flotante anclada a un tema, fuera de la jerarquía | ✅ insertar, editar, mover, eliminar · ❌ subtemas en la llamada | Propio (`_callouts` + capa de dibujo con conector) | L |
 | Relación | Flecha curva entre dos temas cualesquiera, con texto | ✅ dibujar, unir 2 seleccionados, texto, eliminar | Nativo (plugin `associativeLine`) | M |
 | Límite (+ desplegable) | Marco alrededor de una rama, con varias formas | ✅ 5 estilos, texto, eliminar · ❌ formas tipo nube | Nativo (plugin `outerFrame`) | M |
 
@@ -116,7 +116,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | **5. Marcadores** ✅ | Desplegable de iconos en la cinta (prioridad y progreso excluyentes), marcadores de texto con categorías: diálogo, panel, desplegable; renombrar, recolorear y borrar se aplican a todo el mapa en un paso deshacible. Pendiente: filtrar por marcador (Vista) y cambiar la prioridad con clic en el icono del tema. | M |
 | **6. Edición** ✅ | Dividir (un tema por línea), Seleccionar (todo, hermanos, mismo nivel, rama, mismos marcadores), Limpiar (formato, marcadores, notas, vínculos, todo). Además: biblioteca de iconos propia (banderas, semáforo, caras, flechas, símbolos, personas) con nombres en español y buscador; los iconos de la librería quedan como "clásicos". Pendiente: Buscar y reemplazar. | M |
 | **7. Información de tarea** ✅ | Panel "Info. de tarea": prioridad y % completado (son los iconos de prioridad y progreso), inicio, vencimiento, duración, hito y recursos; etiqueta en el tema (roja si vence, verde si está completada) con la extensión `nodeInnerPostfixList` de la librería; datos en `_task`. Pendiente: vista de Gantt, calendario laborable y filtrar por recurso. | L |
-| **8. Llamadas** | Temas flotantes anclados | L |
+| **8. Llamadas** ✅ | Notas flotantes ancladas a un tema (`_callouts`), pintadas en una capa propia del lienzo con conector: insertar, editar (doble clic), mover arrastrando, eliminar (Supr); salen en las exportaciones. Pendiente: subtemas dentro de una llamada y temas flotantes sin ancla. | L |
 
 ### Deuda técnica detectada en la Fase 0
 | Problema | Impacto | Propuesta |

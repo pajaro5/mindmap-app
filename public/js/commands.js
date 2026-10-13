@@ -244,6 +244,22 @@ const COMMANDS = {
     run: app => app.mindMap.associativeLine.removeLine()
   },
 
+  // ---- Llamada (nota flotante anclada a un tema) ----
+  'insert.callout': {
+    label: 'Llamada', menuLabel: 'Insertar llamada…', tooltip: 'Añadir una llamada (nota flotante) al tema seleccionado',
+    icon: 'callout', enabled: hasActiveNode,
+    run: app => app.openCalloutDialog()
+  },
+  'callout.edit': {
+    label: 'Editar llamada…', tooltip: 'Cambiar el texto de la llamada seleccionada (también con doble clic)', icon: 'editText',
+    enabled: s => s.calloutActive,
+    run: app => app.openCalloutDialog(app.calloutActive)
+  },
+  'callout.remove': {
+    label: 'Eliminar llamada', shortcut: 'Supr', icon: 'removeElement', enabled: s => s.calloutActive,
+    run: app => app.removeActiveCallout()
+  },
+
   // ---- Límite (marco alrededor de temas hermanos) ----
   'insert.boundary': {
     label: 'Límite', menuLabel: 'Límite con el estilo por defecto',

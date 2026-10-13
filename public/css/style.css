@@ -747,6 +747,18 @@ details.icon-category.classic > summary { color: var(--muted); font-weight: 400;
 .category-marker-row input { flex: 1; }
 .category-markers .btn-link { align-self: flex-start; margin-top: 2px; }
 
+/* ---------- Llamadas ---------- */
+.callout-textarea {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid #a9c3e4;
+  border-radius: 3px;
+  resize: vertical;
+}
+.callout-textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.smm-callout { user-select: none; }
+
 /* ---------- Panel Info. de tarea ---------- */
 .task-form { display: flex; flex-direction: column; gap: 10px; }
 .task-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

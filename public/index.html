@@ -457,6 +457,27 @@
         </form>
       </template>
 
+      <!-- Llamada: nueva (en los temas seleccionados) o editar la seleccionada -->
+      <template x-if="dialog && dialog.kind === 'callout'">
+        <form class="dialog-form" @submit.prevent="saveCallout()" novalidate>
+          <h2 id="appDialogTitle" class="dialog-title" x-text="dialog.target ? 'Editar llamada' : 'Nueva llamada'"></h2>
+          <label class="dialog-field">
+            <span>Texto <em>(Ctrl+Enter para aceptar)</em></span>
+            <textarea name="calloutText" x-model="dialog.text" rows="4" maxlength="500" class="callout-textarea"
+                      placeholder="Escribe una nota para este tema…" :aria-invalid="!!dialog.error"
+                      @input="dialog.error = ''" @keydown.ctrl.enter.prevent="saveCallout()"></textarea>
+          </label>
+          <p class="dialog-hint" x-show="!dialog.target && dialog.uids.length > 1"
+             x-text="`Se añadirá a ${dialog.uids.length} temas.`"></p>
+          <p class="dialog-error" role="alert" x-show="dialog.error" x-text="dialog.error"></p>
+          <div class="dialog-actions">
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary">Aceptar</button>
+            <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+      </template>
+
       <!-- Nuevo marcador de texto para los temas seleccionados -->
       <template x-if="dialog && dialog.kind === 'textMarker'">
         <form class="dialog-form" @submit.prevent="saveTextMarker()" novalidate>
@@ -556,6 +577,7 @@
   <script src="/js/icon-library.js"></script>
   <script src="/js/markers.js"></script>
   <script src="/js/task-info.js"></script>
+  <script src="/js/callouts.js"></script>
   <script src="/js/elements.js"></script>
   <script src="/js/mindmap-extensions.js"></script>
   <script src="/js/commands.js"></script>
