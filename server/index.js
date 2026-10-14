@@ -2,6 +2,7 @@ const express = require('express')
 const crypto = require('crypto')
 const db = require('./db')
 const files = require('./files')
+const { cleanTitle, cleanDescription, isValidMapData } = require('./validation')
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -29,12 +30,17 @@ app.get('/api/maps', (req, res) => {
   res.json(rows)
 })
 
-// Crear mapa nuevo
+// Crear mapa nuevo. Con `data` (p. ej. desde una plantilla) se usa ese contenido
 app.post('/api/maps', (req, res) => {
+  const body = req.body || {}
+  const title = cleanTitle(body.title, 'Mapa sin título')
+  if (!title.ok) return res.status(400).json({ error: title.error })
+  if (body.data !== undefined && !isValidMapData(body.data)) {
+    return res.status(400).json({ error: 'Datos de mapa no válidos' })
+  }
   const id = crypto.randomUUID()
-  const title = (req.body && req.body.title) || 'Mapa sin título'
-  const data = JSON.stringify(defaultMapData())
-  db.prepare('INSERT INTO maps (id, title, data) VALUES (?, ?, ?)').run(id, title, data)
+  const data = JSON.stringify(body.data !== undefined ? body.data : defaultMapData())
+  db.prepare('INSERT INTO maps (id, title, data) VALUES (?, ?, ?)').run(id, title.value, data)
   const row = db.prepare('SELECT * FROM maps WHERE id = ?').get(id)
   res.status(201).json({ ...row, data: JSON.parse(row.data) })
 })
@@ -51,12 +57,17 @@ app.put('/api/maps/:id', (req, res) => {
   const row = db.prepare('SELECT * FROM maps WHERE id = ?').get(req.params.id)
   if (!row) return res.status(404).json({ error: 'Mapa no encontrado' })
 
-  const title = req.body.title !== undefined ? req.body.title : row.title
-  const data = req.body.data !== undefined ? JSON.stringify(req.body.data) : row.data
+  const body = req.body || {}
+  const title = cleanTitle(body.title, row.title)
+  if (!title.ok) return res.status(400).json({ error: title.error })
+  if (body.data !== undefined && !isValidMapData(body.data)) {
+    return res.status(400).json({ error: 'Datos de mapa no válidos' })
+  }
+  const data = body.data !== undefined ? JSON.stringify(body.data) : row.data
 
   db.prepare(
     `UPDATE maps SET title = ?, data = ?, updated_at = datetime('now') WHERE id = ?`
-  ).run(title, data, req.params.id)
+  ).run(title.value, data, req.params.id)
 
   const updated = db.prepare('SELECT * FROM maps WHERE id = ?').get(req.params.id)
   res.json({ ...updated, data: JSON.parse(updated.data) })
@@ -66,6 +77,31 @@ app.put('/api/maps/:id', (req, res) => {
 app.delete('/api/maps/:id', (req, res) => {
   db.prepare('DELETE FROM maps WHERE id = ?').run(req.params.id)
   files.deleteFilesOfMap(req.params.id)
+  res.status(204).end()
+})
+
+// ---- Plantillas del usuario ----
+const templateRow = row => ({ id: row.id, title: row.title, description: row.description, created_at: row.created_at, data: JSON.parse(row.data) })
+
+app.get('/api/templates', (req, res) => {
+  const rows = db.prepare('SELECT * FROM templates ORDER BY created_at DESC, title').all()
+  res.json(rows.map(templateRow))
+})
+
+app.post('/api/templates', (req, res) => {
+  const body = req.body || {}
+  const title = cleanTitle(body.title, '')
+  if (!title.ok || !title.value) return res.status(400).json({ error: title.error || 'La plantilla necesita un nombre' })
+  if (!isValidMapData(body.data)) return res.status(400).json({ error: 'Datos de mapa no válidos' })
+  const id = crypto.randomUUID()
+  db.prepare('INSERT INTO templates (id, title, description, data) VALUES (?, ?, ?, ?)')
+    .run(id, title.value, cleanDescription(body.description), JSON.stringify(body.data))
+  res.status(201).json(templateRow(db.prepare('SELECT * FROM templates WHERE id = ?').get(id)))
+})
+
+app.delete('/api/templates/:id', (req, res) => {
+  const result = db.prepare('DELETE FROM templates WHERE id = ?').run(req.params.id)
+  if (!result.changes) return res.status(404).json({ error: 'Plantilla no encontrada' })
   res.status(204).end()
 })
 

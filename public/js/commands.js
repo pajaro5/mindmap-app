@@ -48,6 +48,15 @@ const COMMANDS = {
     label: 'Nuevo mapa', icon: 'newMap',
     run: app => app.createMap()
   },
+  'map.newFromTemplate': {
+    label: 'Desde plantilla', menuLabel: 'Nuevo desde plantilla…', tooltip: 'Crear un mapa a partir de una plantilla', icon: 'template',
+    run: app => app.openTemplateGallery()
+  },
+  'map.saveAsTemplate': {
+    label: 'Guardar como plantilla', tooltip: 'Guardar este mapa como plantilla para crear otros iguales', icon: 'saveTemplate',
+    enabled: hasMap,
+    run: app => app.openSaveTemplateDialog()
+  },
 
   // ---- Edición ----
   'edit.undo': {
@@ -351,6 +360,22 @@ const COMMANDS = {
     label: 'Árbol', tooltip: 'Mapa en árbol (ramas a la derecha)', icon: 'layoutTree', enabled: hasMap,
     pressed: s => s.hasMap && s.layout === 'logicalStructure',
     run: app => app.setLayout('logicalStructure')
+  },
+
+  'layout.org': {
+    label: 'Organigrama', tooltip: 'Organigrama (ramas hacia abajo)', icon: 'layoutOrg', enabled: hasMap,
+    pressed: s => s.hasMap && s.layout === 'organizationStructure',
+    run: app => app.setLayout('organizationStructure')
+  },
+  'layout.timeline': {
+    label: 'Línea de tiempo', tooltip: 'Línea de tiempo (temas principales en orden)', icon: 'layoutTimeline', enabled: hasMap,
+    pressed: s => s.hasMap && s.layout === 'timeline',
+    run: app => app.setLayout('timeline')
+  },
+  'layout.fishbone': {
+    label: 'Espina de pez', tooltip: 'Diagrama de causa y efecto (Ishikawa)', icon: 'layoutFishbone', enabled: hasMap,
+    pressed: s => s.hasMap && s.layout === 'fishbone',
+    run: app => app.setLayout('fishbone')
   },
 
   // ---- Vista ----

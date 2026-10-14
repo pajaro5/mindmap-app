@@ -24,6 +24,8 @@ function mindMapApp() {
     iconQuery: '',
     // Exportación a HTML interactivo en curso
     exporting: false,
+    // Plantillas guardadas por el usuario (se cargan al abrir la galería)
+    userTemplates: [],
     // Panel Info. de tarea: recurso que se está escribiendo y último error de validación
     resourceDraft: '',
     taskError: '',
@@ -887,7 +889,8 @@ function mindMapApp() {
       await this.openMap(map.id)
     },
 
-    async openMap(id) {
+    // `fit`: ajustar el mapa a la ventana al abrirlo (la librería lo hace tras el primer render)
+    async openMap(id, { fit = false } = {}) {
       // Guardar la nota que se estuviera escribiendo en el mapa anterior
       this.flushNote()
       const res = await fetch(`/api/maps/${id}`)
@@ -936,6 +939,7 @@ function mindMapApp() {
         this.painterActive = false
         this.mindMap = new MindMapCtor({
           el,
+          fit,
           data: map.data.root,
           layout: this.currentLayout,
           theme: template,
@@ -1213,6 +1217,111 @@ function mindMapApp() {
       const defs = this.textMarkerDefs.filter(c => c.id !== this.dialog.id)
       this.mindMap.execCommand('SET_TEXT_MARKERS', defs)
       this.closeDialog()
+    },
+
+    // ---- Plantillas ----
+    // Plantillas de la galería: las de serie y las guardadas por el usuario ("Mis plantillas")
+    get galleryTemplates() {
+      const builtin = BUILTIN_TEMPLATES.map(t => ({
+        key: `builtin:${t.id}`, id: t.id, category: t.category, name: t.name, description: t.description,
+        topics: countTopics(t.root), preview: templatePreviewSvg(t.root, t.layout), builtin: true
+      }))
+      const mine = this.userTemplates.map(t => ({
+        key: `user:${t.id}`, id: t.id, category: 'mine', name: t.title, description: t.description,
+        topics: countTopics(t.data.root || {}), preview: templatePreviewSvg(toPreviewTree(t.data.root), t.data.layout), builtin: false
+      }))
+      return [...builtin, ...mine]
+    },
+
+    get galleryCategories() {
+      return [{ id: 'all', name: 'Todas' }, ...TEMPLATE_CATEGORIES, { id: 'mine', name: 'Mis plantillas' }]
+    },
+
+    get visibleTemplates() {
+      const category = this.dialog && this.dialog.category
+      return this.galleryTemplates.filter(t => category === 'all' || t.category === category)
+    },
+
+    async loadUserTemplates() {
+      const res = await fetch('/api/templates')
+      if (!res.ok) throw new Error(`No se pudieron cargar las plantillas (HTTP ${res.status})`)
+      this.userTemplates = await res.json()
+    },
+
+    async openTemplateGallery() {
+      try {
+        await this.loadUserTemplates()
+      } catch (err) {
+        // La galería de serie funciona aunque falle la lista de plantillas propias
+        console.error(err)
+        this.userTemplates = []
+      }
+      this.showDialog({ kind: 'templates', category: 'all', selected: 'builtin:project-plan', pendingDelete: null, error: '' })
+    },
+
+    async createFromTemplate(key = this.dialog && this.dialog.selected) {
+      const item = this.galleryTemplates.find(t => t.key === key)
+      if (!item) return
+      const data = item.builtin
+        ? instantiateTemplate(BUILTIN_TEMPLATES.find(t => t.id === item.id))
+        : mapDataFromSavedTemplate(this.userTemplates.find(t => t.id === item.id))
+      const res = await fetch('/api/maps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: item.name, data })
+      })
+      if (!res.ok) {
+        this.dialog.error = `No se pudo crear el mapa (HTTP ${res.status})`
+        return
+      }
+      const map = await res.json()
+      this.closeDialog()
+      await this.loadMapList()
+      // Un mapa recién creado desde una plantilla se ve entero
+      await this.openMap(map.id, { fit: true })
+    },
+
+    // Borrar una plantilla propia pide confirmación con un segundo clic
+    async deleteUserTemplate(id) {
+      if (this.dialog.pendingDelete !== id) {
+        this.dialog.pendingDelete = id
+        return
+      }
+      const res = await fetch(`/api/templates/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      this.dialog.pendingDelete = null
+      if (!res.ok && res.status !== 404) {
+        this.dialog.error = `No se pudo eliminar la plantilla (HTTP ${res.status})`
+        return
+      }
+      await this.loadUserTemplates()
+      if (this.dialog.selected === `user:${id}`) this.dialog.selected = null
+    },
+
+    openSaveTemplateDialog() {
+      if (!this.mindMap) return
+      this.showDialog({ kind: 'saveTemplate', title: this.currentTitle || '', description: '', stripTasks: false, error: '' }, 'templateTitle')
+    },
+
+    async saveAsTemplate() {
+      const title = this.dialog.title.trim()
+      if (!title) {
+        this.dialog.error = 'Escribe un nombre para la plantilla.'
+        return
+      }
+      const data = templateDataFromMap(Alpine.raw(this.mindMap).getData(true), { stripTasks: this.dialog.stripTasks })
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description: this.dialog.description, data })
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        this.dialog.error = body.error || `No se pudo guardar la plantilla (HTTP ${res.status})`
+        return
+      }
+      this.closeDialog()
+      this.saveStatus = 'Plantilla guardada'
+      setTimeout(() => { if (this.saveStatus === 'Plantilla guardada') this.saveStatus = '' }, 2000)
     },
 
     async exportHtml() {

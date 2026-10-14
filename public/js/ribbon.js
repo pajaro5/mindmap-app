@@ -88,7 +88,10 @@ const RIBBON_TABS = [
     id: 'format',
     label: 'Formato',
     groups: [
-      { label: 'Diseño del mapa', items: [{ cmd: 'layout.radial' }, { cmd: 'layout.tree' }] }
+      {
+        label: 'Diseño del mapa',
+        items: [{ cmd: 'layout.radial' }, { cmd: 'layout.tree' }, { cmd: 'layout.org' }, { cmd: 'layout.timeline' }, { cmd: 'layout.fishbone' }]
+      }
     ]
   },
   {
@@ -105,7 +108,8 @@ const RIBBON_TABS = [
     id: 'export',
     label: 'Exportar',
     groups: [
-      { label: 'Exportar', items: [{ cmd: 'export.png' }, { cmd: 'export.pdf' }, { cmd: 'export.html' }] }
+      { label: 'Exportar', items: [{ cmd: 'export.png' }, { cmd: 'export.pdf' }, { cmd: 'export.html' }] },
+      { label: 'Plantillas', items: [{ cmd: 'map.saveAsTemplate' }, { cmd: 'map.newFromTemplate' }] }
     ]
   }
 ]

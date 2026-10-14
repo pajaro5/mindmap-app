@@ -92,7 +92,16 @@ test('el doble clic funciona aunque antes hubiera un tema seleccionado', async (
 
 test('arrastrar mueve la llamada (una entrada de historial) y deshacer la devuelve', async ({ page, maps }) => {
   const { app } = await setupMap(page, maps, { data: withCallout(1, { text: 'Móvil' }) })
-  const box = await bubbles(page).first().locator('rect').boundingBox()
+  // Con la máquina cargada el mapa puede seguir colocándose: medir cuando el globo esté quieto
+  const rect = bubbles(page).first().locator('rect')
+  let box = await rect.boundingBox()
+  await expect.poll(async () => {
+    await page.waitForTimeout(150)
+    const now = await rect.boundingBox()
+    const still = JSON.stringify(now) === JSON.stringify(box)
+    box = now
+    return still
+  }, { message: 'la llamada debe dejar de moverse' }).toBe(true)
   const scale = await app.scale()
   await app.recordsHistory(async () => {
     await page.mouse.move(box.x + 10, box.y + 10)

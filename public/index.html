@@ -285,6 +285,7 @@
 
         <div class="task-pane-body" x-show="pane === 'maps'">
           <button class="btn btn-primary btn-block" @click="runCommand('map.new')">+ Nuevo mapa</button>
+          <button class="btn btn-block template-open" data-action="open-templates" @click="runCommand('map.newFromTemplate')">Nuevo desde plantilla…</button>
           <ul class="map-list">
             <template x-for="m in maps" :key="m.id">
               <li :class="{ active: m.id === currentId }" @click="openMap(m.id)">
@@ -523,7 +524,77 @@
     </div>
 
     <!-- Diálogo modal (nativo: atrapa el foco y se cierra con Esc) -->
-    <dialog id="appDialog" class="app-dialog" @close="dialog = null" aria-labelledby="appDialogTitle">
+    <dialog id="appDialog" class="app-dialog" :class="{ wide: dialog && dialog.kind === 'templates' }" @close="dialog = null" aria-labelledby="appDialogTitle">
+      <!-- Galería de plantillas: categorías a la izquierda, tarjetas con vista previa a la derecha -->
+      <template x-if="dialog && dialog.kind === 'templates'">
+        <form class="dialog-form" @submit.prevent="createFromTemplate()">
+          <h2 id="appDialogTitle" class="dialog-title">Nuevo desde plantilla</h2>
+          <div class="template-gallery">
+            <nav class="template-categories" aria-label="Categorías">
+              <template x-for="c in galleryCategories" :key="c.id">
+                <button type="button" class="template-category" :data-category="c.id" :aria-pressed="dialog.category === c.id"
+                        :class="{ active: dialog.category === c.id }" @click="dialog.category = c.id" x-text="c.name"></button>
+              </template>
+            </nav>
+            <div class="template-grid" role="listbox" aria-label="Plantillas">
+              <template x-for="t in visibleTemplates" :key="t.key">
+                <div class="template-card" role="option" :data-template="t.key" :aria-selected="dialog.selected === t.key"
+                     :class="{ selected: dialog.selected === t.key }" tabindex="0"
+                     @click="dialog.selected = t.key" @dblclick="createFromTemplate(t.key)" @keydown.enter.prevent="createFromTemplate(t.key)">
+                  <div class="template-preview" x-html="t.preview"></div>
+                  <div class="template-name" x-text="t.name"></div>
+                  <div class="template-desc" x-text="t.description || 'Plantilla propia'"></div>
+                  <div class="template-meta">
+                    <span x-text="`${t.topics} temas`"></span>
+                    <template x-if="!t.builtin">
+                      <button type="button" class="btn-link template-delete" data-action="delete-template"
+                              @click.stop="deleteUserTemplate(t.id)"
+                              x-text="dialog.pendingDelete === t.id ? '¿Eliminar? Pulsa otra vez' : 'Eliminar'"></button>
+                    </template>
+                  </div>
+                </div>
+              </template>
+              <p class="empty-hint" x-show="!visibleTemplates.length">
+                Aún no tienes plantillas propias. Abre un mapa y usa Exportar › Guardar como plantilla.
+              </p>
+            </div>
+          </div>
+          <p class="dialog-error" role="alert" x-show="dialog.error" x-text="dialog.error"></p>
+          <div class="dialog-actions">
+            <span class="dialog-hint">Las fechas de las tareas se calculan a partir de hoy.</span>
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary" data-action="create-from-template" :disabled="!dialog.selected">Crear mapa</button>
+            <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+      </template>
+
+      <!-- Guardar el mapa abierto como plantilla propia -->
+      <template x-if="dialog && dialog.kind === 'saveTemplate'">
+        <form class="dialog-form" @submit.prevent="saveAsTemplate()" novalidate>
+          <h2 id="appDialogTitle" class="dialog-title">Guardar como plantilla</h2>
+          <label class="dialog-field">
+            <span>Nombre</span>
+            <input name="templateTitle" type="text" x-model="dialog.title" maxlength="200" autocomplete="off"
+                   :aria-invalid="!!dialog.error" @input="dialog.error = ''" />
+          </label>
+          <label class="dialog-field">
+            <span>Descripción <em>(opcional)</em></span>
+            <input name="templateDescription" type="text" x-model="dialog.description" maxlength="500" autocomplete="off" />
+          </label>
+          <label class="task-check">
+            <input type="checkbox" name="stripTasks" x-model="dialog.stripTasks" />
+            <span>Quitar fechas, recursos e hitos de las tareas</span>
+          </label>
+          <p class="dialog-error" role="alert" x-show="dialog.error" x-text="dialog.error"></p>
+          <div class="dialog-actions">
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+      </template>
+
       <template x-if="dialog && dialog.kind === 'hyperlink'">
         <form class="dialog-form" @submit.prevent="saveHyperlink()" novalidate>
           <h2 id="appDialogTitle" class="dialog-title">Hipervínculo</h2>
@@ -677,6 +748,7 @@
   <script src="/js/mindmap-extensions.js"></script>
   <script src="/js/theme.js"></script>
   <script src="/js/export-html.js"></script>
+  <script src="/js/templates.js"></script>
   <script src="/js/commands.js"></script>
   <script src="/js/ribbon.js"></script>
   <script src="/js/app.js"></script>

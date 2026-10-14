@@ -7,8 +7,9 @@ Aplicación web local para crear y editar mapas mentales. Los mapas se guardan a
 Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista, Exportar), panel de tareas a la derecha y barra de estado con zoom.
 
 - Crear, renombrar y eliminar mapas desde el panel **Mis mapas**.
+- **Plantillas**: 19 de serie (reuniones y proyectos, inspiradas en las de MindManager) con fechas calculadas desde el día de creación, y plantillas propias con "Guardar como plantilla".
+- Diseños: radial, árbol, organigrama, línea de tiempo y espina de pez.
 - Editor visual de nodos basado en [simple-mind-map](https://github.com/wanglin2/mind-map), con un tema propio (`mindmanager`): tema central azul, temas principales verdes y ramas curvas.
-- Dos diseños de mapa: **Radial** (por defecto) y **Árbol**.
 - Insertar subtemas y temas (después, antes con Shift+Enter, o tema padre), eliminar, deshacer y rehacer desde la cinta o con el teclado.
 - Portapapeles: cortar, copiar, pegar (también texto de otras aplicaciones) y copiar formato.
 - Formato de los temas: fuente, tamaño, negrita/cursiva/subrayado/tachado (Ctrl+B/I/U), colores de relleno, línea y fuente, alineación y forma del tema.
@@ -72,6 +73,7 @@ public/
   js/theme.js         Tema visual y preparación de la librería (compartido con el HTML exportado)
   js/export-html.js   Exportar a HTML interactivo
   js/viewer.js        Visor que va dentro del HTML exportado
+  js/templates.js     Plantillas de serie, galería y "Guardar como plantilla"
   js/app.js       Estado de la app, mapa y persistencia
   css/            Estilos
   vendor/         simple-mind-map (build UMD para la app; build ESM minificado para el HTML exportado) y Alpine
@@ -97,6 +99,11 @@ data/             Base de datos SQLite (ignorada por git)
 | `DELETE` | `/api/maps/:id` | Elimina un mapa y sus adjuntos                |
 | `POST`   | `/api/maps/:id/files` | Sube un adjunto (cuerpo binario; nombre en la cabecera `X-File-Name`) |
 | `GET`    | `/api/files/:fileId`  | Descarga un adjunto (siempre como descarga, nunca se muestra en el navegador) |
+| `GET`    | `/api/templates`      | Lista las plantillas guardadas por el usuario |
+| `POST`   | `/api/templates`      | Guarda una plantilla. Body: `{ "title", "description"?, "data" }` |
+| `DELETE` | `/api/templates/:id`  | Elimina una plantilla |
+
+`POST /api/maps` acepta también `data` (por ejemplo, al crear desde una plantilla). Los títulos deben ser texto (hasta 200 caracteres) y `data` debe tener la forma `{ root: { data, children } }`; si no, la API responde 400.
 
 Los adjuntos se guardan en `data/files/` (configurable con `FILES_DIR`; tamaño máximo con `MAX_FILE_BYTES`, 25 MB por defecto).
 
