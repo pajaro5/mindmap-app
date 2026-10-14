@@ -374,7 +374,7 @@ function patchLibraryBugs(MindMap) {
   }
 }
 
-if (typeof simpleMindMap !== 'undefined') patchLibraryBugs(simpleMindMap.default || simpleMindMap)
+// Se aplica desde setupMindMapLibrary (theme.js), antes de crear ningún mapa
 
 // Atajos de formato de Office/MindManager. La librería usa Ctrl+I para "ajustar a la
 // ventana"; aquí pasa a ser cursiva (ajustar sigue en la cinta y en la barra de estado).

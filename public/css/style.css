@@ -35,21 +35,8 @@ html, body {
 
 button { font-family: inherit; }
 
-/* simple-mind-map no incluye su propio reset de CSS para el contenido de texto
-   enriquecido de los nodos; sin esto el <p> hereda el margen por defecto del
-   navegador (~16px) y el texto queda recortado fuera del nodo, invisible hasta
-   que algo (como entrar en edición) fuerza otro layout. */
-.smm-richtext-node-wrap,
-.smm-richtext-node-wrap p,
-.smm-richtext-node-wrap h1,
-.smm-richtext-node-wrap h2,
-.smm-richtext-node-wrap h3,
-.smm-richtext-node-wrap ul,
-.smm-richtext-node-wrap ol,
-.smm-richtext-node-wrap blockquote {
-  margin: 0;
-  padding: 0;
-}
+/* El reset del texto enriquecido de los temas está en theme.js (MAP_CONTENT_CSS), compartido
+   con el HTML interactivo exportado */
 
 .app-shell {
   display: flex;

@@ -116,6 +116,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | **5. Marcadores** ✅ | Desplegable de iconos en la cinta (prioridad y progreso excluyentes), marcadores de texto con categorías: diálogo, panel, desplegable; renombrar, recolorear y borrar se aplican a todo el mapa en un paso deshacible. Pendiente: filtrar por marcador (Vista) y cambiar la prioridad con clic en el icono del tema. | M |
 | **6. Edición** ✅ | Dividir (un tema por línea), Seleccionar (todo, hermanos, mismo nivel, rama, mismos marcadores), Limpiar (formato, marcadores, notas, vínculos, todo). Además: biblioteca de iconos propia (banderas, semáforo, caras, flechas, símbolos, personas) con nombres en español y buscador; los iconos de la librería quedan como "clásicos". Pendiente: Buscar y reemplazar. | M |
 | **7. Información de tarea** ✅ | Panel "Info. de tarea": prioridad y % completado (son los iconos de prioridad y progreso), inicio, vencimiento, duración, hito y recursos; etiqueta en el tema (roja si vence, verde si está completada) con la extensión `nodeInnerPostfixList` de la librería; datos en `_task`. Pendiente: vista de Gantt, calendario laborable y filtrar por recurso. | L |
+| **10. Exportar HTML interactivo** ✅ | Un único .html de solo lectura (como el HTML5 Interactive Map de MindManager): librería minificada incrustada y cargada como módulo desde un Blob, tema y extensiones compartidos (`theme.js`), datos como JSON escapado, CSP sin red, mapa saneado al abrirlo; desplegar/contraer ramas, expandir/contraer todo, ajustar y zoom. Sin adjuntos (están en el servidor). | M |
 | **9. Vista: Buscar y Filtro** ✅ | Barra Buscar/Reemplazar (Ctrl+F, Ctrl+H) propia: sin distinguir tildes ni mayúsculas (opción "Aa"), también en notas y en ramas contraídas; reemplazo escapado y en una entrada de historial (el plugin `search` de la librería reemplazaba dentro del HTML y sin escapar). Panel Filtro: texto, iconos, marcadores de texto, recursos y estado de la tarea, con "todos/alguno"; atenúa lo que no cumple sin tocar el mapa. Pendiente: buscar en marcadores y guardar filtros con nombre. | M |
 | **8. Llamadas** ✅ | Notas flotantes ancladas a un tema (`_callouts`), pintadas en una capa propia del lienzo con conector: insertar, editar (doble clic), mover arrastrando, eliminar (Supr); salen en las exportaciones. Pendiente: subtemas dentro de una llamada y temas flotantes sin ancla. | L |
 
@@ -135,7 +136,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 - **Formato:** temas visuales del mapa, diseño y estructura.
 - **Revisar:** comentarios y control de cambios.
 - **Vista:** vista Esquema, filtros, mostrar/ocultar por nivel, enfoque en tema, presentación (plugin `demonstrate`).
-- **Exportar:** **HTML interactivo (Opción A, aprobada y en pausa)**, Word, Markdown, XMind (nativo en simple-mind-map), imagen y PDF.
+- **Exportar:** ~~HTML interactivo~~ ✅ (Fase 10), Word, Markdown, XMind (nativo en simple-mind-map).
 - **Herramientas:** opciones y plantillas.
 - **Paneles:** Biblioteca, Búsqueda (plugin `search`), Partes del mapa.
 - **Barra de documentos:** varios mapas abiertos en pestañas.

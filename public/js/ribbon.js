@@ -105,7 +105,7 @@ const RIBBON_TABS = [
     id: 'export',
     label: 'Exportar',
     groups: [
-      { label: 'Exportar', items: [{ cmd: 'export.png' }, { cmd: 'export.pdf' }] }
+      { label: 'Exportar', items: [{ cmd: 'export.png' }, { cmd: 'export.pdf' }, { cmd: 'export.html' }] }
     ]
   }
 ]

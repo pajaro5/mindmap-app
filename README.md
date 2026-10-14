@@ -24,7 +24,7 @@ Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista,
 - Buscar y reemplazar (Ctrl+F, Ctrl+H), sin distinguir tildes ni mayúsculas.
 - Filtro (pestaña Vista): muestra los temas que cumplen unos criterios (texto, marcadores, recursos, tareas vencidas…) y atenúa el resto.
 - Autoguardado mientras editas.
-- Exportación a **PNG** y **PDF**.
+- Exportación a **PNG**, **PDF** y **HTML interactivo**: un único archivo que se abre en cualquier navegador sin conexión, de solo lectura, con ramas que se despliegan y contraen.
 
 ## Requisitos
 
@@ -69,9 +69,12 @@ public/
   js/task-info.js     Información de tarea (modelo, validación y etiqueta en el tema)
   js/callouts.js      Llamadas (modelo y capa de dibujo)
   js/search-filter.js Buscar / Reemplazar y Filtro
+  js/theme.js         Tema visual y preparación de la librería (compartido con el HTML exportado)
+  js/export-html.js   Exportar a HTML interactivo
+  js/viewer.js        Visor que va dentro del HTML exportado
   js/app.js       Estado de la app, mapa y persistencia
   css/            Estilos
-  vendor/         simple-mind-map (build UMD)
+  vendor/         simple-mind-map (build UMD para la app; build ESM minificado para el HTML exportado) y Alpine
 tests/e2e/        Pruebas end-to-end (@playwright/test), un archivo por área
 docs/             Plan de producto
 data/             Base de datos SQLite (ignorada por git)

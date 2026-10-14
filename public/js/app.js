@@ -1,91 +1,7 @@
 const MindMapCtor = (typeof simpleMindMap !== 'undefined' && (simpleMindMap.default || simpleMindMap)) || null
 
-// Tema visual inspirado en MindManager: tema central azul, temas principales verdes
-// con texto blanco y subtemas como texto sobre ramas curvas grises.
-// Se registra como tema con nombre para que en la BD solo se guarde "mindmanager" y
-// las personalizaciones del usuario, no una copia completa de estos valores.
-const THEME_NAME = 'mindmanager'
-const FONT = 'Segoe UI, Tahoma, Arial, sans-serif'
-const MINDMANAGER_THEME = {
-  backgroundColor: '#ffffff',
-  lineColor: '#b9b9b9',
-  lineWidth: 2,
-  lineStyle: 'curve',
-  rootLineKeepSameInCurve: false,
-  generalizationLineColor: '#9ab7d8',
-  iconSize: 18,
-  paddingX: 14,
-  paddingY: 6,
-  root: {
-    shape: 'rectangle',
-    fontFamily: FONT,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    fillColor: '#3d8fd8',
-    gradientStyle: true,
-    startColor: '#6db2f0',
-    endColor: '#2b6fbd',
-    startDir: [0, 0],
-    endDir: [0, 1],
-    borderColor: '#24609f',
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingX: 34,
-    paddingY: 22,
-    lineWidth: 5,
-    textAlign: 'center'
-  },
-  second: {
-    shape: 'rectangle',
-    fontFamily: FONT,
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    fillColor: '#7dc142',
-    gradientStyle: true,
-    startColor: '#a3d86a',
-    endColor: '#66ab2c',
-    startDir: [0, 0],
-    endDir: [0, 1],
-    borderColor: '#57962a',
-    borderWidth: 1,
-    borderRadius: 9,
-    paddingX: 18,
-    paddingY: 10,
-    marginX: 90,
-    marginY: 34,
-    lineWidth: 2
-  },
-  node: {
-    fontFamily: FONT,
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#2b2b2b',
-    fillColor: 'transparent',
-    borderWidth: 0,
-    marginX: 44,
-    marginY: 4,
-    lineWidth: 1
-  },
-  generalization: {
-    fontFamily: FONT,
-    fontSize: 12,
-    color: '#1d4f8a',
-    fillColor: '#eaf3fd',
-    borderColor: '#9ab7d8',
-    borderWidth: 1,
-    borderRadius: 6
-  }
-}
-
-if (MindMapCtor && typeof MindMapCtor.defineTheme === 'function') {
-  MindMapCtor.defineTheme(THEME_NAME, MINDMANAGER_THEME)
-}
-// Etiqueta de Información de tarea en los temas (task-info.js)
-if (MindMapCtor && typeof MindMapCtor.usePlugin === 'function') {
-  MindMapCtor.usePlugin(TaskInfoPlugin)
-}
+// Tema, plugins propios y parches de la librería (theme.js, compartido con el HTML exportado)
+setupMindMapLibrary(MindMapCtor)
 
 // Espera a que el navegador haya aplicado el layout pendiente (tras cambios de Alpine)
 function nextFrame() {
@@ -106,6 +22,8 @@ function mindMapApp() {
     iconCategories: [],
     // Texto del buscador de iconos del panel Marcadores
     iconQuery: '',
+    // Exportación a HTML interactivo en curso
+    exporting: false,
     // Panel Info. de tarea: recurso que se está escribiendo y último error de validación
     resourceDraft: '',
     taskError: '',
@@ -1013,8 +931,7 @@ function mindMapApp() {
         if (fixed > 0) console.warn(`Se corrigieron ${fixed} valores no seguros del mapa`)
 
         const savedTheme = map.data.theme || {}
-        // Los mapas creados antes del rediseño guardaban la plantilla 'default'
-        const template = !savedTheme.template || savedTheme.template === 'default' ? THEME_NAME : savedTheme.template
+        const template = themeTemplateOf(savedTheme)
 
         this.painterActive = false
         this.mindMap = new MindMapCtor({
@@ -1296,6 +1213,20 @@ function mindMapApp() {
       const defs = this.textMarkerDefs.filter(c => c.id !== this.dialog.id)
       this.mindMap.execCommand('SET_TEXT_MARKERS', defs)
       this.closeDialog()
+    },
+
+    async exportHtml() {
+      if (!this.mindMap || this.exporting) return
+      // Indicador propio: saveStatus es del autoguardado y no hay que pisarlo
+      this.exporting = true
+      try {
+        await exportInteractiveHtml(Alpine.raw(this.mindMap), this.currentTitle)
+      } catch (err) {
+        console.error(err)
+        this.errorMsg = `No se pudo exportar a HTML: ${err.message || err}`
+      } finally {
+        this.exporting = false
+      }
     },
 
     exportMap(type) {

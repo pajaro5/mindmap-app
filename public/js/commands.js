@@ -420,6 +420,11 @@ const COMMANDS = {
     label: 'Exportar PNG', tooltip: 'Exportar como imagen PNG', icon: 'exportPng', enabled: hasMap,
     run: app => app.exportMap('png')
   },
+  'export.html': {
+    label: 'HTML interactivo', tooltip: 'Exportar un archivo HTML de solo lectura en el que las ramas se despliegan y contraen con clics',
+    icon: 'exportHtml', enabled: hasMap,
+    run: app => app.exportHtml()
+  },
   'export.pdf': {
     label: 'Exportar PDF', tooltip: 'Exportar como documento PDF', icon: 'exportPdf', enabled: hasMap,
     run: app => app.exportMap('pdf')
