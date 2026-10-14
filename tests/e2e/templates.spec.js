@@ -31,11 +31,13 @@ test.describe('Galería de plantillas', () => {
   test('muestra las plantillas de serie por categorías', async ({ page, maps }) => {
     const { app } = await setupMap(page, maps)
     await openGallery(page, app)
-    await expect(cards(page)).toHaveCount(19)
-    await dialog(page).locator('[data-category="meetings"]').click()
-    await expect(cards(page)).toHaveCount(10)
-    await dialog(page).locator('[data-category="projects"]').click()
-    await expect(cards(page)).toHaveCount(9)
+    await expect(cards(page)).toHaveCount(50)
+    await expect(dialog(page).locator('.template-card .template-preview svg')).toHaveCount(50)
+    for (const [category, count] of [['meetings', 10], ['projects', 9], ['strategy', 15], ['personal', 10], ['layouts', 6]]) {
+      await dialog(page).locator(`[data-category="${category}"]`).click()
+      await expect(cards(page), category).toHaveCount(count)
+    }
+    await dialog(page).locator('[data-category="all"]').click()
     await expect(card(page, 'builtin:project-plan').locator('.template-name')).toHaveText('Plan de proyecto')
     await expect(card(page, 'builtin:project-plan').locator('.template-preview svg')).toBeVisible()
     // Mis plantillas solo muestra las propias (otras pruebas pueden estar creando alguna en paralelo)
@@ -78,6 +80,46 @@ test.describe('Galería de plantillas', () => {
     expect(result.every(r => r.root)).toBe(true)
   })
 
+  test('catálogo coherente: ids únicos, categorías existentes y ninguna categoría vacía', async ({ page, maps }) => {
+    await setupMap(page, maps)
+    const { ids, categories, used } = await page.evaluate(() => ({
+      ids: BUILTIN_TEMPLATES.map(t => t.id),
+      categories: TEMPLATE_CATEGORIES.map(c => c.id),
+      used: [...new Set(BUILTIN_TEMPLATES.map(t => t.category))]
+    }))
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(used.filter(c => !categories.includes(c))).toEqual([])
+    expect(categories.filter(c => !used.includes(c))).toEqual([])
+  })
+
+  test('todas las plantillas de serie se dibujan en el mapa sin errores', async ({ page, maps }) => {
+    const errors = []
+    page.on('pageerror', e => errors.push(e.message))
+    await setupMap(page, maps)
+    const result = await page.evaluate(async () => {
+      const mm = window.Alpine.raw(window.Alpine.$data(document.body).mindMap)
+      // setFullData dispara varios renderizados (datos, diseño, tema): esperar a que acaben
+      const settled = () => new Promise(resolve => {
+        let timer
+        const done = () => { mm.off('node_tree_render_end', onEnd); resolve() }
+        const onEnd = () => { clearTimeout(timer); timer = setTimeout(done, 250) }
+        mm.on('node_tree_render_end', onEnd)
+      })
+      const out = []
+      for (const t of BUILTIN_TEMPLATES) {
+        const rendered = settled()
+        const { view, ...data } = instantiateTemplate(t) // view vacío: setFullData no lo admite
+        mm.setFullData(data)
+        await rendered
+        const visible = 1 + t.root.children.length // tema central + principales (siempre visibles)
+        out.push({ id: t.id, layout: mm.opt.layout, nodes: document.querySelectorAll('#mindMapContainer .smm-node').length, visible, want: t.layout || 'mindMap' })
+      }
+      return out
+    })
+    expect(result.filter(r => r.nodes < r.visible || r.layout !== r.want)).toEqual([])
+    expect(errors).toEqual([])
+  })
+
   test('crear un mapa desde "Plan de proyecto": estructura, marcadores y fechas desde hoy', async ({ page, maps }) => {
     const { app } = await setupMap(page, maps)
     await openGallery(page, app)
@@ -110,6 +152,83 @@ test.describe('Galería de plantillas', () => {
     await trackCurrentMap(page, maps)
     await expect(app.node('Tarea 1')).toBeVisible()
     expect((await app.state()).layout).toBe('logicalStructure')
+  })
+
+  test('buscar plantillas: en todas las categorías y sin distinguir tildes ni mayúsculas', async ({ page, maps }) => {
+    const { app } = await setupMap(page, maps)
+    await openGallery(page, app)
+    const search = dialog(page).locator('[name="templateQuery"]')
+    await expect(search).toBeFocused()
+    await dialog(page).locator('[data-category="meetings"]').click()
+
+    await search.fill('ANALISIS')
+    await expect(card(page, 'builtin:swot')).toBeVisible()
+    await expect(card(page, 'builtin:five-whys')).toBeVisible()
+    const texts = await cards(page).evaluateAll(els => els.map(e => e.textContent.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()))
+    expect(texts.length).toBeGreaterThan(2)
+    expect(texts.every(t => t.includes('analisis'))).toBe(true)
+    await expect(dialog(page).locator('.template-category[aria-pressed="true"]')).toHaveCount(0)
+    // Enter en el buscador no crea ningún mapa
+    await search.press('Enter')
+    await expect(dialog(page)).toBeVisible()
+
+    await search.fill('zzzz')
+    await expect(cards(page)).toHaveCount(0)
+    await expect(dialog(page).locator('.empty-hint')).toHaveText('Ninguna plantilla coincide con la búsqueda.')
+
+    // Elegir una categoría vacía el buscador
+    await dialog(page).locator('[data-category="personal"]').click()
+    await expect(search).toHaveValue('')
+    await expect(cards(page)).toHaveCount(10)
+  })
+
+  for (const [key, layout, topic] of [
+    ['org-chart', 'organizationStructure', 'Dirección general'],
+    ['project-timeline', 'timeline', 'Lanzamiento'],
+    ['fishbone-6m', 'fishbone', 'Mano de obra']
+  ]) {
+    test(`la plantilla ${key} crea el mapa con el diseño ${layout}, ajustado a la ventana`, async ({ page, maps }) => {
+      const { app } = await setupMap(page, maps)
+      await openGallery(page, app)
+      await dialog(page).locator('[data-category="layouts"]').click()
+      await card(page, `builtin:${key}`).dblclick()
+      await expect(dialog(page)).toBeHidden()
+      const id = await trackCurrentMap(page, maps)
+      await expect(app.node(topic)).toBeVisible()
+      expect((await app.state()).layout).toBe(layout)
+      await expect.poll(async () => (await maps.get(id)).data.layout).toBe(layout)
+      await expect.poll(() => page.evaluate(() => {
+        const c = document.getElementById('mindMapContainer').getBoundingClientRect()
+        return [...document.querySelectorAll('#mindMapContainer .smm-node')].every(n => {
+          const r = n.getBoundingClientRect()
+          return r.left >= c.left - 1 && r.right <= c.right + 1 && r.top >= c.top - 1 && r.bottom <= c.bottom + 1
+        })
+      }), { message: 'todos los temas dentro del lienzo' }).toBe(true)
+    })
+  }
+
+  test('Línea de tiempo de proyecto: fechas e hitos calculados desde hoy', async ({ page, maps }) => {
+    const { app } = await setupMap(page, maps)
+    await openGallery(page, app)
+    await dialog(page).locator('[name="templateQuery"]').fill('línea de tiempo')
+    await card(page, 'builtin:project-timeline').dblclick()
+    await expect(dialog(page)).toBeHidden()
+    await trackCurrentMap(page, maps)
+    expect(await app.nodeData('Análisis', '_task')).toEqual({ start: inDays(14), due: inDays(35) })
+    expect(await app.nodeData('Lanzamiento', '_task')).toEqual({ due: inDays(100), milestone: true })
+  })
+
+  test('Búsqueda de empleo trae su categoría de marcadores «Candidatura»', async ({ page, maps }) => {
+    const { app } = await setupMap(page, maps)
+    await openGallery(page, app)
+    await dialog(page).locator('[name="templateQuery"]').fill('empleo')
+    await card(page, 'builtin:job-search').dblclick()
+    await expect(dialog(page)).toBeHidden()
+    await trackCurrentMap(page, maps)
+    const [cat] = await app.nodeData('Búsqueda de empleo', '_textMarkers')
+    expect(cat.name).toBe('Candidatura')
+    expect(cat.markers.map(m => m.name)).toEqual(['Enviada', 'Entrevista', 'Oferta', 'Descartada'])
+    expect((await app.nodeData('Puesto en empresa 2', 'tag')).map(t => t.text)).toEqual(['Entrevista'])
   })
 })
 

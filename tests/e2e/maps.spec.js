@@ -69,3 +69,24 @@ test('un mapa antiguo (tema "default") se abre con el tema nuevo', async ({ page
   // Conserva su diseño original
   expect((await app.state()).layout).toBe('logicalStructure')
 })
+
+// Regresión: el autoguardado (800 ms tras el último cambio) iba a currentId, que cambia al abrir
+// otro mapa antes de cargarlo. Una edición justo antes de cambiar de mapa se perdía o, peor,
+// el contenido del mapa anterior sobrescribía el nuevo.
+test('cambiar de mapa justo después de editar guarda la edición en su mapa y no toca el otro', async ({ page, maps }) => {
+  const { setupMap, SAMPLE_TREE } = require('./fixtures')
+  const other = await maps.create({ data: SAMPLE_TREE })
+  const { app, map } = await setupMap(page, maps)
+  await app.selectNode('Beta')
+  await page.keyboard.press('Delete')
+  await app.expectNodeCount(4)
+  // Sin esperar al autoguardado
+  await page.evaluate(id => window.Alpine.$data(document.body).openMap(id), other.id)
+  await expect(app.node('Beta')).toBeVisible()
+
+  const texts = data => data.root.children.map(c => c.data.text.replace(/<[^>]+>/g, ''))
+  await expect.poll(async () => texts((await maps.get(map.id)).data)).toEqual(['Alfa', 'Gamma'])
+  // Pasado el plazo del autoguardado, el otro mapa sigue intacto
+  await page.waitForTimeout(1200)
+  expect(texts((await maps.get(other.id)).data)).toEqual(['Alfa', 'Beta', 'Gamma'])
+})

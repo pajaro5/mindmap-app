@@ -800,8 +800,16 @@ details.icon-category.classic > summary { color: var(--muted); font-weight: 400;
 .template-open { margin-top: 6px; }
 /* La altura de la galería deja sitio al título y a los botones del diálogo, que no deben
    quedar encima de las tarjetas */
-.template-gallery { display: grid; grid-template-columns: 150px 1fr; gap: 12px; height: min(560px, calc(100vh - 220px)); min-height: 0; }
-.template-categories { display: flex; flex-direction: column; gap: 2px; padding-right: 8px; border-right: 1px solid var(--group-border); }
+.template-gallery { display: grid; grid-template-columns: 170px 1fr; gap: 12px; height: min(560px, calc(100vh - 220px)); min-height: 0; }
+.template-categories { display: flex; flex-direction: column; gap: 2px; padding-right: 8px; border-right: 1px solid var(--group-border); overflow-y: auto; }
+.template-search {
+  margin-bottom: 6px;
+  padding: 5px 7px;
+  font: inherit;
+  font-size: 12.5px;
+  border: 1px solid var(--group-border);
+  border-radius: 3px;
+}
 .template-category {
   padding: 6px 8px;
   font: inherit;

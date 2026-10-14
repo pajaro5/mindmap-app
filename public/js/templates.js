@@ -16,8 +16,19 @@ const ESTADO = { name: 'Estado', color: '#2b6fbd', markers: ['Pendiente', 'En cu
 
 const TEMPLATE_CATEGORIES = [
   { id: 'meetings', name: 'Reuniones' },
-  { id: 'projects', name: 'Proyectos' }
+  { id: 'projects', name: 'Proyectos' },
+  { id: 'strategy', name: 'Estrategia y análisis' },
+  { id: 'personal', name: 'Personal' },
+  { id: 'layouts', name: 'Organigramas, cronologías y causa-efecto' }
 ]
+
+const CANDIDATURA = { name: 'Candidatura', color: '#7048e8', markers: ['Enviada', 'Entrevista', 'Oferta', 'Descartada'] }
+const VIAJE = { name: 'Preparado', color: '#2f9e44', markers: ['Pendiente', 'Hecho'] }
+
+// Las cuatro preguntas de cada perspectiva del cuadro de mando integral
+const scorecardRows = () => [T('Objetivo'), T('Indicador'), T('Meta'), T('Iniciativa')]
+// Una cadena de «¿Por qué?» anidados (5 porqués)
+const whyChain = depth => depth === 0 ? [] : [T(`¿Por qué? (${6 - depth})`, whyChain(depth - 1))]
 
 const BUILTIN_TEMPLATES = [
   // ---------- Reuniones ----------
@@ -337,6 +348,429 @@ const BUILTIN_TEMPLATES = [
       T('Tipos de respuesta', { collapsed: true }, [T('Evitar'), T('Reducir'), T('Transferir'), T('Aceptar')]),
       T('Revisión periódica', { task: { due: 30 } })
     ])
+  },
+
+  // ---------- Estrategia y análisis ----------
+  {
+    id: 'swot', category: 'strategy', name: 'Análisis DAFO',
+    description: 'Debilidades, amenazas, fortalezas y oportunidades, y las estrategias que salen de cruzarlas.',
+    root: T('DAFO: [empresa o proyecto]', { note: 'Fortalezas y debilidades son internas; oportunidades y amenazas, externas.' }, [
+      T('Fortalezas', { icon: ['flag_green'] }, [T('Fortaleza 1'), T('Fortaleza 2')]),
+      T('Debilidades', { icon: ['flag_red'] }, [T('Debilidad 1'), T('Debilidad 2')]),
+      T('Oportunidades', { icon: ['arrow_rising'] }, [T('Oportunidad 1'), T('Oportunidad 2')]),
+      T('Amenazas', { icon: ['symbol_warning'] }, [T('Amenaza 1'), T('Amenaza 2')]),
+      T('Estrategias', { icon: ['symbol_target'] }, [
+        T('Ofensivas (fortalezas + oportunidades)'),
+        T('Defensivas (fortalezas + amenazas)'),
+        T('De reorientación (debilidades + oportunidades)'),
+        T('De supervivencia (debilidades + amenazas)')
+      ])
+    ])
+  },
+  {
+    id: 'pest', category: 'strategy', name: 'Análisis PEST',
+    description: 'Factores políticos, económicos, sociales y tecnológicos del entorno.',
+    root: T('PEST: [mercado o proyecto]', [
+      T('Políticos', [T('Estabilidad política'), T('Política fiscal'), T('Comercio exterior')]),
+      T('Económicos', [T('Crecimiento'), T('Inflación y tipos de interés'), T('Empleo')]),
+      T('Sociales', [T('Demografía'), T('Estilos de vida'), T('Educación')]),
+      T('Tecnológicos', [T('Innovación'), T('Automatización'), T('Infraestructuras')]),
+      T('Conclusiones', { icon: ['symbol_check'] })
+    ])
+  },
+  {
+    id: 'pestle', category: 'strategy', name: 'Análisis PESTEL',
+    description: 'PEST ampliado con factores ecológicos y legales.',
+    root: T('PESTEL: [mercado o proyecto]', [
+      T('Políticos'),
+      T('Económicos'),
+      T('Sociales'),
+      T('Tecnológicos'),
+      T('Ecológicos', [T('Normativa ambiental'), T('Clima'), T('Sostenibilidad')]),
+      T('Legales', [T('Laboral'), T('Consumo'), T('Protección de datos')]),
+      T('Impacto en el proyecto', { icon: ['symbol_target'], note: 'Marca con Prioridad 1 los factores con más impacto.' })
+    ])
+  },
+  {
+    id: 'destep', category: 'strategy', name: 'Análisis DESTEP',
+    description: 'Entorno demográfico, económico, social, tecnológico, ecológico y político.',
+    root: T('DESTEP: [mercado]', [
+      T('Demográfico', [T('Población'), T('Edad'), T('Hogares')]),
+      T('Económico', [T('Renta'), T('Consumo')]),
+      T('Social', [T('Valores'), T('Tendencias')]),
+      T('Tecnológico'),
+      T('Ecológico'),
+      T('Político'),
+      T('Oportunidades y amenazas')
+    ])
+  },
+  {
+    id: 'five-forces', category: 'strategy', name: 'Cinco fuerzas de Porter',
+    description: 'Atractivo de un sector según la competencia y el poder de cada actor.',
+    root: T('Cinco fuerzas: [sector]', [
+      T('Rivalidad entre competidores', { icon: ['symbol_target'] }, [T('Número de competidores'), T('Crecimiento del sector'), T('Diferenciación')]),
+      T('Amenaza de nuevos competidores', [T('Barreras de entrada'), T('Inversión necesaria')]),
+      T('Poder de los proveedores', [T('Concentración'), T('Coste de cambiar de proveedor')]),
+      T('Poder de los clientes', [T('Volumen de compra'), T('Sensibilidad al precio')]),
+      T('Amenaza de sustitutos', [T('Alternativas'), T('Relación calidad-precio')]),
+      T('Conclusión', { icon: ['symbol_check'], note: 'Valora cada fuerza (alta, media, baja) con los iconos de semáforo.' })
+    ])
+  },
+  {
+    id: 'strategic-plan', category: 'strategy', name: 'Plan estratégico',
+    description: 'Misión, visión, objetivos estratégicos, iniciativas e indicadores.',
+    markers: [ESTADO],
+    root: T('Plan estratégico: [organización]', [
+      T('Misión', { note: 'Por qué existe la organización.' }),
+      T('Visión', { note: 'Dónde quiere estar en 3 a 5 años.' }),
+      T('Valores'),
+      T('Análisis de situación', [T('DAFO'), T('Entorno'), T('Clientes')]),
+      T('Objetivos estratégicos', { icon: ['symbol_target'] }, [
+        T('Objetivo 1', { task: { due: 365 } }, [T('Iniciativa', { tags: ['Pendiente'], task: { due: 90, resources: ['Responsable'] } })]),
+        T('Objetivo 2', { task: { due: 365 } }, [T('Iniciativa', { tags: ['Pendiente'], task: { due: 180, resources: ['Responsable'] } })])
+      ]),
+      T('Indicadores'),
+      T('Revisión', { task: { due: 90, milestone: true } })
+    ])
+  },
+  {
+    id: 'business-plan', category: 'strategy', name: 'Plan de negocio',
+    description: 'Todos los apartados de un plan de negocio, del resumen al plan financiero.',
+    root: T('Plan de negocio: [empresa]', [
+      T('Resumen ejecutivo', { note: 'Escríbelo al final: una página con lo esencial.' }),
+      T('Empresa', [T('Misión'), T('Forma jurídica'), T('Ubicación')]),
+      T('Producto o servicio', [T('Propuesta de valor'), T('Precio')]),
+      T('Mercado', [T('Clientes objetivo'), T('Tamaño del mercado'), T('Tendencias')]),
+      T('Competencia'),
+      T('Marketing y ventas'),
+      T('Operaciones'),
+      T('Equipo', { icon: ['people_team'] }),
+      T('Plan financiero', { icon: ['symbol_money'] }, [T('Inversión inicial'), T('Previsión de ventas'), T('Cuenta de resultados'), T('Financiación')]),
+      T('Riesgos', { icon: ['symbol_warning'] }),
+      T('Hitos', [T('Lanzamiento', { task: { due: 90, milestone: true } })])
+    ])
+  },
+  {
+    id: 'business-model-canvas', category: 'strategy', name: 'Modelo de negocio (Canvas)',
+    description: 'Los nueve bloques del Business Model Canvas.',
+    root: T('Modelo de negocio: [empresa]', [
+      T('Propuesta de valor', { icon: ['symbol_star'], note: 'Qué problema resuelves y por qué te eligen.' }),
+      T('Segmentos de clientes', { icon: ['people_client'] }),
+      T('Canales'),
+      T('Relación con los clientes'),
+      T('Fuentes de ingresos', { icon: ['symbol_money'] }),
+      T('Recursos clave'),
+      T('Actividades clave'),
+      T('Socios clave', { icon: ['people_team'] }),
+      T('Estructura de costes')
+    ])
+  },
+  {
+    id: 'balanced-scorecard', category: 'strategy', name: 'Cuadro de mando integral',
+    description: 'Objetivos, indicadores, metas e iniciativas en las cuatro perspectivas.',
+    root: T('Cuadro de mando: [organización]', [
+      T('Financiera', { icon: ['symbol_money'] }, scorecardRows()),
+      T('Clientes', { icon: ['people_client'] }, scorecardRows()),
+      T('Procesos internos', scorecardRows()),
+      T('Aprendizaje y crecimiento', scorecardRows())
+    ])
+  },
+  {
+    id: 'cost-benefit', category: 'strategy', name: 'Análisis coste-beneficio',
+    description: 'Compara costes y beneficios de una propuesta y deja una recomendación.',
+    root: T('Coste-beneficio: [propuesta]', [
+      T('Propuesta'),
+      T('Costes', { icon: ['arrow_falling'] }, [T('Inversión inicial'), T('Costes recurrentes'), T('Costes ocultos')]),
+      T('Beneficios', { icon: ['arrow_rising'] }, [T('Tangibles'), T('Intangibles')]),
+      T('Riesgos', { icon: ['symbol_warning'] }),
+      T('Resultado', [T('Periodo de retorno'), T('Rentabilidad (ROI)')]),
+      T('Recomendación', { icon: ['symbol_check'] })
+    ])
+  },
+  {
+    id: 'five-whys', category: 'strategy', name: 'Análisis de causa raíz (5 porqués)',
+    description: 'Pregunta «¿por qué?» hasta llegar a la causa raíz y decide cómo corregirla.',
+    layout: 'logicalStructure',
+    root: T('Problema: [qué ocurre]', [
+      T('Descripción', { note: 'Qué, dónde, cuándo y cuánto.' }),
+      T('Cadena de causas', { callout: 'Responde cada «¿Por qué?» con un hecho, no con una opinión.' }, whyChain(5)),
+      T('Causa raíz', { icon: ['symbol_target'] }),
+      T('Acción correctiva', [T('Acción', { task: { due: 14, resources: ['Responsable'] } })]),
+      T('Cómo comprobaremos que funciona')
+    ])
+  },
+  {
+    id: 'compare', category: 'strategy', name: 'Comparar opciones',
+    description: 'Pros y contras de dos o tres alternativas y la conclusión.',
+    root: T('Comparar: [qué]', [
+      T('Opción A', [T('A favor', { icon: ['symbol_check'] }), T('En contra', { icon: ['symbol_cross'] }), T('Coste')]),
+      T('Opción B', [T('A favor', { icon: ['symbol_check'] }), T('En contra', { icon: ['symbol_cross'] }), T('Coste')]),
+      T('Opción C', [T('A favor', { icon: ['symbol_check'] }), T('En contra', { icon: ['symbol_cross'] }), T('Coste')]),
+      T('Criterios', [T('Imprescindibles'), T('Deseables')]),
+      T('Conclusión', { icon: ['symbol_star'] })
+    ])
+  },
+  {
+    id: 'process-map', category: 'strategy', name: 'Mapa de proceso (SIPOC)',
+    description: 'Proveedores, entradas, pasos del proceso, salidas y clientes.',
+    layout: 'logicalStructure',
+    root: T('Proceso: [nombre]', [
+      T('Proveedores'),
+      T('Entradas'),
+      T('Proceso', [T('1. Paso'), T('2. Paso'), T('3. Paso'), T('4. Paso')]),
+      T('Salidas'),
+      T('Clientes', { icon: ['people_client'] }),
+      T('Mejoras', { icon: ['symbol_idea'] }, [T('Mejora 1', { icon: ['priority_1'] })])
+    ])
+  },
+  {
+    id: 'use-cases', category: 'strategy', name: 'Casos de uso',
+    description: 'Actores y casos de uso de un sistema, con su flujo principal y alternativo.',
+    root: T('Sistema: [nombre]', [
+      T('Actores', { icon: ['people_team'] }, [T('Usuario'), T('Administrador'), T('Sistema externo')]),
+      T('Caso de uso 1', [
+        T('Actor principal'),
+        T('Precondiciones'),
+        T('Flujo principal', [T('1.'), T('2.'), T('3.')]),
+        T('Flujos alternativos'),
+        T('Postcondiciones')
+      ]),
+      T('Caso de uso 2'),
+      T('Requisitos no funcionales', [T('Rendimiento'), T('Seguridad', { icon: ['symbol_lock'] }), T('Accesibilidad')])
+    ])
+  },
+  {
+    id: 'marketing-plan', category: 'strategy', name: 'Plan de marketing',
+    description: 'Situación, público, objetivos, las 4 P, presupuesto y medición.',
+    root: T('Plan de marketing: [producto]', [
+      T('Situación actual'),
+      T('Público objetivo', { icon: ['people_client'] }),
+      T('Objetivos', { icon: ['symbol_target'] }),
+      T('Marketing mix', [T('Producto'), T('Precio'), T('Distribución'), T('Promoción')]),
+      T('Presupuesto', { icon: ['symbol_money'] }),
+      T('Calendario', [T('Campaña 1', { task: { start: 14, due: 45 } }), T('Campaña 2', { task: { start: 60, due: 90 } })]),
+      T('Medición', [T('Indicadores'), T('Revisión', { task: { due: 90, milestone: true } })])
+    ])
+  },
+
+  // ---------- Personal ----------
+  {
+    id: 'personal-tasks', category: 'personal', name: 'Mis tareas',
+    description: 'Tareas personales por horizonte: hoy, esta semana, más adelante y en espera.',
+    layout: 'logicalStructure',
+    root: T('Mis tareas', [
+      T('Hoy', { icon: ['symbol_star'] }, [T('Tarea', { icon: ['priority_1'], task: { due: 0 } })]),
+      T('Esta semana', [T('Tarea', { icon: ['priority_2'], task: { due: 5 } })]),
+      T('Más adelante', [T('Tarea')]),
+      T('Esperando a otros', { icon: ['symbol_pause'] }),
+      T('Hecho', { icon: ['symbol_check'], collapsed: true })
+    ])
+  },
+  {
+    id: 'weekly-planner', category: 'personal', name: 'Planificador semanal',
+    description: 'Objetivos de la semana, un tema por día y una revisión final.',
+    layout: 'logicalStructure',
+    root: T('Mi semana', [
+      T('Objetivos de la semana', { icon: ['symbol_target'] }, [T('Objetivo 1'), T('Objetivo 2'), T('Objetivo 3')]),
+      T('Lunes'), T('Martes'), T('Miércoles'), T('Jueves'), T('Viernes'),
+      T('Fin de semana'),
+      T('Revisión', [T('¿Qué salió bien?'), T('¿Qué cambio la próxima semana?')])
+    ])
+  },
+  {
+    id: 'life-planner', category: 'personal', name: 'Planificador vital',
+    description: 'Visión y objetivos para cada área de la vida.',
+    root: T('Mi vida', [
+      T('Visión a 5 años', { icon: ['symbol_star'] }),
+      T('Salud', { icon: ['symbol_heart'] }, [T('Objetivo')]),
+      T('Familia y amigos', { icon: ['people_team'] }, [T('Objetivo')]),
+      T('Trabajo y carrera', [T('Objetivo')]),
+      T('Finanzas', { icon: ['symbol_money'] }, [T('Objetivo')]),
+      T('Aprendizaje', { icon: ['symbol_idea'] }, [T('Objetivo')]),
+      T('Ocio', [T('Objetivo')]),
+      T('Hogar', { icon: ['symbol_home'] }, [T('Objetivo')])
+    ])
+  },
+  {
+    id: 'smart-goal', category: 'personal', name: 'Objetivo SMART',
+    description: 'Convierte una meta en un objetivo específico, medible, alcanzable, relevante y con fecha.',
+    root: T('Objetivo: [meta]', { icon: ['symbol_target'] }, [
+      T('Específico', { note: '¿Qué quiero conseguir exactamente?' }),
+      T('Medible', { note: '¿Cómo sabré que lo he logrado?' }),
+      T('Alcanzable', { note: '¿Qué necesito para conseguirlo?' }),
+      T('Relevante', { note: '¿Por qué me importa?' }),
+      T('Con fecha', { task: { due: 90, milestone: true } }),
+      T('Primeros pasos', [T('Paso 1', { task: { due: 7 } }), T('Paso 2', { task: { due: 14 } })]),
+      T('Obstáculos y cómo superarlos', { icon: ['symbol_warning'] })
+    ])
+  },
+  {
+    id: 'job-search', category: 'personal', name: 'Búsqueda de empleo',
+    description: 'Objetivo profesional, empresas, candidaturas con su estado, contactos y entrevistas.',
+    markers: [CANDIDATURA],
+    root: T('Búsqueda de empleo', [
+      T('Objetivo profesional', { icon: ['symbol_target'] }),
+      T('Mis puntos fuertes', { icon: ['symbol_star'] }),
+      T('Materiales', [T('Currículum', { icon: ['symbol_document'] }), T('Carta de presentación'), T('Perfil profesional en línea')]),
+      T('Empresas objetivo', [T('Empresa 1'), T('Empresa 2')]),
+      T('Candidaturas', { callout: 'Marca el estado de cada candidatura con el marcador «Candidatura».' }, [
+        T('Puesto en empresa 1', { tags: ['Enviada'], task: { start: 0, due: 14 } }),
+        T('Puesto en empresa 2', { tags: ['Entrevista'], task: { due: 7 } })
+      ]),
+      T('Red de contactos', { icon: ['people_team'] }),
+      T('Preparar entrevistas', [T('Preguntas frecuentes'), T('Preguntas para la empresa'), T('Logros con cifras')]),
+      T('Seguimiento', { task: { due: 7 } })
+    ])
+  },
+  {
+    id: 'resume', category: 'personal', name: 'Currículum',
+    description: 'Esquema de un currículum para ordenar experiencia, formación y habilidades.',
+    root: T('Currículum: [nombre]', [
+      T('Contacto', [T('Correo', { icon: ['symbol_mail'] }), T('Teléfono', { icon: ['symbol_phone'] }), T('Ciudad', { icon: ['symbol_pin'] })]),
+      T('Perfil', { note: 'Tres o cuatro líneas: quién eres y qué aportas.' }),
+      T('Experiencia', [
+        T('Puesto 1', [T('Empresa'), T('Fechas'), T('Logros')]),
+        T('Puesto 2', [T('Empresa'), T('Fechas'), T('Logros')])
+      ]),
+      T('Formación'),
+      T('Habilidades'),
+      T('Idiomas'),
+      T('Otros', [T('Voluntariado'), T('Publicaciones'), T('Intereses')])
+    ])
+  },
+  {
+    id: 'self-assessment', category: 'personal', name: 'Autoevaluación',
+    description: 'Logros, fortalezas, áreas de mejora y objetivos para el próximo periodo.',
+    root: T('Autoevaluación: [periodo]', [
+      T('Logros', { icon: ['symbol_check'] }),
+      T('Fortalezas', { icon: ['arrow_rising'] }),
+      T('Áreas de mejora', { icon: ['arrow_up'] }),
+      T('Lo que he aprendido', { icon: ['symbol_idea'] }),
+      T('Objetivos para el próximo periodo', { icon: ['symbol_target'] }, [T('Objetivo 1', { task: { due: 90 } })]),
+      T('Apoyo que necesito')
+    ])
+  },
+  {
+    id: 'trip', category: 'personal', name: 'Planificar un viaje',
+    description: 'Destino, fechas, presupuesto, reservas, documentación, equipaje e itinerario.',
+    markers: [VIAJE],
+    root: T('Viaje a [destino]', [
+      T('Fechas', { task: { start: 30, due: 37 } }),
+      T('Presupuesto', { icon: ['symbol_money'] }, [T('Transporte'), T('Alojamiento'), T('Comidas'), T('Actividades')]),
+      T('Transporte', [T('Ida', { tags: ['Pendiente'] }), T('Vuelta', { tags: ['Pendiente'] })]),
+      T('Alojamiento', { tags: ['Pendiente'], icon: ['symbol_home'] }),
+      T('Documentación', { icon: ['symbol_document'] }, [
+        T('Documento de identidad o pasaporte', { tags: ['Pendiente'] }),
+        T('Seguro de viaje', { tags: ['Pendiente'] }),
+        T('Reservas impresas', { tags: ['Pendiente'] })
+      ]),
+      T('Equipaje', { collapsed: true }, [T('Ropa'), T('Aseo'), T('Cargadores'), T('Medicinas')]),
+      T('Itinerario', [T('Día 1', { task: { start: 30 } }), T('Día 2', { task: { start: 31 } }), T('Día 3', { task: { start: 32 } })]),
+      T('Contactos de emergencia', { icon: ['symbol_phone'] })
+    ])
+  },
+  {
+    id: 'writing', category: 'personal', name: 'Escribir un texto',
+    description: 'Idea central, público, estructura, fuentes y calendario de un artículo, ensayo o informe.',
+    root: T('Texto: [título provisional]', [
+      T('Idea central', { icon: ['symbol_idea'], note: 'Resúmela en una frase.' }),
+      T('Público y tono', { icon: ['people_client'] }),
+      T('Estructura', [
+        T('Introducción'),
+        T('Desarrollo', [T('Argumento 1'), T('Argumento 2'), T('Argumento 3')]),
+        T('Conclusión')
+      ]),
+      T('Fuentes', { icon: ['symbol_search'] }),
+      T('Calendario', [
+        T('Borrador', { task: { due: 7 } }),
+        T('Revisión', { task: { start: 8, due: 14 } }),
+        T('Entrega', { task: { due: 21, milestone: true } })
+      ])
+    ])
+  },
+  {
+    id: 'study-plan', category: 'personal', name: 'Plan de estudio',
+    description: 'Temas, materiales, sesiones de estudio, exámenes y dudas de una asignatura.',
+    root: T('Estudiar: [asignatura]', [
+      T('Temas', [T('Tema 1', { icon: ['progress_1'] }), T('Tema 2', { icon: ['progress_1'] }), T('Tema 3', { icon: ['progress_1'] })]),
+      T('Materiales', { icon: ['symbol_document'] }, [T('Apuntes'), T('Libro'), T('Ejercicios')]),
+      T('Sesiones de estudio', [T('Sesión 1', { task: { due: 2 } }), T('Sesión 2', { task: { due: 4 } }), T('Repaso', { task: { due: 12 } })]),
+      T('Exámenes', [T('Examen', { task: { due: 14, milestone: true } })]),
+      T('Dudas', { icon: ['symbol_question'] })
+    ])
+  },
+
+  // ---------- Organigramas, cronologías y causa-efecto ----------
+  {
+    id: 'org-chart', category: 'layouts', name: 'Organigrama',
+    description: 'Estructura de una organización en diseño de organigrama (ramas hacia abajo).',
+    layout: 'organizationStructure',
+    root: T('Dirección general', { icon: ['people_owner'] }, [
+      T('Finanzas', [T('Contabilidad'), T('Tesorería')]),
+      T('Operaciones', [T('Producción'), T('Logística')]),
+      T('Comercial', [T('Ventas'), T('Marketing')]),
+      T('Personas', [T('Selección'), T('Formación')])
+    ])
+  },
+  {
+    id: 'wbs', category: 'layouts', name: 'Estructura de desglose del trabajo',
+    description: 'EDT del proyecto en forma de organigrama: entregables y paquetes de trabajo.',
+    layout: 'organizationStructure',
+    root: T('Proyecto: [nombre]', [
+      T('1. Gestión', [T('1.1 Planificación'), T('1.2 Seguimiento')]),
+      T('2. Análisis', [T('2.1 Requisitos'), T('2.2 Especificación')]),
+      T('3. Diseño', [T('3.1 Arquitectura'), T('3.2 Prototipo')]),
+      T('4. Construcción', [T('4.1 Desarrollo'), T('4.2 Pruebas')]),
+      T('5. Implantación', [T('5.1 Formación'), T('5.2 Puesta en marcha')])
+    ])
+  },
+  {
+    id: 'project-timeline', category: 'layouts', name: 'Línea de tiempo de proyecto',
+    description: 'Fases del proyecto en orden sobre una línea de tiempo, con fechas desde hoy.',
+    layout: 'timeline',
+    root: T('Proyecto: [nombre]', [
+      T('Arranque', { task: { start: 0, due: 14 } }, [T('Reunión inicial', { task: { due: 3, milestone: true } })]),
+      T('Análisis', { task: { start: 14, due: 35 } }, [T('Requisitos cerrados', { task: { due: 35, milestone: true } })]),
+      T('Desarrollo', { task: { start: 35, due: 80 } }, [T('Versión de prueba', { task: { due: 70, milestone: true } })]),
+      T('Pruebas', { task: { start: 80, due: 95 } }),
+      T('Lanzamiento', { task: { due: 100, milestone: true } })
+    ])
+  },
+  {
+    id: 'history-timeline', category: 'layouts', name: 'Cronología',
+    description: 'Hechos en orden cronológico: una época o fecha por tema principal.',
+    layout: 'timeline',
+    root: T('Cronología: [tema]', [
+      T('[Fecha 1]', [T('Hecho clave')]),
+      T('[Fecha 2]', [T('Hecho clave')]),
+      T('[Fecha 3]', [T('Hecho clave')]),
+      T('[Fecha 4]', [T('Hecho clave')]),
+      T('[Fecha 5]', [T('Hecho clave')])
+    ])
+  },
+  {
+    id: 'fishbone-6m', category: 'layouts', name: 'Espina de pez (6M)',
+    description: 'Diagrama de Ishikawa: causas de un problema agrupadas en las 6M.',
+    layout: 'fishbone',
+    root: T('Efecto: [problema]', [
+      T('Método', [T('Causa')]),
+      T('Mano de obra', [T('Causa')]),
+      T('Máquinas', [T('Causa')]),
+      T('Materiales', [T('Causa')]),
+      T('Medición', [T('Causa')]),
+      T('Medio ambiente', [T('Causa')])
+    ])
+  },
+  {
+    id: 'fishbone-service', category: 'layouts', name: 'Espina de pez (servicios)',
+    description: 'Ishikawa para servicios: entorno, proveedores, sistemas y personas.',
+    layout: 'fishbone',
+    root: T('Efecto: [problema del servicio]', [
+      T('Entorno', [T('Causa')]),
+      T('Proveedores', [T('Causa')]),
+      T('Sistemas', [T('Causa')]),
+      T('Personas', [T('Causa')])
+    ])
   }
 ]
 
@@ -400,11 +834,74 @@ function templateDataFromMap(mapData, { stripTasks = false } = {}) {
 }
 
 // ---- Vista previa esquemática (SVG) ----
-// Tema central y, a su alrededor, una píldora por tema principal (no se dibuja el texto)
+// Tema central y una píldora por tema principal (no se dibuja el texto), colocados según el diseño
+const PREVIEW = { W: 168, H: 96, line: '#b9b9b9', topic: '#7dc142', root: '#3d8fd8' }
+const previewPill = (x, y, w = 32, h = 10, fill = PREVIEW.topic) =>
+  `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="3" fill="${fill}"/>`
+const previewLine = (x1, y1, x2, y2) => `<path d="M${x1} ${y1}L${x2} ${y2}" fill="none" stroke="${PREVIEW.line}" stroke-width="1.5"/>`
+const previewSvg = parts => `<svg viewBox="0 0 ${PREVIEW.W} ${PREVIEW.H}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${parts.join('')}</svg>`
+
+// Organigrama: el tema central arriba y los principales en fila, con conectores en ángulo
+function orgPreview(children) {
+  const { W } = PREVIEW
+  const n = Math.max(children.length, 1)
+  const step = (W - 16) / n
+  const w = Math.min(32, step - 4)
+  const parts = [previewLine(W / 2, 22, W / 2, 36)]
+  if (children.length > 1) parts.push(previewLine(8 + step / 2, 36, 8 + step * (n - 0.5), 36))
+  children.forEach((c, i) => {
+    const x = 8 + step * (i + 0.5)
+    parts.push(previewLine(x, 36, x, 46), previewPill(x, 51, w))
+    if ((c.children || []).length) parts.push(previewLine(x, 56, x, 66), previewPill(x, 71, w - 6, 8, '#bfe29a'))
+  })
+  parts.push(previewPill(W / 2, 16, 44, 16, PREVIEW.root))
+  return previewSvg(parts)
+}
+
+// Línea de tiempo: los temas principales en orden sobre una línea horizontal
+function timelinePreview(children) {
+  const { W, H } = PREVIEW
+  const y = H / 2
+  const n = Math.max(children.length, 1)
+  const start = 54
+  const step = (W - start - 6) / n
+  const w = Math.min(28, step - 3)
+  const parts = [previewLine(28, y, W - 4, y)]
+  children.forEach((c, i) => {
+    const x = start + step * (i + 0.5)
+    parts.push(previewPill(x, y, w))
+    if ((c.children || []).length) parts.push(previewLine(x, y + 5, x, y + 18), previewPill(x, y + 22, w - 4, 7, '#bfe29a'))
+  })
+  parts.push(previewPill(26, y, 44, 16, PREVIEW.root))
+  return previewSvg(parts)
+}
+
+// Espina de pez: como la dibuja la librería, la cabeza (tema central) a la izquierda y las
+// espinas en diagonal arriba y abajo, inclinadas hacia la cabeza
+function fishbonePreview(children) {
+  const { W, H } = PREVIEW
+  const y = H / 2
+  const pairs = Math.max(Math.ceil(children.length / 2), 1)
+  const start = 50
+  const step = (W - start - 6) / pairs
+  const parts = [previewLine(30, y, W - 6, y)]
+  children.forEach((c, i) => {
+    const x = start + step * Math.floor(i / 2) + step / 2
+    const ty = i % 2 === 0 ? 12 : H - 12
+    parts.push(previewLine(x, ty, x - 14, y), previewPill(x + 4, ty, Math.min(30, step - 4), 9))
+  })
+  parts.push(previewPill(26, y, 40, 18, PREVIEW.root))
+  return previewSvg(parts)
+}
+
 function templatePreviewSvg(tree, layout = 'mindMap') {
+  const all = tree.children || []
+  if (layout === 'organizationStructure') return orgPreview(all.slice(0, 6))
+  if (layout === 'timeline') return timelinePreview(all.slice(0, 6))
+  if (layout === 'fishbone') return fishbonePreview(all.slice(0, 8))
   const W = 168
   const H = 96
-  const children = (tree.children || []).slice(0, 8)
+  const children = all.slice(0, 8)
   const root = { x: layout === 'mindMap' ? W / 2 : 30, y: H / 2 }
   const parts = []
   const side = (i, n) => layout === 'mindMap' ? (i < Math.ceil(n / 2) ? 1 : -1) : 1

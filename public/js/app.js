@@ -14,6 +14,7 @@ function mindMapApp() {
     currentId: null,
     currentTitle: '',
     mindMap: null,
+    mindMapId: null, // id del mapa cargado en el lienzo (el autoguardado va a este)
     saveStatus: '',
     saveTimer: null,
     errorMsg: '',
@@ -891,8 +892,10 @@ function mindMapApp() {
 
     // `fit`: ajustar el mapa a la ventana al abrirlo (la librería lo hace tras el primer render)
     async openMap(id, { fit = false } = {}) {
-      // Guardar la nota que se estuviera escribiendo en el mapa anterior
+      // Guardar la nota que se estuviera escribiendo en el mapa anterior y los cambios que
+      // esperaban al autoguardado: si no, se perderían o acabarían guardados en el mapa nuevo
       this.flushNote()
+      await this.flushPendingSave()
       const res = await fetch(`/api/maps/${id}`)
       if (!res.ok) return
       const map = await res.json()
@@ -917,6 +920,7 @@ function mindMapApp() {
         if (this.mindMap) {
           this.mindMap.destroy()
           this.mindMap = null
+          this.mindMapId = null
         }
 
         if (typeof MindMapCtor !== 'function') {
@@ -961,6 +965,7 @@ function mindMapApp() {
             this.errorMsg = `Error en el mapa (${code}): ${(error && error.message) || error || ''}`
           })
         })
+        this.mindMapId = map.id
         extendMindMap(this.mindMap)
         bindFormatShortcuts(this.mindMap, id => this.runCommand(id))
 
@@ -1030,12 +1035,24 @@ function mindMapApp() {
       this.saveTimer = setTimeout(() => this.saveCurrentMap(), 800)
     },
 
+    // Guarda ya lo que estuviera esperando al autoguardado
+    async flushPendingSave() {
+      if (!this.saveTimer) return
+      clearTimeout(this.saveTimer)
+      this.saveTimer = null
+      await this.saveCurrentMap()
+    },
+
+    // Se guarda en el mapa que está cargado en el lienzo (mindMapId), no en currentId: al
+    // cambiar de mapa currentId cambia antes de que se cargue el mapa nuevo
     async saveCurrentMap() {
-      if (!this.mindMap || !this.currentId) return
+      this.saveTimer = null
+      const id = this.mindMapId
+      if (!this.mindMap || !id) return
       const data = this.mindMap.getData(true)
       let res
       try {
-        res = await fetch(`/api/maps/${this.currentId}`, {
+        res = await fetch(`/api/maps/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data })
@@ -1068,9 +1085,13 @@ function mindMapApp() {
       if (!confirm('¿Eliminar este mapa? Esta acción no se puede deshacer.')) return
       await fetch(`/api/maps/${id}`, { method: 'DELETE' })
       if (id === this.currentId) {
+        // Un autoguardado pendiente del mapa borrado ya no tiene adónde ir
+        clearTimeout(this.saveTimer)
+        this.saveTimer = null
         if (this.mindMap) {
           this.mindMap.destroy()
           this.mindMap = null
+          this.mindMapId = null
         }
         this.currentId = null
         this.currentTitle = ''
@@ -1237,9 +1258,22 @@ function mindMapApp() {
       return [{ id: 'all', name: 'Todas' }, ...TEMPLATE_CATEGORIES, { id: 'mine', name: 'Mis plantillas' }]
     },
 
+    // Con texto en el buscador se busca en todas las categorías (sin distinguir tildes ni mayúsculas)
     get visibleTemplates() {
       const category = this.dialog && this.dialog.category
+      const query = foldText((this.dialog && this.dialog.query) || '')
+      if (query) return this.galleryTemplates.filter(t => foldText(`${t.name} ${t.description || ''}`).includes(query))
       return this.galleryTemplates.filter(t => category === 'all' || t.category === category)
+    },
+
+    get templateEmptyHint() {
+      if (this.dialog && foldText(this.dialog.query || '')) return 'Ninguna plantilla coincide con la búsqueda.'
+      return 'Aún no tienes plantillas propias. Abre un mapa y usa Exportar › Guardar como plantilla.'
+    },
+
+    selectTemplateCategory(id) {
+      this.dialog.category = id
+      this.dialog.query = ''
     },
 
     async loadUserTemplates() {
@@ -1256,7 +1290,7 @@ function mindMapApp() {
         console.error(err)
         this.userTemplates = []
       }
-      this.showDialog({ kind: 'templates', category: 'all', selected: 'builtin:project-plan', pendingDelete: null, error: '' })
+      this.showDialog({ kind: 'templates', category: 'all', query: '', selected: 'builtin:project-plan', pendingDelete: null, error: '' }, 'templateQuery')
     },
 
     async createFromTemplate(key = this.dialog && this.dialog.selected) {

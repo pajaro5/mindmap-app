@@ -7,7 +7,7 @@ Aplicación web local para crear y editar mapas mentales. Los mapas se guardan a
 Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista, Exportar), panel de tareas a la derecha y barra de estado con zoom.
 
 - Crear, renombrar y eliminar mapas desde el panel **Mis mapas**.
-- **Plantillas**: 19 de serie (reuniones y proyectos, inspiradas en las de MindManager) con fechas calculadas desde el día de creación, y plantillas propias con "Guardar como plantilla".
+- **Plantillas**: 50 de serie inspiradas en las de MindManager (reuniones, proyectos, estrategia y análisis, personales, organigramas, cronologías y espinas de pez), con buscador y fechas calculadas desde el día de creación, y plantillas propias con "Guardar como plantilla".
 - Diseños: radial, árbol, organigrama, línea de tiempo y espina de pez.
 - Editor visual de nodos basado en [simple-mind-map](https://github.com/wanglin2/mind-map), con un tema propio (`mindmanager`): tema central azul, temas principales verdes y ramas curvas.
 - Insertar subtemas y temas (después, antes con Shift+Enter, o tema padre), eliminar, deshacer y rehacer desde la cinta o con el teclado.

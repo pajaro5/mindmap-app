@@ -531,9 +531,11 @@
           <h2 id="appDialogTitle" class="dialog-title">Nuevo desde plantilla</h2>
           <div class="template-gallery">
             <nav class="template-categories" aria-label="Categorías">
+              <input type="search" class="template-search" name="templateQuery" placeholder="Buscar plantilla…" aria-label="Buscar plantilla"
+                     x-model="dialog.query" @keydown.enter.prevent autocomplete="off">
               <template x-for="c in galleryCategories" :key="c.id">
-                <button type="button" class="template-category" :data-category="c.id" :aria-pressed="dialog.category === c.id"
-                        :class="{ active: dialog.category === c.id }" @click="dialog.category = c.id" x-text="c.name"></button>
+                <button type="button" class="template-category" :data-category="c.id" :aria-pressed="!dialog.query && dialog.category === c.id"
+                        :class="{ active: !dialog.query && dialog.category === c.id }" @click="selectTemplateCategory(c.id)" x-text="c.name"></button>
               </template>
             </nav>
             <div class="template-grid" role="listbox" aria-label="Plantillas">
@@ -554,9 +556,7 @@
                   </div>
                 </div>
               </template>
-              <p class="empty-hint" x-show="!visibleTemplates.length">
-                Aún no tienes plantillas propias. Abre un mapa y usa Exportar › Guardar como plantilla.
-              </p>
+              <p class="empty-hint" x-show="!visibleTemplates.length" x-text="templateEmptyHint"></p>
             </div>
           </div>
           <p class="dialog-error" role="alert" x-show="dialog.error" x-text="dialog.error"></p>
