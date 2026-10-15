@@ -618,6 +618,27 @@
       </template>
 
       <!-- Llamada: nueva (en los temas seleccionados) o editar la seleccionada -->
+      <!-- Zona de un diagrama: rótulo y color (doble clic en el rótulo) -->
+      <template x-if="dialog && dialog.kind === 'diagramItem'">
+        <form class="dialog-form" @submit.prevent="saveDiagramItem()" novalidate>
+          <h2 id="appDialogTitle" class="dialog-title">Zona del diagrama</h2>
+          <label class="dialog-field">
+            <span>Rótulo</span>
+            <input type="text" name="diagramLabel" x-model="dialog.label" maxlength="80" autocomplete="off">
+          </label>
+          <label class="dialog-field">
+            <span>Color</span>
+            <input type="color" name="diagramColor" x-model="dialog.color">
+          </label>
+          <p class="dialog-hint" x-show="dialog.rule" x-text="dialog.rule"></p>
+          <div class="dialog-actions">
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary">Aceptar</button>
+            <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+      </template>
+
       <template x-if="dialog && dialog.kind === 'callout'">
         <form class="dialog-form" @submit.prevent="saveCallout()" novalidate>
           <h2 id="appDialogTitle" class="dialog-title" x-text="dialog.target ? 'Editar llamada' : 'Nueva llamada'"></h2>
@@ -743,6 +764,7 @@
   <script src="/js/markers.js"></script>
   <script src="/js/task-info.js"></script>
   <script src="/js/callouts.js"></script>
+  <script src="/js/diagrams.js"></script>
   <script src="/js/search-filter.js"></script>
   <script src="/js/elements.js"></script>
   <script src="/js/mindmap-extensions.js"></script>

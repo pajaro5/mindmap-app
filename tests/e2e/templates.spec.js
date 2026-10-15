@@ -21,7 +21,13 @@ async function openGallery(page, app) {
 }
 
 // El mapa creado desde la galería se registra para borrarlo al terminar
+// El diálogo se cierra antes de abrir el mapa nuevo: hay que esperar a que esté cargado (los
+// mapas de las pruebas se titulan "E2E …"; los creados desde una plantilla, no)
 async function trackCurrentMap(page, maps) {
+  await page.waitForFunction(() => {
+    const d = window.Alpine.$data(document.body)
+    return !!d.currentId && d.mindMapId === d.currentId && !d.currentTitle.startsWith('E2E ')
+  })
   const id = await page.evaluate(() => window.Alpine.$data(document.body).currentId)
   maps.track(id)
   return id
@@ -31,9 +37,9 @@ test.describe('Galería de plantillas', () => {
   test('muestra las plantillas de serie por categorías', async ({ page, maps }) => {
     const { app } = await setupMap(page, maps)
     await openGallery(page, app)
-    await expect(cards(page)).toHaveCount(50)
-    await expect(dialog(page).locator('.template-card .template-preview svg')).toHaveCount(50)
-    for (const [category, count] of [['meetings', 10], ['projects', 9], ['strategy', 15], ['personal', 10], ['layouts', 6]]) {
+    await expect(cards(page)).toHaveCount(67)
+    await expect(dialog(page).locator('.template-card .template-preview svg')).toHaveCount(67)
+    for (const [category, count] of [['meetings', 10], ['projects', 9], ['strategy', 15], ['personal', 10], ['layouts', 6], ['diagrams', 17]]) {
       await dialog(page).locator(`[data-category="${category}"]`).click()
       await expect(cards(page), category).toHaveCount(count)
     }
@@ -93,6 +99,8 @@ test.describe('Galería de plantillas', () => {
   })
 
   test('todas las plantillas de serie se dibujan en el mapa sin errores', async ({ page, maps }) => {
+    // Recorre las 67 plantillas (≥250 ms cada una): ~25 s en solitario, más con la suite en paralelo
+    test.setTimeout(120_000)
     const errors = []
     page.on('pageerror', e => errors.push(e.message))
     await setupMap(page, maps)
@@ -112,7 +120,7 @@ test.describe('Galería de plantillas', () => {
         mm.setFullData(data)
         await rendered
         const visible = 1 + t.root.children.length // tema central + principales (siempre visibles)
-        out.push({ id: t.id, layout: mm.opt.layout, nodes: document.querySelectorAll('#mindMapContainer .smm-node').length, visible, want: t.layout || 'mindMap' })
+        out.push({ id: t.id, layout: mm.opt.layout, nodes: document.querySelectorAll('#mindMapContainer .smm-node').length, visible, want: t.diagram ? DIAGRAM_LAYOUT : (t.layout || 'mindMap') })
       }
       return out
     })
@@ -214,6 +222,7 @@ test.describe('Galería de plantillas', () => {
     await card(page, 'builtin:project-timeline').dblclick()
     await expect(dialog(page)).toBeHidden()
     await trackCurrentMap(page, maps)
+    await expect(app.node('Lanzamiento')).toBeVisible()
     expect(await app.nodeData('Análisis', '_task')).toEqual({ start: inDays(14), due: inDays(35) })
     expect(await app.nodeData('Lanzamiento', '_task')).toEqual({ due: inDays(100), milestone: true })
   })
@@ -225,7 +234,8 @@ test.describe('Galería de plantillas', () => {
     await card(page, 'builtin:job-search').dblclick()
     await expect(dialog(page)).toBeHidden()
     await trackCurrentMap(page, maps)
-    const [cat] = await app.nodeData('Búsqueda de empleo', '_textMarkers')
+    await expect(app.node('Puesto en empresa 2')).toBeVisible()
+    const [cat] =await app.nodeData('Búsqueda de empleo', '_textMarkers')
     expect(cat.name).toBe('Candidatura')
     expect(cat.markers.map(m => m.name)).toEqual(['Enviada', 'Entrevista', 'Oferta', 'Descartada'])
     expect((await app.nodeData('Puesto en empresa 2', 'tag')).map(t => t.text)).toEqual(['Entrevista'])

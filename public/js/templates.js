@@ -19,8 +19,12 @@ const TEMPLATE_CATEGORIES = [
   { id: 'projects', name: 'Proyectos' },
   { id: 'strategy', name: 'Estrategia y análisis' },
   { id: 'personal', name: 'Personal' },
-  { id: 'layouts', name: 'Organigramas, cronologías y causa-efecto' }
+  { id: 'layouts', name: 'Organigramas, cronologías y causa-efecto' },
+  { id: 'diagrams', name: 'Diagramas' }
 ]
+
+// Matriz 2×2 con ejes: celdas en orden de lectura (arriba-izquierda, arriba-derecha, …)
+const matrix2x2 = (axes, cells) => ({ type: 'matrix', rows: 2, cols: 2, ...axes, items: cells.map(([id, label, color]) => ({ id, label, color })) })
 
 const CANDIDATURA = { name: 'Candidatura', color: '#7048e8', markers: ['Enviada', 'Entrevista', 'Oferta', 'Descartada'] }
 const VIAJE = { name: 'Preparado', color: '#2f9e44', markers: ['Pendiente', 'Hecho'] }
@@ -771,6 +775,226 @@ const BUILTIN_TEMPLATES = [
       T('Sistemas', [T('Causa')]),
       T('Personas', [T('Causa')])
     ])
+  },
+
+  // ---------- Diagramas ----------
+  // Los temas se colocan en zonas; las reglas dan icono, color o tamaño según la zona
+  {
+    id: 'swot-matrix', category: 'diagrams', name: 'Matriz DAFO',
+    description: 'DAFO en matriz 2×2: cada tema toma el icono y el color del cuadrante donde lo dejas.',
+    diagram: {
+      ...matrix2x2({}, [
+        ['f', 'Fortalezas', '#2f9e44'], ['d', 'Debilidades', '#e03131'],
+        ['o', 'Oportunidades', '#1c7ed6'], ['a', 'Amenazas', '#f08c00']
+      ]),
+      rules: { f: { icon: 'flag_green' }, d: { icon: 'flag_red' }, o: { icon: 'arrow_rising' }, a: { icon: 'symbol_warning' } }
+    },
+    root: T('DAFO: [empresa o proyecto]', { callout: 'Arrastra un tema a otro cuadrante: cambia su icono.' }, [
+      T('Fortaleza', { zone: 'f' }), T('Debilidad', { zone: 'd' }),
+      T('Oportunidad', { zone: 'o' }), T('Amenaza', { zone: 'a' })
+    ])
+  },
+  {
+    id: 'urgency-importance', category: 'diagrams', name: 'Matriz urgencia/importancia',
+    description: 'Matriz de Eisenhower: hacer, planificar, delegar o eliminar, con la prioridad automática.',
+    diagram: {
+      ...matrix2x2({ xLabel: 'Urgencia', xLow: 'Baja', xHigh: 'Alta', yLabel: 'Importancia', yLow: 'Baja', yHigh: 'Alta' }, [
+        ['plan', 'Planificar', '#1c7ed6'], ['now', 'Hacer ahora', '#e03131'],
+        ['drop', 'Eliminar', '#868e96'], ['delegate', 'Delegar', '#f08c00']
+      ]),
+      rules: { now: { icon: 'priority_1' }, plan: { icon: 'priority_2' }, delegate: { icon: 'priority_3' }, drop: { icon: 'symbol_cross' } }
+    },
+    root: T('Prioridades: [periodo]', [
+      T('Tarea importante', { zone: 'plan' }), T('Tarea urgente e importante', { zone: 'now' }),
+      T('Distracción', { zone: 'drop' }), T('Interrupción', { zone: 'delegate' })
+    ])
+  },
+  {
+    id: 'value-effort', category: 'diagrams', name: 'Matriz valor/esfuerzo',
+    description: 'Decide qué hacer primero: victorias rápidas, grandes proyectos, relleno o evitar.',
+    diagram: {
+      ...matrix2x2({ xLabel: 'Esfuerzo', xLow: 'Bajo', xHigh: 'Alto', yLabel: 'Valor', yLow: 'Bajo', yHigh: 'Alto' }, [
+        ['quick', 'Victorias rápidas', '#2f9e44'], ['big', 'Grandes proyectos', '#1c7ed6'],
+        ['fill', 'Tareas de relleno', '#f08c00'], ['avoid', 'Evitar', '#e03131']
+      ]),
+      rules: { quick: { icon: 'symbol_star', fill: '#d3f9d8' }, big: { fill: '#d0ebff' }, fill: { fill: '#fff3bf' }, avoid: { icon: 'symbol_cross', fill: '#ffe3e3' } }
+    },
+    root: T('Valor/esfuerzo: [iniciativas]', [
+      T('Iniciativa A', { zone: 'quick' }), T('Iniciativa B', { zone: 'big' }),
+      T('Iniciativa C', { zone: 'fill' }), T('Iniciativa D', { zone: 'avoid' })
+    ])
+  },
+  {
+    id: 'risk-reward', category: 'diagrams', name: 'Matriz riesgo/beneficio',
+    description: 'Clasifica opciones por riesgo y beneficio; el semáforo se pone solo.',
+    diagram: {
+      ...matrix2x2({ xLabel: 'Riesgo', xLow: 'Bajo', xHigh: 'Alto', yLabel: 'Beneficio', yLow: 'Bajo', yHigh: 'Alto' }, [
+        ['go', 'Adelante', '#2f9e44'], ['bet', 'Apuestas estratégicas', '#f08c00'],
+        ['minor', 'Mejoras menores', '#1c7ed6'], ['avoid', 'Evitar', '#e03131']
+      ]),
+      rules: { go: { icon: 'traffic_green' }, bet: { icon: 'traffic_amber' }, minor: { icon: 'traffic_amber' }, avoid: { icon: 'traffic_red' } }
+    },
+    root: T('Riesgo/beneficio: [decisión]', [
+      T('Opción 1', { zone: 'go' }), T('Opción 2', { zone: 'bet' }), T('Opción 3', { zone: 'minor' }), T('Opción 4', { zone: 'avoid' })
+    ])
+  },
+  {
+    id: 'matrix-3x3', category: 'diagrams', name: 'Matriz 3×3',
+    description: 'Matriz de nueve casillas con dos ejes para clasificar cualquier cosa.',
+    diagram: {
+      type: 'matrix', rows: 3, cols: 3, width: 690, height: 480,
+      xLabel: 'Eje horizontal', xLow: 'Bajo', xHigh: 'Alto', yLabel: 'Eje vertical', yLow: 'Bajo', yHigh: 'Alto',
+      items: ['Alto · Bajo', 'Alto · Medio', 'Alto · Alto', 'Medio · Bajo', 'Medio · Medio', 'Medio · Alto', 'Bajo · Bajo', 'Bajo · Medio', 'Bajo · Alto']
+        .map((label, i) => ({ id: `c${i + 1}`, label, color: ['#2f9e44', '#1c7ed6', '#8e6fd8'][i % 3] }))
+    },
+    root: T('Matriz: [tema]', [T('Elemento 1', { zone: 'c5' }), T('Elemento 2', { zone: 'c3' })])
+  },
+  {
+    id: 'venn-2', category: 'diagrams', name: 'Diagrama de Venn (2 círculos)',
+    description: 'Lo propio de cada grupo y lo que comparten; el color del tema sigue a su zona.',
+    diagram: {
+      type: 'venn',
+      items: [{ id: 'a', label: 'Grupo A', color: '#1c7ed6' }, { id: 'b', label: 'Grupo B', color: '#2f9e44' }],
+      rules: { a: { fill: '#d0ebff' }, b: { fill: '#d3f9d8' }, 'a+b': { fill: '#fff3bf', icon: 'symbol_star' } }
+    },
+    root: T('Comparar: [A] y [B]', [
+      T('Solo de A', { zone: 'a' }), T('Solo de B', { zone: 'b' }), T('En común', { zone: 'a+b' })
+    ])
+  },
+  {
+    id: 'venn-3', category: 'diagrams', name: 'Diagrama de Venn (3 círculos)',
+    description: 'Tres conjuntos y sus intersecciones.',
+    diagram: {
+      type: 'venn',
+      items: [{ id: 'a', label: 'Conjunto A', color: '#1c7ed6' }, { id: 'b', label: 'Conjunto B', color: '#e03131' }, { id: 'c', label: 'Conjunto C', color: '#2f9e44' }]
+    },
+    root: T('Diagrama de Venn: [tema]', [
+      T('A', { zone: 'a' }), T('B', { zone: 'b' }), T('C', { zone: 'c' }), T('Común a los tres', { zone: 'a+b+c' })
+    ])
+  },
+  {
+    id: 'venn-3-rules', category: 'diagrams', name: 'Venn de 3 círculos con reglas',
+    description: 'Venn de tres conjuntos en el que cada zona da su color al tema que se coloca en ella.',
+    diagram: {
+      type: 'venn',
+      items: [{ id: 'a', label: 'Deseable', color: '#e03131' }, { id: 'b', label: 'Viable', color: '#1c7ed6' }, { id: 'c', label: 'Factible', color: '#2f9e44' }],
+      rules: {
+        a: { fill: '#ffe3e3' }, b: { fill: '#d0ebff' }, c: { fill: '#d3f9d8' },
+        'a+b': { fill: '#e5dbff' }, 'a+c': { fill: '#fff3bf' }, 'b+c': { fill: '#c3fae8' },
+        'a+b+c': { fill: '#ffd8a8', icon: 'symbol_star' }
+      }
+    },
+    root: T('Ideas: [producto]', { note: 'En el centro, las ideas deseables, viables y factibles a la vez.' }, [
+      T('Idea 1', { zone: 'a' }), T('Idea 2', { zone: 'b' }), T('Idea 3', { zone: 'c' }), T('Idea ganadora', { zone: 'a+b+c' })
+    ])
+  },
+  {
+    id: 'funnel', category: 'diagrams', name: 'Embudo de colores',
+    description: 'Embudo de cinco etapas para cualquier proceso que se va estrechando.',
+    diagram: {
+      type: 'funnel',
+      items: ['Etapa 1', 'Etapa 2', 'Etapa 3', 'Etapa 4', 'Etapa 5'].map((label, i) => ({ id: `s${i + 1}`, label, color: ['#3d8fd8', '#2fb5a6', '#7dc142', '#f0a830', '#e0544b'][i] }))
+    },
+    root: T('Embudo: [proceso]', [T('Elemento', { zone: 's1' }), T('Elemento', { zone: 's3' }), T('Elemento', { zone: 's5' })])
+  },
+  {
+    id: 'sales-funnel', category: 'diagrams', name: 'Embudo por etapas',
+    description: 'Embudo de ventas: el progreso de cada oportunidad se marca solo según su etapa.',
+    diagram: {
+      type: 'funnel',
+      items: ['Contactos', 'Oportunidades', 'Propuestas', 'Negociación', 'Clientes'].map((label, i) => ({ id: `s${i + 1}`, label, color: ['#3d8fd8', '#2fb5a6', '#7dc142', '#f0a830', '#e0544b'][i] })),
+      rules: { s1: { icon: 'progress_1' }, s2: { icon: 'progress_3' }, s3: { icon: 'progress_5' }, s4: { icon: 'progress_7' }, s5: { icon: 'progress_8' } }
+    },
+    root: T('Embudo de ventas', { callout: 'Arrastra cada cliente a su etapa: el progreso se actualiza.' }, [
+      T('Cliente A', { zone: 's1' }), T('Cliente B', { zone: 's2' }), T('Cliente C', { zone: 's3' }), T('Cliente D', { zone: 's5' })
+    ])
+  },
+  {
+    id: 'ecommerce-funnel', category: 'diagrams', name: 'Embudo de conversión',
+    description: 'Visitas, producto, carrito, pago y compra para comparar la conversión de una tienda en línea.',
+    diagram: {
+      type: 'funnel', height: 470,
+      items: ['Visitas', 'Ven un producto', 'Añaden al carrito', 'Inician el pago', 'Compran'].map((label, i) => ({ id: `s${i + 1}`, label, color: ['#1c7ed6', '#3d8fd8', '#7048e8', '#ae3ec9', '#2f9e44'][i] }))
+    },
+    root: T('Conversión: [tienda]', { note: 'Tasa de conversión = compras / visitas. Compara cada etapa con la anterior.' }, [
+      T('10 000', { zone: 's1' }), T('4 000 (40 %)', { zone: 's2' }), T('800 (20 %)', { zone: 's3' }),
+      T('400 (50 %)', { zone: 's4' }), T('250 (62 %)', { zone: 's5' })
+    ])
+  },
+  {
+    id: 'onion', category: 'diagrams', name: 'Diagrama de cebolla',
+    description: 'Capas concéntricas, del núcleo al entorno; por ejemplo, los interesados de un proyecto.',
+    diagram: {
+      type: 'onion',
+      items: [
+        { id: 'core', label: 'Núcleo', color: '#1c7ed6' }, { id: 'direct', label: 'Interesados directos', color: '#2fb5a6' },
+        { id: 'indirect', label: 'Interesados indirectos', color: '#7dc142' }, { id: 'env', label: 'Entorno', color: '#f0a830' }
+      ]
+    },
+    root: T('Interesados: [proyecto]', [
+      T('Equipo', { zone: 'core' }), T('Clientes', { zone: 'direct' }), T('Proveedores', { zone: 'indirect' }), T('Reguladores', { zone: 'env' })
+    ])
+  },
+  {
+    id: 'quarter-circle-plot', category: 'diagrams', name: 'Gráfico de cuarto de círculo',
+    description: 'Cuanto más cerca de la esquina, más importante: el tamaño del tema cambia con su posición.',
+    diagram: {
+      type: 'quarter',
+      items: [{ id: 'high', label: 'Muy importante', color: '#e03131' }, { id: 'mid', label: 'Importante', color: '#f08c00' }, { id: 'low', label: 'Poco importante', color: '#1c7ed6' }],
+      rules: { high: { fontSize: 20 }, mid: { fontSize: 15 }, low: { fontSize: 11 } }
+    },
+    root: T('Importancia: [tema]', [T('Elemento clave', { zone: 'high' }), T('Elemento', { zone: 'mid' }), T('Detalle', { zone: 'low' })])
+  },
+  {
+    id: 'quarter-onion-plot', category: 'diagrams', name: 'Cuarto de cebolla',
+    description: 'Ahora, próximamente o más adelante: el color del tema cambia con su anillo.',
+    diagram: {
+      type: 'quarter',
+      items: [{ id: 'now', label: 'Ahora', color: '#2f9e44' }, { id: 'next', label: 'Próximamente', color: '#f08c00' }, { id: 'later', label: 'Más adelante', color: '#868e96' }],
+      rules: { now: { fill: '#d3f9d8' }, next: { fill: '#fff3bf' }, later: { fill: '#e9ecef' } }
+    },
+    root: T('Hoja de ruta: [producto]', [T('Mejora 1', { zone: 'now' }), T('Mejora 2', { zone: 'next' }), T('Idea', { zone: 'later' })])
+  },
+  {
+    id: 'swimlanes-horizontal', category: 'diagrams', name: 'Carriles horizontales',
+    description: 'Proceso entre departamentos: un carril por área y los pasos de izquierda a derecha.',
+    diagram: {
+      type: 'lanes', orientation: 'horizontal',
+      items: ['Cliente', 'Ventas', 'Almacén', 'Facturación'].map((label, i) => ({ id: `l${i + 1}`, label, color: ['#3d8fd8', '#7dc142', '#f0a830', '#8e6fd8'][i] }))
+    },
+    root: T('Proceso: [pedido]', [
+      T('Hace el pedido', { zone: 'l1', ref: 'p1', links: [{ to: 'p2' }] }),
+      T('Confirma el pedido', { at: [290, 156], ref: 'p2', links: [{ to: 'p3' }] }),
+      T('Prepara el envío', { at: [440, 276], ref: 'p3', links: [{ to: 'p4' }] }),
+      T('Emite la factura', { at: [600, 396], ref: 'p4', links: [{ to: 'p5' }] }),
+      T('Recibe el pedido', { at: [740, 36], ref: 'p5' })
+    ])
+  },
+  {
+    id: 'swimlanes-vertical', category: 'diagrams', name: 'Carriles verticales',
+    description: 'Columnas por área o canal con sus tareas de arriba abajo.',
+    diagram: {
+      type: 'lanes', orientation: 'vertical', width: 720, height: 480,
+      items: ['Marketing', 'Producto', 'Soporte'].map((label, i) => ({ id: `l${i + 1}`, label, color: ['#e0544b', '#3d8fd8', '#2fb5a6'][i] }))
+    },
+    root: T('Lanzamiento: [producto]', [
+      T('Campaña', { zone: 'l1' }), T('Web', { zone: 'l1' }),
+      T('Versión final', { zone: 'l2' }), T('Notas de versión', { zone: 'l2' }),
+      T('Guía de ayuda', { zone: 'l3' })
+    ])
+  },
+  {
+    id: 'concept-map', category: 'diagrams', name: 'Mapa conceptual',
+    description: 'Conceptos colocados libremente y unidos por relaciones con texto.',
+    diagram: { type: 'concept' },
+    root: T('Mapa conceptual: [tema]', { callout: 'Une conceptos con Insertar › Relación y escribe el vínculo.' }, [
+      T('Plantas', { at: [300, 20], ref: 'plantas', links: [{ to: 'luz', text: 'necesitan' }, { to: 'agua', text: 'necesitan' }, { to: 'foto', text: 'realizan' }] }),
+      T('Luz solar', { at: [40, 170], ref: 'luz' }),
+      T('Agua', { at: [580, 170], ref: 'agua' }),
+      T('Fotosíntesis', { at: [300, 250], ref: 'foto', links: [{ to: 'oxigeno', text: 'produce' }, { to: 'glucosa', text: 'produce' }] }),
+      T('Oxígeno', { at: [120, 400], ref: 'oxigeno' }),
+      T('Glucosa', { at: [500, 400], ref: 'glucosa' })
+    ])
   }
 ]
 
@@ -780,12 +1004,47 @@ function addDaysIso(baseIso, days) {
   return date.toISOString().slice(0, 10)
 }
 
+// Posición de cada tema principal de un diagrama: `at` explícito o apilados en su zona (en
+// carriles horizontales, de izquierda a derecha; en el resto, de arriba abajo)
+function diagramTopicPositions(diagram, children) {
+  const used = {}
+  return children.map(child => {
+    if (Array.isArray(child.at)) return { x: child.at[0], y: child.at[1] }
+    const zone = child.zone || (diagram.items[0] && diagram.items[0].id)
+    const n = used[zone] = (used[zone] || 0) + 1
+    const a = diagramZoneAnchor(diagram, zone)
+    const rowWise = diagram.type === 'lanes' && diagram.orientation !== 'vertical'
+    return rowWise ? { x: a.x + (n - 1) * 150, y: a.y } : { x: a.x, y: a.y + (n - 1) * 44 }
+  })
+}
+
 // Convierte una plantilla de serie en datos de mapa, con las fechas a partir de `today`
 function instantiateTemplate(template, today = todayIso()) {
   const defs = normalizeMarkerDefs(template.markers || [])
-  const build = (node, isRoot) => {
+  const diagram = template.diagram ? normalizeDiagram(template.diagram) : null
+  const positions = diagram ? diagramTopicPositions(diagram, template.root.children || []) : []
+  // Relaciones (mapa conceptual, carriles): `ref` nombra un tema y `links` apunta a otros
+  const uids = {}
+  const collectRefs = node => {
+    if (node.ref) uids[node.ref] = createUid()
+    ;(node.children || []).forEach(collectRefs)
+  }
+  collectRefs(template.root)
+  const build = (node, isRoot, index) => {
     const data = { text: node.text, expand: !node.collapsed }
     if (isRoot && defs.length) data[TEXT_MARKERS_KEY] = defs
+    if (isRoot && diagram) data[DIAGRAM_KEY] = diagram
+    if (node.ref) data.uid = uids[node.ref]
+    if (diagram && positions[index] && !isRoot && node.__level === 1) {
+      data.customLeft = nonZero(positions[index].x)
+      data.customTop = nonZero(positions[index].y)
+    }
+    const links = (node.links || []).filter(l => uids[l.to])
+    if (links.length) {
+      data.associativeLineTargets = links.map(l => uids[l.to])
+      const texts = links.filter(l => l.text)
+      if (texts.length) data.associativeLineText = Object.fromEntries(texts.map(l => [uids[l.to], l.text]))
+    }
     if (node.note) data.note = node.note
     if (node.icon) data.icon = [...node.icon]
     if (node.tags) data.tag = node.tags.map(name => tagFor(defs, name))
@@ -800,11 +1059,16 @@ function instantiateTemplate(template, today = todayIso()) {
       if (task) data[TASK_KEY] = task
     }
     if (node.callout) data[CALLOUTS_KEY] = [{ id: createUid(), text: node.callout, dx: 24, dy: -14 }]
-    return { data, children: (node.children || []).map(child => build(child, false)) }
+    // Regla de la zona en la que cae el tema (después de sus propios iconos y estilos)
+    if (diagram && data.customLeft !== undefined) {
+      const zone = diagramZoneAt(diagram, data.customLeft + TOPIC_GUESS.w / 2, data.customTop + TOPIC_GUESS.h / 2)
+      applyDiagramRule(data, ruleForZone(diagram, zone))
+    }
+    return { data, children: (node.children || []).map((child, i) => build({ ...child, __level: isRoot ? 1 : 2 }, false, i)) }
   }
   return {
-    layout: template.layout || 'mindMap',
-    root: build(template.root, true),
+    layout: diagram ? DIAGRAM_LAYOUT : (template.layout || 'mindMap'),
+    root: build(template.root, true, 0),
     theme: { template: THEME_NAME, config: {} },
     view: {}
   }
@@ -894,8 +1158,10 @@ function fishbonePreview(children) {
   return previewSvg(parts)
 }
 
-function templatePreviewSvg(tree, layout = 'mindMap') {
+function templatePreviewSvg(tree, layout = 'mindMap', diagram = null) {
   const all = tree.children || []
+  const d = diagram && normalizeDiagram(diagram)
+  if (d) return diagramPreviewSvg(d, all.length)
   if (layout === 'organizationStructure') return orgPreview(all.slice(0, 6))
   if (layout === 'timeline') return timelinePreview(all.slice(0, 6))
   if (layout === 'fishbone') return fishbonePreview(all.slice(0, 8))

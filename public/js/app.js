@@ -578,6 +578,41 @@ function mindMapApp() {
       this.mindMap.execCommand('SET_CALLOUTS', target.uid, list => list.filter(c => c.id !== target.id))
     },
 
+    // ---- Diagramas ----
+    // Doble clic en un hueco del diagrama: tema nuevo en ese punto, listo para escribir
+    addDiagramTopic(point) {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      if (!mindMap) return
+      mindMap.__diagramPendingPoint = point
+      mindMap.execCommand('INSERT_CHILD_NODE', true, [mindMap.renderer.root])
+      mindMap.__diagramPendingPoint = null
+    },
+
+    openDiagramItemDialog(itemId) {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      const d = mindMap && diagramOf(mindMap)
+      const item = d && d.items.find(i => i.id === itemId)
+      if (!item) return
+      const zones = diagramZoneIds(d).filter(z => z.split('+').includes(itemId) && d.rules && d.rules[z])
+      const effects = zones.length && d.rules[itemId]
+        ? Object.entries({ icon: 'icono', fill: 'color de relleno', fontSize: 'tamaño de letra' })
+          .filter(([key]) => d.rules[itemId][key] !== undefined).map(([, name]) => name)
+        : []
+      this.showDialog({
+        kind: 'diagramItem', itemId, label: item.label, color: item.color,
+        rule: effects.length ? `Regla de la zona: los temas que se colocan aquí toman su ${effects.join(', ')}.` : ''
+      }, 'diagramLabel')
+    },
+
+    saveDiagramItem() {
+      const { itemId, label, color } = this.dialog
+      this.mindMap.execCommand('SET_DIAGRAM', d => ({
+        ...d,
+        items: d.items.map(i => i.id === itemId ? { ...i, label, color } : i)
+      }))
+      this.closeDialog()
+    },
+
     // ---- Límite ----
     // Si hay un límite seleccionado se le cambia el estilo; si no, se crea uno nuevo
     // alrededor de los temas seleccionados con ese estilo
@@ -960,6 +995,9 @@ function mindMapApp() {
           // siempre que el foco no esté en un campo (la librería ya ignora inputs y selects).
           enableShortcutOnlyWhenMouseInSvg: false,
           customHyperlinkJump: url => openHyperlinkSafely(url),
+          // Diagramas: título fijo encima del diagrama y temas que se sueltan donde se dejan
+          ...diagramMapOptions(map.data.root.data),
+          beforeDragEnd: info => diagramBeforeDragEnd(this.mindMap && Alpine.raw(this.mindMap), info),
           errorHandler: createMindMapErrorHandler(() => this.mindMap, (code, error) => {
             console.error(code, error)
             this.errorMsg = `Error en el mapa (${code}): ${(error && error.message) || error || ''}`
@@ -967,6 +1005,13 @@ function mindMapApp() {
         })
         this.mindMapId = map.id
         extendMindMap(this.mindMap)
+        attachDiagram(Alpine.raw(this.mindMap), {
+          editable: true,
+          handlers: {
+            onZoneDblClick: (zone, point) => this.addDiagramTopic(point),
+            onLabelDblClick: itemId => this.openDiagramItemDialog(itemId)
+          }
+        })
         bindFormatShortcuts(this.mindMap, id => this.runCommand(id))
 
         if (map.data.view && Object.keys(map.data.view).length) {
@@ -1245,11 +1290,11 @@ function mindMapApp() {
     get galleryTemplates() {
       const builtin = BUILTIN_TEMPLATES.map(t => ({
         key: `builtin:${t.id}`, id: t.id, category: t.category, name: t.name, description: t.description,
-        topics: countTopics(t.root), preview: templatePreviewSvg(t.root, t.layout), builtin: true
+        topics: countTopics(t.root), preview: templatePreviewSvg(t.root, t.layout, t.diagram), builtin: true
       }))
       const mine = this.userTemplates.map(t => ({
         key: `user:${t.id}`, id: t.id, category: 'mine', name: t.title, description: t.description,
-        topics: countTopics(t.data.root || {}), preview: templatePreviewSvg(toPreviewTree(t.data.root), t.data.layout), builtin: false
+        topics: countTopics(t.data.root || {}), preview: templatePreviewSvg(toPreviewTree(t.data.root), t.data.layout, t.data.root && t.data.root.data && t.data.root.data[DIAGRAM_KEY]), builtin: false
       }))
       return [...builtin, ...mine]
     },

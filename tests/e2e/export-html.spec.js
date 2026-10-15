@@ -117,6 +117,37 @@ test.describe('el archivo abierto en el navegador', () => {
     expect(errors).toEqual([])
   })
 
+  test('un diagrama se exporta con su fondo y cada tema en su zona', async ({ page, maps }, testInfo) => {
+    const data = clone(SAMPLE_TREE)
+    data.root.data._diagram = {
+      type: 'matrix', rows: 2, cols: 2,
+      items: [{ id: 'a', label: 'Zona A', color: '#2f9e44' }, { id: 'b', label: 'Zona B', color: '#e03131' }, { id: 'c', label: 'Zona C', color: '#1c7ed6' }, { id: 'd', label: 'Zona D', color: '#f08c00' }],
+      rules: { b: { icon: 'flag_red' } }
+    }
+    data.root.children = [
+      { data: { text: 'En A', customLeft: 40, customTop: 60 }, children: [] },
+      { data: { text: 'En B', customLeft: 360, customTop: 60 }, children: [] },
+      { data: { text: 'En D', customLeft: 360, customTop: 280 }, children: [] }
+    ]
+    const { app } = await setupMap(page, maps, { data })
+    await expect(page.locator('#mindMapContainer .smm-diagram [data-zone]')).toHaveCount(4)
+    const { file } = await exportHtml(page, app, testInfo)
+    const { viewer, errors } = await openExported(page, file)
+    await expect(viewer.locator('#mindMapContainer .smm-diagram [data-zone]')).toHaveCount(4)
+    await expect(viewer.locator('#mindMapContainer .smm-diagram-label')).toHaveText(['Zona A', 'Zona B', 'Zona C', 'Zona D'])
+    for (const [text, zone] of [['En A', 'a'], ['En B', 'b'], ['En D', 'd']]) {
+      const n = await viewerNode(viewer, text).boundingBox()
+      const z = await viewer.locator(`#mindMapContainer .smm-diagram [data-zone="${zone}"]`).boundingBox()
+      const cx = n.x + n.width / 2
+      const cy = n.y + n.height / 2
+      expect(cx > z.x && cx < z.x + z.width && cy > z.y && cy < z.y + z.height, `${text} dentro de la zona ${zone}`).toBe(true)
+    }
+    // La regla aplicada en la app viaja con el mapa; el título no tiene líneas hacia los temas
+    expect(await viewer.evaluate(() => window.__viewer.mindMap.renderer.root.children[1].getData('icon'))).toEqual(['flag_red'])
+    expect(await viewer.evaluate(() => window.__viewer.mindMap.renderer.root._lines.filter(l => l.visible()).length)).toBe(0)
+    expect(errors).toEqual([])
+  })
+
   test('las ramas se despliegan y contraen con su botón y con la barra', async ({ page, maps }, testInfo) => {
     const data = clone(SAMPLE_TREE)
     data.root.children[0].data.expand = false   // Alfa contraído: Alfa uno oculto
@@ -170,7 +201,8 @@ test.describe('el archivo abierto en el navegador', () => {
     const opened = (html.match(/<script\b/gi) || []).length
     const closed = (html.match(/<\/script>/gi) || []).length
     expect(opened).toBe(closed)
-    expect(opened).toBe(2 + 8)
+    // Librería y datos, más uno por cada script de la app que se incrusta
+    expect(opened).toBe(2 + await page.evaluate(() => EXPORT_SCRIPT_URLS.length))
 
     const { viewer } = await openExported(page, file)
     await expect(viewerNodes(viewer)).toHaveCount(5)

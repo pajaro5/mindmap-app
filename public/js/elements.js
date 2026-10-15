@@ -119,6 +119,18 @@ function sanitizeMapTree(root) {
       const tags = normalizeTags(d.tag)
       if (!sameTags(tags, d.tag)) { d.tag = tags; fixed++ }
     }
+    // Posición libre (diagramas): solo números; otra cosa rompe el cálculo del diseño
+    for (const key of ['customLeft', 'customTop']) {
+      if (d[key] !== undefined && !Number.isFinite(d[key])) { delete d.customLeft; delete d.customTop; fixed++ }
+    }
+    if (d[DIAGRAM_RULE_KEY] !== undefined) {
+      const rule = normalizeDiagramRule(d[DIAGRAM_RULE_KEY])
+      if (JSON.stringify(rule) !== JSON.stringify(d[DIAGRAM_RULE_KEY])) {
+        if (rule) d[DIAGRAM_RULE_KEY] = rule
+        else delete d[DIAGRAM_RULE_KEY]
+        fixed++
+      }
+    }
     ;(node.children || []).forEach(walk)
     ;(d.generalization ? [].concat(d.generalization) : []).forEach(g => walk({ data: g, children: [] }))
   }
@@ -134,6 +146,15 @@ function sanitizeMapTree(root) {
     if (rd[TEXT_MARKERS_KEY] !== undefined) {
       const defs = normalizeMarkerDefs(rd[TEXT_MARKERS_KEY])
       if (JSON.stringify(defs) !== JSON.stringify(rd[TEXT_MARKERS_KEY])) { rd[TEXT_MARKERS_KEY] = defs; fixed++ }
+    }
+    // Definición del diagrama (tipo, tamaños, rótulos, colores y reglas)
+    if (rd[DIAGRAM_KEY] !== undefined) {
+      const diagram = normalizeDiagram(rd[DIAGRAM_KEY])
+      if (JSON.stringify(diagram) !== JSON.stringify(rd[DIAGRAM_KEY])) {
+        if (diagram) rd[DIAGRAM_KEY] = diagram
+        else delete rd[DIAGRAM_KEY]
+        fixed++
+      }
     }
   }
   return fixed

@@ -32,9 +32,12 @@ async function startInteractiveViewer() {
       iconList: libraryIconList(),
       enableShortcutOnlyWhenMouseInSvg: true,
       customHyperlinkJump: url => openHyperlinkSafely(url),
-      errorHandler: (code, error) => console.error(code, error)
+      errorHandler: (code, error) => console.error(code, error),
+      ...diagramMapOptions(data.root.data)
     })
     guardTextEditBoxes(mindMap)
+    // Diagramas: fondo (zonas y rótulos) y sin líneas desde el título
+    attachDiagram(mindMap)
 
     // Llamadas: solo se dibujan (en el visor no se seleccionan ni se mueven)
     const calloutHandlers = { isActive: () => false, onPointerDown: () => {}, onDoubleClick: () => {} }
