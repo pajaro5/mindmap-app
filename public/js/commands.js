@@ -21,6 +21,8 @@ const hasMap = s => s.hasMap
 const hasActiveNode = s => s.hasActiveNode
 // El tema central no tiene hermanos ni padre, y no se puede cortar
 const hasNonRootActiveNode = s => s.hasNonRootActiveNode
+// Comandos que actúan sobre el lienzo (zoom, dibujar con el ratón): no en la vista Esquema
+const inMapView = s => s.hasMap && s.viewMode === 'map'
 
 const COMMANDS = {
   // ---- Portapapeles ----
@@ -38,7 +40,7 @@ const COMMANDS = {
   },
   'clipboard.formatPainter': {
     label: 'Copiar formato', tooltip: 'Copiar el formato del tema y aplicarlo a otro (Esc para cancelar)', icon: 'formatPainter',
-    enabled: s => s.hasActiveNode || s.painterActive,
+    enabled: s => s.painterActive || (s.hasActiveNode && s.viewMode === 'map'),
     pressed: s => s.painterActive,
     run: app => app.togglePainter()
   },
@@ -72,25 +74,35 @@ const COMMANDS = {
   'topic.insertSibling': {
     label: 'Tema', menuLabel: 'Tema después', tooltip: 'Insertar tema al mismo nivel, después', shortcut: 'Enter', icon: 'topic',
     enabled: hasNonRootActiveNode,
-    run: app => app.mindMap.execCommand('INSERT_NODE')
+    run: app => app.insertTopic('INSERT_NODE')
   },
   'topic.insertBefore': {
     label: 'Tema antes', tooltip: 'Insertar tema al mismo nivel, antes', shortcut: 'Shift+Enter', icon: 'topicBefore',
     enabled: hasNonRootActiveNode,
-    run: app => app.mindMap.execCommand('INSERT_NODE_BEFORE')
+    run: app => app.insertTopic('INSERT_NODE_BEFORE')
   },
   'topic.insertParent': {
     label: 'Tema padre', tooltip: 'Insertar un tema padre del seleccionado', shortcut: 'Shift+Tab', icon: 'topicParent',
     enabled: hasNonRootActiveNode,
-    run: app => app.mindMap.execCommand('INSERT_PARENT_NODE')
+    run: app => app.insertTopic('INSERT_PARENT_NODE')
   },
   'topic.insertChild': {
     label: 'Subtema', tooltip: 'Insertar subtema', shortcut: 'Tab', icon: 'subtopic', enabled: hasActiveNode,
-    run: app => app.mindMap.execCommand('INSERT_CHILD_NODE')
+    run: app => app.insertTopic('INSERT_CHILD_NODE')
   },
   'topic.remove': {
     label: 'Eliminar', tooltip: 'Eliminar tema', shortcut: 'Supr', icon: 'remove', enabled: hasActiveNode,
     run: app => app.mindMap.execCommand('REMOVE_NODE')
+  },
+  'topic.promote': {
+    label: 'Subir de nivel', tooltip: 'Convertir el tema en hermano de su tema padre', shortcut: 'Alt+Mayús+←', icon: 'promote',
+    enabled: s => s.canPromote,
+    run: app => app.mindMap.execCommand('PROMOTE_TOPICS')
+  },
+  'topic.demote': {
+    label: 'Bajar de nivel', tooltip: 'Convertir el tema en subtema del tema anterior', shortcut: 'Alt+Mayús+→', icon: 'demote',
+    enabled: s => s.canDemote,
+    run: app => app.mindMap.execCommand('DEMOTE_TOPICS')
   },
 
   // ---- Edición: Dividir, Seleccionar, Limpiar ----
@@ -241,7 +253,8 @@ const COMMANDS = {
   'insert.relationship': {
     label: 'Relación', menuLabel: 'Dibujar relación',
     tooltip: 'Dibujar una relación desde el tema seleccionado (con dos temas seleccionados, los une)',
-    icon: 'relationship', enabled: hasActiveNode,
+    // Se dibuja con el ratón sobre el lienzo; con dos temas seleccionados se puede unir desde el esquema
+    icon: 'relationship', enabled: s => s.hasActiveNode && (s.viewMode === 'map' || s.activeCount === 2),
     run: app => app.startRelationship()
   },
   'relationship.text': {
@@ -379,20 +392,35 @@ const COMMANDS = {
   },
 
   // ---- Vista ----
+  'view.map': {
+    label: 'Mapa', tooltip: 'Vista Mapa: el mapa con sus ramas', icon: 'viewMap', enabled: hasMap,
+    pressed: s => s.hasMap && s.viewMode === 'map',
+    run: app => app.setViewMode('map')
+  },
+  'view.outline': {
+    label: 'Esquema', tooltip: 'Vista Esquema: los temas como lista con sangría', icon: 'viewOutline', enabled: hasMap,
+    pressed: s => s.hasMap && s.viewMode === 'outline',
+    run: app => app.setViewMode('outline')
+  },
+  'view.presentation': {
+    label: 'Presentación', tooltip: 'Presentar el mapa tema a tema a pantalla completa (← → para avanzar, Esc para salir)',
+    icon: 'presentation', enabled: hasMap,
+    run: app => app.startPresentation()
+  },
   'view.zoomIn': {
-    label: 'Acercar', tooltip: 'Acercar zoom', shortcut: 'Ctrl++', icon: 'zoomIn', enabled: hasMap,
+    label: 'Acercar', tooltip: 'Acercar zoom', shortcut: 'Ctrl++', icon: 'zoomIn', enabled: inMapView,
     run: app => app.mindMap.view.enlarge()
   },
   'view.zoomOut': {
-    label: 'Alejar', tooltip: 'Alejar zoom', shortcut: 'Ctrl+-', icon: 'zoomOut', enabled: hasMap,
+    label: 'Alejar', tooltip: 'Alejar zoom', shortcut: 'Ctrl+-', icon: 'zoomOut', enabled: inMapView,
     run: app => app.mindMap.view.narrow()
   },
   'view.fit': {
-    label: 'Ajustar', tooltip: 'Ajustar el mapa a la ventana', icon: 'fit', enabled: hasMap,
+    label: 'Ajustar', tooltip: 'Ajustar el mapa a la ventana', icon: 'fit', enabled: inMapView,
     run: app => app.mindMap.view.fit()
   },
   'view.actualSize': {
-    label: '100%', tooltip: 'Tamaño real (100%)', icon: 'actualSize', enabled: hasMap,
+    label: '100%', tooltip: 'Tamaño real (100%)', icon: 'actualSize', enabled: inMapView,
     run: app => app.mindMap.view.reset()
   },
 

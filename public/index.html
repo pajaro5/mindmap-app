@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="/css/style.css" />
   <script src="/vendor/simple-mind-map.umd.min.js"></script>
 </head>
-<body x-data="mindMapApp()" x-init="init()" :class="{ 'painter-active': painterActive }">
+<!-- Alpine llama solo a init() del objeto de x-data: con x-init="init()" se ejecutaba dos veces -->
+<body x-data="mindMapApp()" :class="{ 'painter-active': painterActive, presenting: !!presenting }">
 
   <div class="app-shell">
     <!-- Barra de título: logo, barra de acceso rápido y nombre del mapa -->
@@ -247,6 +248,62 @@
     <div class="workspace">
       <main class="canvas-wrap">
         <div id="mindMapContainer"></div>
+
+        <!-- Vista Esquema: el mismo mapa como lista con sangría, encima del lienzo (que sigue
+             debajo). Teclado: ↑ ↓ moverse, ← → contraer/desplegar, Enter tema, Tab subtema,
+             F2 o doble clic editar, Alt+Mayús+← → subir/bajar de nivel -->
+        <div class="outline mm-outline" x-ref="outline" x-show="currentId && viewMode === 'outline'" x-cloak tabindex="0"
+             role="tree" aria-label="Esquema del mapa" aria-multiselectable="true">
+          <div class="outline-head" :class="{ 'with-task': outlineShowTask }" aria-hidden="true">
+            <span>Tema</span>
+            <template x-if="outlineShowTask"><span>Inicio</span></template>
+            <template x-if="outlineShowTask"><span>Vencimiento</span></template>
+            <template x-if="outlineShowTask"><span>Recursos</span></template>
+          </div>
+          <template x-for="row in outlineRows" :key="row.uid">
+            <div class="outline-row" role="treeitem" :data-uid="row.uid" :aria-level="row.depth + 1"
+                 :aria-expanded="row.hasChildren ? String(row.expanded) : null" :aria-selected="String(isOutlineSelected(row.uid))"
+                 :class="{
+                   'with-task': outlineShowTask,
+                   selected: isOutlineSelected(row.uid),
+                   root: row.depth === 0,
+                   main: row.depth === 1,
+                   dim: !!filterResult && !filterResult.visible.has(row.uid),
+                   'search-match': find.open && find.matches.includes(row.uid),
+                   'search-current': find.open && find.matches[find.index] === row.uid
+                 }"
+                 @mousedown="onOutlineRowMouseDown(row.uid, $event)" @dblclick="startOutlineEdit(row.uid)">
+              <div class="outline-topic" :style="`padding-left:${6 + row.depth * 22}px`">
+                <button type="button" class="outline-toggle" tabindex="-1" x-show="row.hasChildren"
+                        :aria-label="row.expanded ? 'Contraer' : 'Desplegar'" :title="row.expanded ? 'Contraer' : 'Desplegar'"
+                        @mousedown.stop.prevent @click.stop="setOutlineExpand(row.uid, !row.expanded)"
+                        x-text="row.expanded ? '▾' : '▸'"></button>
+                <span class="outline-toggle" x-show="!row.hasChildren" aria-hidden="true"></span>
+                <span class="outline-bullet" aria-hidden="true"></span>
+                <template x-for="id in row.icons" :key="id">
+                  <span class="outline-icon" :data-icon="id" :title="(iconById[id] || {}).label || id" x-html="(iconById[id] || {}).svg || ''"></span>
+                </template>
+                <template x-if="outline.editUid !== row.uid">
+                  <span class="outline-text" x-text="row.text"></span>
+                </template>
+                <template x-if="outline.editUid === row.uid">
+                  <textarea class="outline-edit" name="outlineText" aria-label="Texto del tema" x-model="outline.draft"
+                            :rows="Math.max(1, outline.draft.split('\n').length)" @mousedown.stop
+                            x-init="$nextTick(() => { $el.focus(); $el.select() })"
+                            @keydown="onOutlineEditKey($event)" @blur="commitOutlineEdit()"></textarea>
+                </template>
+                <template x-for="t in row.tags" :key="t">
+                  <span class="outline-tag" x-text="t"></span>
+                </template>
+                <span class="outline-note" x-show="row.hasNote" title="Tiene notas" aria-label="Tiene notas" x-html="iconOf('element.notes')"></span>
+              </div>
+              <template x-if="outlineShowTask"><span class="outline-cell" data-col="start" x-text="formatShortDate(row.start)"></span></template>
+              <template x-if="outlineShowTask"><span class="outline-cell" data-col="due" x-text="formatShortDate(row.due)"></span></template>
+              <template x-if="outlineShowTask"><span class="outline-cell" data-col="resources" x-text="row.resources.join(', ')"></span></template>
+            </div>
+          </template>
+        </div>
+
         <div class="placeholder" x-show="!currentId">
           <p>Selecciona un mapa en <strong>Mis mapas</strong> o crea uno nuevo para empezar.</p>
         </div>
@@ -747,7 +804,14 @@
       <span class="status-item status-hint" role="status" x-show="creatingRelationship">
         Relación: haz clic en el tema de destino · Esc para cancelar
       </span>
-      <div class="zoom-control" x-show="currentId">
+      <!-- Vista Mapa / Esquema, como en la barra de estado de MindManager -->
+      <div class="view-switch" role="group" aria-label="Vista" x-show="currentId">
+        <template x-for="id in ['view.map', 'view.outline']" :key="id">
+          <button type="button" class="view-switch-btn" @mousedown.prevent :data-cmd="id" :title="tooltipOf(id)" :aria-label="labelOf(id)"
+                  :aria-pressed="isPressed(id)" :class="{ pressed: isPressed(id) }" @click="runCommand(id)" x-html="iconOf(id)"></button>
+        </template>
+      </div>
+      <div class="zoom-control" x-show="currentId && viewMode === 'map'">
         <button class="zoom-btn" @mousedown.prevent data-cmd="view.zoomOut" :title="tooltipOf('view.zoomOut')" @click="runCommand('view.zoomOut')">−</button>
         <input class="zoom-slider" type="range" min="20" max="400" step="5"
                :value="zoomPercent" @input="setZoomPercent($event.target.value)" title="Zoom" />
@@ -758,6 +822,17 @@
     </footer>
   </div>
 
+  <!-- Controles de la presentación (por encima del oscurecido del plugin) -->
+  <div class="presentation-bar" role="toolbar" aria-label="Presentación" x-show="presenting" x-cloak>
+    <button type="button" data-action="present-prev" @mousedown.prevent title="Anterior (←)" aria-label="Anterior"
+            :disabled="!presenting || presenting.index <= 0" @click="presentationStep('prev')">◀</button>
+    <span class="presentation-count" role="status" x-text="presenting && presenting.total ? `${presenting.index + 1} / ${presenting.total}` : ''"></span>
+    <button type="button" data-action="present-next" @mousedown.prevent title="Siguiente (→)" aria-label="Siguiente"
+            :disabled="!presenting || presenting.index >= presenting.total - 1" @click="presentationStep('next')">▶</button>
+    <button type="button" class="presentation-exit" data-action="present-exit" @mousedown.prevent title="Terminar la presentación (Esc)"
+            @click="presentationStep('exit')">Salir</button>
+  </div>
+
   <script src="/js/icons.js"></script>
   <script src="/js/format.js"></script>
   <script src="/js/icon-library.js"></script>
@@ -766,6 +841,7 @@
   <script src="/js/callouts.js"></script>
   <script src="/js/diagrams.js"></script>
   <script src="/js/search-filter.js"></script>
+  <script src="/js/views.js"></script>
   <script src="/js/elements.js"></script>
   <script src="/js/mindmap-extensions.js"></script>
   <script src="/js/theme.js"></script>

@@ -64,9 +64,45 @@ function mindMapApp() {
     noteTimer: null,
     // Hay texto escrito en el editor de notas que aún no se ha guardado en el tema
     noteDirty: false,
+    // Vista del documento: 'map' (lienzo) u 'outline' (Esquema). Es de la sesión, no del mapa
+    viewMode: 'map',
+    // Esquema: tema cuyo texto se está editando, su borrador y, tras insertar un tema, los
+    // uids que ya existían (el tema nuevo es el seleccionado que no está entre ellos)
+    outline: { editUid: null, draft: '', pendingEdit: null },
+    // Presentación en curso: { index, total, fullscreen } o null
+    presenting: null,
+    // Al terminar la presentación se vuelve a la vista y al encuadre de antes
+    beforePresentation: null,
+    // Un autoguardado llegó durante la presentación: se hace al terminar
+    saveAfterPresentation: false,
 
     get hasActiveNode() {
       return this.activeNodeList.length > 0
+    },
+
+    // ---- Esquema ----
+    get outlineRows() {
+      void this.renderTick
+      const tree = this.mindMap && Alpine.raw(this.mindMap).renderer.renderTree
+      return tree ? outlineRows(tree) : []
+    },
+
+    get outlineShowTask() {
+      return outlineHasTaskColumns(this.outlineRows)
+    },
+
+    get activeUids() {
+      return new Set(this.activeNodeList.map(n => Alpine.raw(n).uid))
+    },
+
+    // Subir de nivel: algún seleccionado está por debajo de los temas principales. Bajar:
+    // algún seleccionado tiene un hermano antes
+    get levelMoves() {
+      const nodes = this.activeNodeList.map(n => Alpine.raw(n)).filter(n => !n.isRoot && !n.isGeneralization && n.parent)
+      return {
+        promote: nodes.some(n => n.parent.parent),
+        demote: nodes.some(n => n.parent.children.indexOf(n) > 0)
+      }
     },
 
     // Elementos del tema (vínculo, adjunto, imagen, nota) de los temas seleccionados
@@ -200,6 +236,9 @@ function mindMapApp() {
         elements: this.activeElements,
         markers: this.activeMarkers,
         canSplit: this.canSplit,
+        canPromote: this.levelMoves.promote,
+        canDemote: this.levelMoves.demote,
+        viewMode: this.viewMode,
         task: { any: this.taskInfo.any },
         relationshipActive: this.relationshipActive,
         boundaryActive: this.boundaryActive,
@@ -474,6 +513,235 @@ function mindMapApp() {
         searchCurrent: this.find.open ? this.find.matches[this.find.index] : null,
         filter: this.filterResult
       })
+    },
+
+    // ---- Vistas: Mapa y Esquema ----
+    setViewMode(mode) {
+      if (!this.mindMap || mode === this.viewMode) return
+      if (this.outline.editUid) this.commitOutlineEdit()
+      // Dibujar una relación o copiar formato se hace con el ratón sobre el lienzo
+      if (mode === 'outline') {
+        if (this.painterActive) this.togglePainter()
+        if (this.creatingRelationship) this.cancelRelationship()
+      }
+      this.viewMode = mode
+      this.$nextTick(() => {
+        if (mode === 'outline') {
+          this.focusOutline()
+          this.scrollOutlineToActive()
+        } else if (document.activeElement && document.activeElement.classList.contains(OUTLINE_CLASS)) {
+          // Los atajos del mapa vuelven a funcionar con el foco en el documento
+          document.activeElement.blur()
+        }
+      })
+    },
+
+    // Insertar desde la cinta o el teclado. En el esquema el tema nuevo no se edita en el
+    // lienzo (está debajo) sino en su fila
+    insertTopic(command) {
+      const mindMap = Alpine.raw(this.mindMap)
+      const outline = this.viewMode === 'outline'
+      if (outline) this.outline.pendingEdit = new Set(outlineRows(mindMap.renderer.renderTree).map(r => r.uid))
+      mindMap.execCommand(command, !outline)
+    },
+
+    // Tras pintar: si se acaba de insertar un tema desde el esquema, editarlo
+    editInsertedOutlineTopic() {
+      const before = this.outline.pendingEdit
+      if (!before) return
+      this.outline.pendingEdit = null
+      const created = Alpine.raw(this.mindMap).renderer.activeNodeList.find(n => !before.has(n.uid))
+      if (created && this.viewMode === 'outline') this.$nextTick(() => this.startOutlineEdit(created.uid))
+    },
+
+    focusOutline() {
+      const el = this.$refs.outline
+      if (el && document.activeElement !== el) el.focus({ preventScroll: true })
+    },
+
+    scrollOutlineToActive() {
+      const node = this.activeNodeList[this.activeNodeList.length - 1]
+      const row = node && this.$refs.outline &&
+        this.$refs.outline.querySelector(`.outline-row[data-uid="${CSS.escape(Alpine.raw(node).uid)}"]`)
+      if (row) row.scrollIntoView({ block: 'nearest' })
+    },
+
+    isOutlineSelected(uid) {
+      return this.activeUids.has(uid)
+    },
+
+    selectOutlineUids(uids) {
+      const mindMap = Alpine.raw(this.mindMap)
+      const nodes = uids.map(uid => mindMap.renderer.findNodeByUid(uid)).filter(Boolean)
+      if (nodes.length) selectTopics(mindMap, nodes)
+      else mindMap.execCommand('CLEAR_ACTIVE_NODE')
+    },
+
+    // Clic: selecciona el tema. Ctrl+clic: lo añade o lo quita. Mayús+clic: selecciona desde
+    // el último seleccionado hasta este, como en una lista
+    onOutlineRowMouseDown(uid, e) {
+      if (e.button !== 0 || this.outline.editUid === uid) return
+      e.preventDefault()
+      if (this.outline.editUid) this.commitOutlineEdit()
+      this.focusOutline()
+      const current = Alpine.raw(this.mindMap).renderer.activeNodeList.map(n => n.uid)
+      if (e.ctrlKey || e.metaKey) {
+        this.selectOutlineUids(current.includes(uid) ? current.filter(u => u !== uid) : [...current, uid])
+      } else if (e.shiftKey && current.length) {
+        const uids = this.outlineRows.map(r => r.uid)
+        const [a, b] = [uids.indexOf(current[current.length - 1]), uids.indexOf(uid)].sort((x, y) => x - y)
+        this.selectOutlineUids(a >= 0 ? uids.slice(a, b + 1) : [uid])
+      } else {
+        this.selectOutlineUids([uid])
+      }
+    },
+
+    // Desplegar o contraer en el esquema despliega o contrae la rama en el mapa
+    setOutlineExpand(uid, expand) {
+      const mindMap = Alpine.raw(this.mindMap)
+      const node = mindMap.renderer.findNodeByUid(uid)
+      if (node) mindMap.execCommand('SET_NODE_EXPAND', node, expand)
+    },
+
+    // Teclado del esquema (ver outlineKeyAction). Se atiende antes que la librería y solo con
+    // el foco en el esquema o en el documento; lo que no es del esquema sigue su camino
+    handleOutlineKey(e) {
+      if (!this.mindMap || this.dialog || this.menu || this.outline.editUid || e.isComposing) return false
+      const target = e.target
+      if (target !== document.body && !(target.classList && target.classList.contains(OUTLINE_CLASS))) return false
+      const active = Alpine.raw(this.mindMap).renderer.activeNodeList
+      const uid = active.length ? active[active.length - 1].uid : null
+      const action = outlineKeyAction(this.outlineRows, uid, e)
+      if (!action) return false
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      if (action.select) this.selectOutlineUids([action.select])
+      else if (action.expand) this.setOutlineExpand(action.expand, action.value)
+      else if (action.command) this.runCommand(action.command)
+      else if (action.edit && uid) this.startOutlineEdit(uid)
+      return true
+    },
+
+    startOutlineEdit(uid) {
+      const row = this.outlineRows.find(r => r.uid === uid)
+      if (!row) return
+      // El cuadro de edición se enfoca solo al crearse (x-init en index.html)
+      this.outline.editUid = uid
+      this.outline.draft = row.text
+    },
+
+    // Enter guarda, Mayús+Enter salta de línea, Esc cancela
+    onOutlineEditKey(e) {
+      e.stopPropagation()
+      if (e.isComposing) return
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        this.commitOutlineEdit({ refocus: true })
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        this.cancelOutlineEdit()
+      }
+    },
+
+    // `refocus`: al terminar con el teclado el foco vuelve al esquema para seguir con las
+    // flechas. Se enfoca en el acto (antes de que desaparezca el cuadro de edición; si no, el
+    // foco cae en <body>); el blur que provoca ya no encuentra nada que guardar. Si la edición
+    // termina por un clic en otro sitio (blur), el foco se queda donde el usuario lo puso.
+    commitOutlineEdit({ refocus = false } = {}) {
+      const { editUid, draft } = this.outline
+      if (!editUid) return
+      this.outline.editUid = null
+      if (refocus) this.focusOutline()
+      const mindMap = Alpine.raw(this.mindMap)
+      const node = mindMap && mindMap.renderer.findNodeByUid(editUid)
+      if (node && String(draft).trim() !== topicPlainText(node.getData()).trim()) {
+        const change = outlineTextChange(node, draft)
+        mindMap.execCommand('SET_NODE_TEXT', node, change.text, change.richText)
+      }
+    },
+
+    cancelOutlineEdit() {
+      this.outline.editUid = null
+      this.focusOutline()
+    },
+
+    // ---- Presentación ----
+    // Usa el plugin Demonstrate de la librería; la pantalla completa la pide la app (ver
+    // views.js) y, si el navegador no la da, la presentación ocupa toda la ventana
+    async startPresentation() {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      if (!mindMap || !mindMap.demonstrate || this.presenting) return
+      // La pantalla completa hay que pedirla dentro del clic, antes de cualquier espera
+      const fullscreen = requestPageFullscreen()
+      if (this.outline.editUid) this.commitOutlineEdit()
+      this.flushNote()
+      if (this.find.open) this.closeFind()
+      if (this.painterActive) this.togglePainter()
+      if (this.creatingRelationship) this.cancelRelationship()
+      this.menu = null
+      this.beforePresentation = { viewMode: this.viewMode, view: mindMap.view.getTransformData() }
+      this.viewMode = 'map'
+      mindMap.execCommand('CLEAR_ACTIVE_NODE')
+      this.presenting = { index: 0, total: 0, fullscreen: false }
+      this.presenting.fullscreen = await fullscreen
+      // El lienzo ya ocupa toda la pantalla: la librería tiene que medirlo otra vez
+      await this.$nextTick()
+      await nextFrame()
+      if (!this.presenting) return
+      mindMap.resize()
+      // _enter() se salta el primer fin de render si la librería está pintando, y si ese
+      // render absorbe el suyo se queda esperando sin empezar: hay que entrar con ella quieta
+      await waitForRenderIdle(mindMap)
+      if (!this.presenting) return
+      // enter() pediría la pantalla completa del lienzo con APIs con prefijo; _enter() solo
+      // arranca el recorrido
+      mindMap.demonstrate._enter()
+    },
+
+    presentationStep(action) {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      const plugin = mindMap && mindMap.demonstrate
+      if (!plugin || !this.presenting) return
+      if (!plugin.isInDemonstrate) {
+        if (action === 'exit') this.onPresentationEnd()
+        return
+      }
+      if (action === 'next') plugin.next()
+      else if (action === 'prev') plugin.prev()
+      else if (action === 'first') plugin.jump(0)
+      else if (action === 'last') plugin.jump(plugin.stepList.length - 1)
+      // El plugin emite exit_demonstrate y ahí se termina (onPresentationEnd)
+      else if (action === 'exit') plugin.exit()
+    },
+
+    // Teclas de los mandos de presentación; ← → y Esc las atiende el plugin
+    onPresentationKey(e) {
+      const action = !e.ctrlKey && !e.metaKey && !e.altKey && PRESENTATION_KEYS[e.key]
+      if (!action) return
+      e.preventDefault()
+      this.presentationStep(action)
+    },
+
+    async onPresentationEnd() {
+      if (!this.presenting) return
+      const before = this.beforePresentation
+      this.presenting = null
+      this.beforePresentation = null
+      exitPageFullscreen()
+      await this.$nextTick()
+      await nextFrame()
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      if (!mindMap) return
+      mindMap.resize()
+      if (before) {
+        mindMap.view.setTransformData(before.view)
+        if (before.viewMode !== 'map') this.setViewMode(before.viewMode)
+      }
+      // El plugin ya ha devuelto el mapa a como estaba: ahora sí se guarda lo pendiente
+      if (this.saveAfterPresentation) {
+        this.saveAfterPresentation = false
+        this.scheduleSave()
+      }
     },
 
     // ---- Llamadas ----
@@ -869,7 +1137,14 @@ function mindMapApp() {
       window.addEventListener('error', e => {
         this.errorMsg = 'Error JS: ' + e.message
       })
+      // Este manejador se registra antes que los de la librería (se crean al abrir un mapa):
+      // así el esquema puede quedarse con sus teclas antes de que las atienda el lienzo
       window.addEventListener('keydown', e => {
+        if (this.presenting) {
+          this.onPresentationKey(e)
+          return
+        }
+        if (this.viewMode === 'outline' && this.handleOutlineKey(e)) return
         // Ctrl+F / Ctrl+H: Buscar / Reemplazar (en lugar de la búsqueda del navegador)
         if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && ['f', 'h'].includes(e.key.toLowerCase()) && this.mindMap && !this.dialog) {
           e.preventDefault()
@@ -887,6 +1162,10 @@ function mindMapApp() {
         if (this.menu) this.closeMenu()
         if (this.painterActive) this.togglePainter()
         if (this.creatingRelationship) this.cancelRelationship()
+      })
+      // Salir de la pantalla completa (Esc del navegador, F11…) termina la presentación
+      document.addEventListener('fullscreenchange', () => {
+        if (this.presenting && this.presenting.fullscreen && !document.fullscreenElement) this.presentationStep('exit')
       })
       // El filtro se aplica en cuanto cambia cualquier criterio
       this.$watch('filter', () => this.refreshViewMarks())
@@ -939,6 +1218,7 @@ function mindMapApp() {
       // Búsqueda y filtro son de la vista del mapa anterior
       this.find = { ...this.find, open: false, query: '', replacement: '', matches: [], index: -1 }
       this.filter = emptyFilter()
+      this.outline = { editUid: null, draft: '', pendingEdit: null }
 
       this.currentId = map.id
       this.currentTitle = map.title
@@ -995,6 +1275,8 @@ function mindMapApp() {
           // siempre que el foco no esté en un campo (la librería ya ignora inputs y selects).
           enableShortcutOnlyWhenMouseInSvg: false,
           customHyperlinkJump: url => openHyperlinkSafely(url),
+          // Presentación: sin el "modo rellenar huecos" (ocultaría el texto subrayado)
+          demonstrateConfig: { openBlankMode: false },
           // Diagramas: título fijo encima del diagrama y temas que se sueltan donde se dejan
           ...diagramMapOptions(map.data.root.data),
           beforeDragEnd: info => diagramBeforeDragEnd(this.mindMap && Alpine.raw(this.mindMap), info),
@@ -1013,6 +1295,12 @@ function mindMapApp() {
           }
         })
         bindFormatShortcuts(this.mindMap, id => this.runCommand(id))
+        // Con el foco en el esquema siguen funcionando los atajos de la librería (Supr, Ctrl+Z…)
+        this.mindMap.addEditNodeClass(OUTLINE_CLASS)
+        this.mindMap.on('demonstrate_jump', (index, total) => {
+          if (this.presenting) this.presenting = { ...this.presenting, index, total }
+        })
+        this.mindMap.on('exit_demonstrate', () => this.onPresentationEnd())
 
         if (map.data.view && Object.keys(map.data.view).length) {
           this.mindMap.view.setTransformData(map.data.view)
@@ -1026,6 +1314,7 @@ function mindMapApp() {
         this.mindMap.on('node_active', (node, activeNodeList) => {
           this.activeNodeList = [...activeNodeList]
           if (this.pane === 'notes') this.loadNoteDraft()
+          if (this.viewMode === 'outline') this.$nextTick(() => this.scrollOutlineToActive())
         })
         this.mindMap.on('node_note_click', node => {
           // Seleccionar el tema como lo hace un clic (SET_NODE_ACTIVE solo cambia el dato)
@@ -1047,6 +1336,7 @@ function mindMapApp() {
         this.mindMap.on('node_tree_render_end', () => {
           this.renderTick++
           this.refreshNoteDraft()
+          this.editInsertedOutlineTopic()
           // Si la llamada seleccionada ya no existe (Deshacer, Limpiar…) se deselecciona
           if (this.calloutActive) {
             const node = this.mindMap.renderer.findNodeByUid(this.calloutActive.uid)
@@ -1094,6 +1384,11 @@ function mindMapApp() {
       this.saveTimer = null
       const id = this.mindMapId
       if (!this.mindMap || !id) return
+      // Durante la presentación el mapa está contraído por el recorrido: se guarda al terminar
+      if (this.presenting) {
+        this.saveAfterPresentation = true
+        return
+      }
       const data = this.mindMap.getData(true)
       let res
       try {

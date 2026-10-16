@@ -17,7 +17,9 @@ Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista,
 - Elementos del tema: hipervínculos (Ctrl+K), notas (panel Notas), imágenes y archivos adjuntos.
 - Llamadas: notas flotantes ancladas a un tema, que se pueden mover arrastrando (doble clic para editarlas).
 - Información de tarea (panel **Info. de tarea**): prioridad, % completado, inicio, vencimiento, hito y recursos. Se muestra junto al tema, en rojo si está vencida.
-- Edición: dividir un tema de varias líneas, seleccionar (todo, hermanos, mismo nivel, rama, mismos marcadores) y limpiar (formato, marcadores, notas, vínculos o todo).
+- Edición: dividir un tema de varias líneas, seleccionar (todo, hermanos, mismo nivel, rama, mismos marcadores), limpiar (formato, marcadores, notas, vínculos o todo) y subir o bajar de nivel (Alt+Mayús+← →).
+- **Vista Esquema** (pestaña Vista o barra de estado): el mapa como lista con sangría. Se navega con las flechas (← → contraen y despliegan), Enter y Tab insertan temas, F2 o doble clic editan el texto; muestra iconos, marcadores y fechas y recursos de las tareas.
+- **Presentación**: recorre el mapa tema a tema a pantalla completa (← →, AvPág/RePág o la barra de abajo; Esc para salir). Al terminar, el mapa queda como estaba.
 - Relaciones (flechas entre temas cualesquiera, con texto) y límites (marcos alrededor de temas, con 5 estilos).
 - Funciona sin conexión: todas las librerías se sirven en local.
 - Marcadores de icono desde la cinta o el panel **Marcadores**: prioridad, progreso, banderas, semáforo, caras, flechas, símbolos y personas, con buscador.
@@ -71,6 +73,7 @@ public/
   js/task-info.js     Información de tarea (modelo, validación y etiqueta en el tema)
   js/callouts.js      Llamadas (modelo y capa de dibujo)
   js/search-filter.js Buscar / Reemplazar y Filtro
+  js/views.js         Vista Esquema y Presentación
   js/theme.js         Tema visual y preparación de la librería (compartido con el HTML exportado)
   js/export-html.js   Exportar a HTML interactivo
   js/viewer.js        Visor que va dentro del HTML exportado

@@ -25,14 +25,15 @@ function createUid() {
 // Inserta un tema hermano ANTES de cada tema activo (la librería solo inserta después).
 // Replica la lógica de Render.insertNode para que el tema nuevo entre en edición igual que
 // con Enter, y se registra como comando para que quede en el historial (deshacer/rehacer).
-function insertNodeBefore(mindMap) {
+// Con `openEdit` false (vista Esquema) el tema nuevo solo queda seleccionado.
+function insertNodeBefore(mindMap, openEdit = true) {
   const renderer = mindMap.renderer
   const list = renderer.activeNodeList.filter(node => !node.isRoot && !node.isGeneralization)
   if (list.length === 0) return
   renderer.textEdit.hideEditTextBox()
 
   const { defaultInsertSecondLevelNodeText, defaultInsertBelowSecondLevelNodeText } = mindMap.opt
-  const { focusNewNode, inserting } = renderer.getNewNodeBehavior(true, list.length > 1)
+  const { focusNewNode, inserting } = renderer.getNewNodeBehavior(openEdit, list.length > 1)
   const isRichText = renderer.hasRichTextPlugin()
 
   list.forEach(node => {
@@ -221,6 +222,58 @@ function selectRelated(mindMap, kind) {
   selectTopics(mindMap, TOPIC_SELECTORS[kind](active, visibleNodes(mindMap)))
 }
 
+// ---- Subir y bajar de nivel (como en un esquema) ----
+// Temas seleccionados que se pueden mover, en orden de lectura y sin los que ya van dentro
+// de otro seleccionado (se mueven con su rama)
+function movableTopics(mindMap) {
+  const active = mindMap.renderer.activeNodeList.filter(node => !node.isRoot && !node.isGeneralization)
+  const order = new Map(visibleNodes(mindMap).map((node, i) => [node.uid, i]))
+  return active
+    .filter(node => !active.some(other => other !== node && isDescendant(node, other)))
+    .sort((a, b) => order.get(a.uid) - order.get(b.uid))
+}
+
+const childIndex = (children, uid) => children.findIndex(item => item.data.uid === uid)
+
+// Subir de nivel: el tema pasa a ser hermano de su padre, justo después de él. Varios
+// temas del mismo padre conservan su orden. Los temas principales no suben más.
+function promoteTopics(mindMap) {
+  const lastPlaced = new Map()
+  let changed = false
+  movableTopics(mindMap).forEach(node => {
+    const parent = node.parent
+    const grandpa = parent && parent.parent
+    if (!grandpa) return
+    const siblings = parent.nodeData.children
+    siblings.splice(childIndex(siblings, node.uid), 1)
+    const uncles = grandpa.nodeData.children
+    const anchor = lastPlaced.get(parent.uid) || parent.uid
+    uncles.splice(childIndex(uncles, anchor) + 1, 0, node.nodeData)
+    lastPlaced.set(parent.uid, node.uid)
+    changed = true
+  })
+  if (changed) mindMap.render()
+}
+
+// Bajar de nivel: el tema pasa a ser el último subtema de su hermano anterior (el primero
+// de sus hermanos no puede bajar). Varios hermanos seguidos bajan juntos y en orden.
+function demoteTopics(mindMap) {
+  let changed = false
+  movableTopics(mindMap).forEach(node => {
+    const siblings = node.parent && node.parent.nodeData.children
+    if (!siblings) return
+    const index = childIndex(siblings, node.uid)
+    if (index <= 0) return
+    const target = siblings[index - 1]
+    siblings.splice(index, 1)
+    target.children = target.children || []
+    target.children.push(node.nodeData)
+    target.data.expand = true
+    changed = true
+  })
+  if (changed) mindMap.render()
+}
+
 // Qué borra cada opción de Limpiar: `format` quita el formato propio (vuelve al del tema
 // visual) y `keys` son los datos del tema que se eliminan
 const CLEAR_PARTS = {
@@ -340,7 +393,9 @@ function extendMindMap(mindMap) {
   guardTextEditBoxes(mindMap)
   bindEscapeToEndEditing(mindMap)
   stripTransientHistoryFlags(mindMap)
-  mindMap.command.add('INSERT_NODE_BEFORE', () => insertNodeBefore(mindMap))
+  mindMap.command.add('INSERT_NODE_BEFORE', openEdit => insertNodeBefore(mindMap, openEdit !== false))
+  mindMap.command.add('PROMOTE_TOPICS', () => promoteTopics(mindMap))
+  mindMap.command.add('DEMOTE_TOPICS', () => demoteTopics(mindMap))
   mindMap.command.add('SET_ACTIVE_NODES_STYLE', styleFor => setActiveNodesStyle(mindMap, styleFor))
   mindMap.command.add('SET_ACTIVE_NODES_DATA', dataFor => setActiveNodesData(mindMap, dataFor))
   mindMap.command.add('SPLIT_TOPICS', () => splitTopics(mindMap))
@@ -384,4 +439,7 @@ function bindFormatShortcuts(mindMap, runCommand) {
   mindMap.keyCommand.addShortcut('Control+i', () => runCommand('format.italic'))
   mindMap.keyCommand.addShortcut('Control+u', () => runCommand('format.underline'))
   mindMap.keyCommand.addShortcut('Control+k', () => runCommand('element.hyperlink'))
+  // Subir y bajar de nivel, como en la vista Esquema
+  mindMap.keyCommand.addShortcut('Alt+Shift+Left', () => runCommand('topic.promote'))
+  mindMap.keyCommand.addShortcut('Alt+Shift+Right', () => runCommand('topic.demote'))
 }

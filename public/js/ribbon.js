@@ -79,7 +79,9 @@ const RIBBON_TABS = [
           { cmd: 'topic.remove' },
           { cmd: 'select.all', size: 'small', menu: ['select.all', 'select.siblings', 'select.level', 'select.branch', 'select.sameMarkers'] },
           { cmd: 'clear.format', size: 'small', menu: ['clear.format', 'clear.markers', 'clear.notes', 'clear.links', 'clear.task', 'clear.all'] },
-          { cmd: 'topic.split', size: 'small' }
+          { cmd: 'topic.split', size: 'small' },
+          { cmd: 'topic.promote', size: 'small' },
+          { cmd: 'topic.demote', size: 'small' }
         ]
       }
     ]
@@ -98,6 +100,8 @@ const RIBBON_TABS = [
     id: 'view',
     label: 'Vista',
     groups: [
+      { label: 'Vistas', items: [{ cmd: 'view.map' }, { cmd: 'view.outline' }] },
+      { label: 'Presentación', items: [{ cmd: 'view.presentation' }] },
       { label: 'Zoom', items: [{ cmd: 'view.zoomIn' }, { cmd: 'view.zoomOut' }, { cmd: 'view.fit' }, { cmd: 'view.actualSize' }] },
       { label: 'Buscar', items: [{ cmd: 'view.find' }, { cmd: 'view.replace' }] },
       { label: 'Filtro', items: [{ cmd: 'pane.filter' }, { cmd: 'view.filter.clear' }] },
