@@ -1712,6 +1712,16 @@ function mindMapApp() {
       }
     },
 
+    // Word o Markdown: el mapa entero como documento (ver export-doc.js)
+    exportDocument(format) {
+      if (!this.mindMap) return
+      const labels = this.iconById
+      exportDocument(Alpine.raw(this.mindMap), format, {
+        title: this.currentTitle,
+        iconLabel: id => (labels[id] && labels[id].label) || id
+      })
+    },
+
     exportMap(type) {
       if (!this.mindMap) return
       this.mindMap.export(type, true, this.currentTitle || 'mapa-mental')

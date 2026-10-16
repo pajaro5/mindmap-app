@@ -29,6 +29,7 @@ Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista,
 - Filtro (pestaña Vista): muestra los temas que cumplen unos criterios (texto, marcadores, recursos, tareas vencidas…) y atenúa el resto.
 - Autoguardado mientras editas.
 - Exportación a **PNG**, **PDF** y **HTML interactivo**: un único archivo que se abre en cualquier navegador sin conexión, de solo lectura, con ramas que se despliegan y contraen.
+- Exportación a **Word** (.docx) y **Markdown** (.md): el mapa como documento, con un título por tema (los estilos de título de Word, para su índice y panel de navegación) y, debajo, sus marcadores, la información de tarea, vínculos, notas y llamadas.
 
 ## Requisitos
 
@@ -76,6 +77,7 @@ public/
   js/views.js         Vista Esquema y Presentación
   js/theme.js         Tema visual y preparación de la librería (compartido con el HTML exportado)
   js/export-html.js   Exportar a HTML interactivo
+  js/export-doc.js    Exportar a Word (.docx) y Markdown
   js/viewer.js        Visor que va dentro del HTML exportado
   js/diagrams.js      Diagramas: modelo, geometría de las zonas, capa de fondo y reglas por zona
   js/templates.js     Plantillas de serie, galería y "Guardar como plantilla"

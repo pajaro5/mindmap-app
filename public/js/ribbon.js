@@ -113,6 +113,7 @@ const RIBBON_TABS = [
     label: 'Exportar',
     groups: [
       { label: 'Exportar', items: [{ cmd: 'export.png' }, { cmd: 'export.pdf' }, { cmd: 'export.html' }] },
+      { label: 'Documento', items: [{ cmd: 'export.word' }, { cmd: 'export.markdown' }] },
       { label: 'Plantillas', items: [{ cmd: 'map.saveAsTemplate' }, { cmd: 'map.newFromTemplate' }] }
     ]
   }

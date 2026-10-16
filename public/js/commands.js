@@ -481,6 +481,16 @@ const COMMANDS = {
   'export.pdf': {
     label: 'Exportar PDF', tooltip: 'Exportar como documento PDF', icon: 'exportPdf', enabled: hasMap,
     run: app => app.exportMap('pdf')
+  },
+  'export.word': {
+    label: 'Word', tooltip: 'Exportar a un documento de Word (.docx): un título por tema, con sus notas, marcadores y tareas',
+    icon: 'exportWord', enabled: hasMap,
+    run: app => app.exportDocument('docx')
+  },
+  'export.markdown': {
+    label: 'Markdown', tooltip: 'Exportar a Markdown (.md): un título por tema, con sus notas, marcadores y tareas',
+    icon: 'exportMarkdown', enabled: hasMap,
+    run: app => app.exportDocument('md')
   }
 }
 
