@@ -271,6 +271,31 @@ const COMMANDS = {
     run: app => app.mindMap.associativeLine.removeLine()
   },
 
+  // Formato de la relación seleccionada (pestaña Formato; relation-format.js)
+  'relationship.color': {
+    label: 'Color de la relación', icon: 'relationshipColor', control: 'color', enabled: s => s.relationshipActive,
+    value: s => s.relationship && s.relationship.color,
+    run: (app, color) => app.setRelationshipStyle({ associativeLineColor: color })
+  },
+  'relationship.width': {
+    label: 'Grosor de la relación', control: 'select', enabled: s => s.relationshipActive,
+    options: () => RELATIONSHIP_WIDTHS,
+    value: s => s.relationship && s.relationship.width,
+    run: (app, width) => app.setRelationshipStyle({ associativeLineWidth: Number(width) })
+  },
+  'relationship.dash': {
+    label: 'Trazo de la relación', control: 'select', enabled: s => s.relationshipActive,
+    options: () => DASH_STYLES,
+    value: s => s.relationship && s.relationship.dash,
+    run: (app, dash) => app.setRelationshipStyle({ associativeLineDasharray: dash })
+  },
+  'relationship.arrows': {
+    label: 'Flechas de la relación', control: 'select', enabled: s => s.relationshipActive,
+    options: () => ARROW_STYLES,
+    value: s => s.relationship && s.relationship.arrows,
+    run: (app, arrows) => app.setRelationshipStyle({ arrows })
+  },
+
   // ---- Llamada (nota flotante anclada a un tema) ----
   'insert.callout': {
     label: 'Llamada', menuLabel: 'Insertar llamada…', tooltip: 'Añadir una llamada (nota flotante) al tema seleccionado',
@@ -297,6 +322,29 @@ const COMMANDS = {
   'boundary.text': {
     label: 'Texto del límite', icon: 'editText', enabled: s => s.boundaryActive,
     run: app => app.editBoundaryText()
+  },
+  // Formato del límite seleccionado (pestaña Formato; relation-format.js)
+  'boundary.shape': {
+    label: 'Forma del límite', control: 'select', enabled: s => s.boundaryActive,
+    options: () => BOUNDARY_SHAPES,
+    value: s => s.boundary && s.boundary.shape,
+    run: (app, shape) => app.setBoundaryShape(shape)
+  },
+  'boundary.dash': {
+    label: 'Trazo del límite', control: 'select', enabled: s => s.boundaryActive,
+    options: () => DASH_STYLES,
+    value: s => s.boundary && s.boundary.dash,
+    run: (app, dash) => app.setBoundaryStyle({ strokeDasharray: dash })
+  },
+  'boundary.color': {
+    label: 'Color de línea del límite', icon: 'boundaryColor', control: 'color', enabled: s => s.boundaryActive,
+    value: s => s.boundary && s.boundary.color,
+    run: (app, color) => app.setBoundaryStyle({ strokeColor: color })
+  },
+  'boundary.fill': {
+    label: 'Relleno del límite', icon: 'fillColor', control: 'color', enabled: s => s.boundaryActive,
+    value: s => s.boundary && s.boundary.fill,
+    run: (app, color) => app.setBoundaryStyle({ fill: color })
   },
   'boundary.remove': {
     label: 'Eliminar límite', shortcut: 'Supr', icon: 'removeElement', enabled: s => s.boundaryActive,

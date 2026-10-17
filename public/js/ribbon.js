@@ -102,17 +102,25 @@ const RIBBON_TABS = [
         ]
       },
       {
-        label: 'Ramas',
+        label: 'Ramas y fondo',
         rows: [
-          [{ cmd: 'mapFormat.lineStyle', width: 124 }, { cmd: 'mapFormat.lineColor' }],
-          [{ cmd: 'mapFormat.lineWidth', width: 124 }, { cmd: 'mapFormat.rainbow' }]
+          [{ cmd: 'mapFormat.lineStyle', width: 114 }, { cmd: 'mapFormat.lineColor' }, { separator: true }, { cmd: 'mapFormat.spacing', width: 132 }],
+          [{ cmd: 'mapFormat.lineWidth', width: 114 }, { cmd: 'mapFormat.rainbow' }, { separator: true }, { cmd: 'mapFormat.background' }]
+        ]
+      },
+      // Se habilitan al seleccionar una relación o un límite en el mapa
+      {
+        label: 'Relación',
+        rows: [
+          [{ cmd: 'relationship.arrows', width: 146 }, { cmd: 'relationship.color' }],
+          [{ cmd: 'relationship.width', width: 88 }, { cmd: 'relationship.dash', width: 88 }]
         ]
       },
       {
-        label: 'Mapa',
+        label: 'Límite',
         rows: [
-          [{ cmd: 'mapFormat.spacing', width: 138 }],
-          [{ cmd: 'mapFormat.background' }]
+          [{ cmd: 'boundary.shape', width: 104 }, { cmd: 'boundary.color' }],
+          [{ cmd: 'boundary.dash', width: 104 }, { cmd: 'boundary.fill' }]
         ]
       }
     ]

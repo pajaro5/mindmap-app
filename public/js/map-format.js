@@ -67,6 +67,9 @@ const MAP_THEMES = [
       backgroundColor: '#1e2530',
       lineColor: '#5f7088',
       generalizationLineColor: '#5f7088',
+      // Las relaciones son casi negras en los demás temas: no se verían sobre el fondo oscuro
+      associativeLineColor: '#c9d4e3',
+      associativeLineTextColor: '#e6edf5',
       root: flatFill('#f2a33a', '#1e2530'),
       second: flatFill('#34465e', '#ffffff', '#5f7088'),
       node: { color: '#d8e0ea' },

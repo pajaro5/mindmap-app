@@ -170,15 +170,16 @@ class AppPage {
     return Buffer.from(b64, 'base64')
   }
 
-  // Clic en el punto medio de la relación `index` (su trazo ancho e invisible para clics)
-  async clickRelationship(index = 0) {
-    const pt = await this.page.evaluate(i => {
+  // Clic en la relación `index` (en su trazo ancho e invisible para clics), por defecto en su
+  // punto medio; `at` (0–1) elige otro punto del trazo
+  async clickRelationship(index = 0, at = 0.5) {
+    const pt = await this.page.evaluate(([i, at]) => {
       const plugin = window.Alpine.$data(document.body).mindMap.associativeLine
       const path = plugin.lineList[i][1].node
-      const p = path.getPointAtLength(path.getTotalLength() / 2)
+      const p = path.getPointAtLength(path.getTotalLength() * at)
       const m = path.getScreenCTM()
       return { x: p.x * m.a + p.y * m.c + m.e, y: p.x * m.b + p.y * m.d + m.f }
-    }, index)
+    }, [index, at])
     await this.page.mouse.click(pt.x, pt.y)
     await this.page.waitForFunction(() => window.Alpine.$data(document.body).relationshipActive)
   }

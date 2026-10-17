@@ -112,5 +112,7 @@ function setupMindMapLibrary(MindMapCtor) {
   if (typeof MindMapCtor.defineTheme === 'function') defineMapThemes(MindMapCtor)
   if (typeof MindMapCtor.usePlugin === 'function') MindMapCtor.usePlugin(TaskInfoPlugin)
   patchLibraryBugs(MindMapCtor)
+  // Flechas de las relaciones y límites en forma de nube (relation-format.js)
+  patchRelationFormat(MindMapCtor)
   MindMapCtor.__mmSetup = true
 }

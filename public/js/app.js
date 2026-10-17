@@ -44,7 +44,8 @@ function mindMapApp() {
     // Último color usado por cada botón de color (el botón principal lo vuelve a aplicar)
     lastColors: {
       'format.fillColor': '#ffff00', 'format.borderColor': '#c00000', 'format.fontColor': '#c00000',
-      'mapFormat.lineColor': '#0070c0', 'mapFormat.background': '#f2f2f2'
+      'mapFormat.lineColor': '#0070c0', 'mapFormat.background': '#f2f2f2',
+      'relationship.color': '#c00000', 'boundary.color': '#c00000', 'boundary.fill': '#fdeada'
     },
     // Cambia en cada render del mapa; `selection` lo lee para recalcular el estilo del tema
     // activo (los estilos viven en simple-mind-map, fuera de la reactividad de Alpine)
@@ -53,6 +54,9 @@ function mindMapApp() {
     relationshipActive: false,
     boundaryActive: false,
     creatingRelationship: false,
+    // Estilo efectivo de la relación y del límite seleccionados (Formato), o null
+    relationshipStyle: null,
+    boundaryStyle: null,
     // Llamada seleccionada: { uid del tema, id de la llamada } o null
     calloutActive: null,
     // Barra Buscar/Reemplazar. matches: uids de los temas que coinciden; index: el actual
@@ -252,6 +256,8 @@ function mindMapApp() {
         task: { any: this.taskInfo.any },
         relationshipActive: this.relationshipActive,
         boundaryActive: this.boundaryActive,
+        relationship: this.relationshipStyle,
+        boundary: this.boundaryStyle,
         calloutActive: !!this.calloutActive,
         findOpen: this.find.open,
         findReplace: this.find.replace,
@@ -905,6 +911,67 @@ function mindMapApp() {
       this.mindMap.execCommand('ADD_OUTER_FRAME', [], { ...config })
     },
 
+    // ---- Formato de la relación y del límite seleccionados ----
+    refreshRelationshipStyle() {
+      const plugin = this.mindMap && Alpine.raw(this.mindMap).associativeLine
+      const line = plugin && plugin.activeLine
+      this.relationshipStyle = line ? describeRelationship(plugin, line[3], line[4]) : null
+    },
+
+    // `change`: propiedades de associativeLineStyle y `arrows`; null quita la propiedad (la
+    // del tema). La relación sigue seleccionada. Un paso de deshacer.
+    setRelationshipStyle(change) {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      const plugin = mindMap && mindMap.associativeLine
+      const line = plugin && plugin.activeLine
+      if (!line) return
+      const [path, , , node, toNode] = line
+      const styles = nextRelationshipStyles(node, toNode, change)
+      // Sin cambios no hay entrada de historial: no se puede saltar el próximo repintado
+      if (JSON.stringify(styles) === JSON.stringify(node.getData('associativeLineStyle') || {})) return
+      mindMap.execCommand('SET_NODE_DATA', node, { associativeLineStyle: styles })
+      // Repinta solo la relación activa (y salta el repintado completo que llegaría con el
+      // historial, que la deseleccionaría)
+      plugin.updateActiveLineStyle()
+      applyRelationshipArrows(path, relationshipArrows(node, toNode))
+      this.refreshRelationshipStyle()
+    },
+
+    refreshBoundaryStyle() {
+      const plugin = this.mindMap && Alpine.raw(this.mindMap).outerFrame
+      const active = plugin && plugin.activeOuterFrame
+      this.boundaryStyle = active ? describeBoundary(plugin, plugin.getNodeRangeFirstNode(active.node, active.range)) : null
+    },
+
+    // `change`: propiedades de data.outerFrame; null en un color vuelve al estilo por defecto.
+    // El límite sigue seleccionado, también al pasar a nube o dejar de serlo (hay que volver a
+    // crear su elemento). Un paso de deshacer.
+    setBoundaryStyle(change) {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      const plugin = mindMap && mindMap.outerFrame
+      const active = plugin && plugin.activeOuterFrame
+      if (!active) return
+      const defaults = DEFAULT_BOUNDARY_STYLE.config
+      const next = Object.fromEntries(Object.entries(change).map(([k, v]) => [k, v === null && k in defaults ? defaults[k] : v]))
+      const { node, range } = active
+      const current = plugin.getNodeRangeFirstNode(node, range).getData('outerFrame') || {}
+      if (!Object.keys(next).some(k => current[k] !== next[k])) return
+      const reshape = (next.shape === 'cloud') !== (current.shape === 'cloud') && 'shape' in next
+      plugin.updateActiveOuterFrame(next)
+      if (reshape) {
+        plugin.isNotRenderOuterFrames = false
+        plugin.renderOuterFrames()
+        plugin.isNotRenderOuterFrames = true
+        const el = plugin.outerFrameElList.find(e => e.mmOwner && e.mmOwner.node === node && e.mmOwner.range.join() === range.join())
+        if (el) plugin.setActiveOuterFrame(el, node, range, el.mmOwner.text)
+      }
+      this.refreshBoundaryStyle()
+    },
+
+    setBoundaryShape(shape) {
+      this.setBoundaryStyle(boundaryShapeChange(shape))
+    },
+
     editBoundaryText() {
       const plugin = this.mindMap.outerFrame
       if (!plugin.activeOuterFrame) return
@@ -1298,6 +1365,7 @@ function mindMapApp() {
         this.mindMapId = map.id
         extendMindMap(this.mindMap)
         installMapFormat(Alpine.raw(this.mindMap), savedTheme)
+        installRelationFormat(Alpine.raw(this.mindMap))
         attachDiagram(Alpine.raw(this.mindMap), {
           editable: true,
           handlers: {
@@ -1336,11 +1404,13 @@ function mindMapApp() {
         this.relationshipActive = false
         this.boundaryActive = false
         this.creatingRelationship = false
-        this.mindMap.on('associative_line_click', () => { this.relationshipActive = true })
-        this.mindMap.on('associative_line_deactivate', () => { this.relationshipActive = false })
-        this.mindMap.on('outer_frame_active', () => { this.boundaryActive = true })
-        this.mindMap.on('outer_frame_deactivate', () => { this.boundaryActive = false })
-        this.mindMap.on('outer_frame_delete', () => { this.boundaryActive = false })
+        this.relationshipStyle = null
+        this.boundaryStyle = null
+        this.mindMap.on('associative_line_click', () => { this.relationshipActive = true; this.refreshRelationshipStyle() })
+        this.mindMap.on('associative_line_deactivate', () => { this.relationshipActive = false; this.relationshipStyle = null })
+        this.mindMap.on('outer_frame_active', () => { this.boundaryActive = true; this.refreshBoundaryStyle() })
+        this.mindMap.on('outer_frame_deactivate', () => { this.boundaryActive = false; this.boundaryStyle = null })
+        this.mindMap.on('outer_frame_delete', () => { this.boundaryActive = false; this.boundaryStyle = null })
         // Tras un clic en un tema o en el lienzo el plugin puede haber terminado de dibujar
         this.mindMap.on('node_click', () => setTimeout(() => this.refreshRelationshipMode()))
         this.mindMap.on('draw_click', () => setTimeout(() => this.refreshRelationshipMode()))

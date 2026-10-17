@@ -174,6 +174,27 @@ test.describe('el archivo abierto en el navegador', () => {
     expect(errors).toEqual([])
   })
 
+  test('conserva el formato de relaciones (flechas) y límites (nube)', async ({ page, maps }, testInfo) => {
+    const data = clone(SAMPLE_TREE)
+    data.root.children[2].data.uid = 'gamma-uid'
+    Object.assign(data.root.children[0].data, {
+      associativeLineTargets: ['gamma-uid'],
+      associativeLineStyle: { 'gamma-uid': { arrows: 'both', associativeLineColor: '#c00000', associativeLineDasharray: 'none' } }
+    })
+    data.root.children[1].data.outerFrame = { groupId: 'g1', shape: 'cloud', strokeColor: '#00b050', fill: '#e5f3d6', strokeWidth: 2, strokeDasharray: 'none' }
+    const { app } = await setupMap(page, maps, { data })
+    const { file } = await exportHtml(page, app, testInfo)
+    const { viewer, errors } = await openExported(page, file)
+    await expect(viewer.locator('.smm-outer-frame-container > path')).toHaveCount(1)
+    await expect(viewer.locator('.smm-outer-frame-container > path')).toHaveAttribute('stroke', '#00b050')
+    const line = await viewer.evaluate(() => {
+      const el = window.__viewer.mindMap.associativeLine.lineList[0][0].node
+      return { stroke: el.getAttribute('stroke'), start: !!el.getAttribute('marker-start'), end: !!el.getAttribute('marker-end') }
+    })
+    expect(line).toEqual({ stroke: '#c00000', start: true, end: true })
+    expect(errors).toEqual([])
+  })
+
   test('las ramas se despliegan y contraen con su botón y con la barra', async ({ page, maps }, testInfo) => {
     const data = clone(SAMPLE_TREE)
     data.root.children[0].data.expand = false   // Alfa contraído: Alfa uno oculto
