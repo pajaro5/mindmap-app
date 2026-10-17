@@ -248,6 +248,11 @@ const COMMANDS = {
     value: s => s.style.shape,
     run: (app, shape) => app.applyStyle({ shape })
   },
+  'style.shadow': {
+    label: 'Sombra', tooltip: 'Sombra en los temas seleccionados', icon: 'shadow', enabled: hasActiveNode,
+    pressed: s => s.hasActiveNode && s.style.shadow,
+    run: app => app.toggleStyle('shadow', true, false, s => s.style.shadow)
+  },
 
   // ---- Relación (flecha entre dos temas cualesquiera) ----
   'insert.relationship': {
@@ -389,6 +394,67 @@ const COMMANDS = {
     label: 'Espina de pez', tooltip: 'Diagrama de causa y efecto (Ishikawa)', icon: 'layoutFishbone', enabled: hasMap,
     pressed: s => s.hasMap && s.layout === 'fishbone',
     run: app => app.setLayout('fishbone')
+  },
+  'layout.more': {
+    label: 'Más diseños', tooltip: 'Otras variantes de diseño: árbol a la izquierda, líneas de tiempo verticales…', icon: 'layoutMore',
+    control: 'gallery', enabled: hasMap,
+    options: () => LAYOUT_VARIANTS.map(v => ({ ...v, preview: LAYOUT_PREVIEWS[v.value] })),
+    value: s => s.layout,
+    run: (app, layout) => app.setLayout(layout)
+  },
+
+  // ---- Formato del mapa (tema visual, ramas, espaciado, fondo y sombras) ----
+  // Se aplica a todo el mapa y queda en el historial (map-format.js)
+  'mapTheme.apply': {
+    label: 'Temas', tooltip: 'Aplicar un tema visual al mapa (colores, ramas y fondo)', icon: 'mapTheme',
+    control: 'gallery', enabled: hasMap,
+    options: () => MAP_THEMES.map(t => ({ value: t.id, label: t.label, preview: mapThemePreview(t.config) })),
+    value: s => s.mapFormat.theme,
+    run: (app, theme) => app.setMapFormat({ theme }, { reset: true })
+  },
+  'mapFormat.reset': {
+    label: 'Restablecer', tooltip: 'Volver al formato del tema: quita los cambios de ramas, espaciado, fondo y sombras',
+    icon: 'mapReset', enabled: s => s.hasMap && s.mapFormat.customized,
+    run: app => app.setMapFormat({}, { reset: true })
+  },
+  'mapFormat.shadow': {
+    label: 'Sombras', tooltip: 'Sombra en los temas de todo el mapa', icon: 'shadow', enabled: hasMap,
+    pressed: s => s.hasMap && s.mapFormat.shadow,
+    run: app => app.setMapFormat({ shadow: !app.selection.mapFormat.shadow })
+  },
+  'mapFormat.lineStyle': {
+    label: 'Forma de las ramas', control: 'select', enabled: hasMap,
+    options: () => LINE_STYLES,
+    value: s => s.mapFormat.lineStyle,
+    run: (app, lineStyle) => app.setMapFormat({ lineStyle })
+  },
+  'mapFormat.lineWidth': {
+    label: 'Grosor de las ramas', control: 'select', enabled: hasMap,
+    options: () => LINE_WIDTHS,
+    value: s => s.mapFormat.lineWidth,
+    run: (app, lineWidth) => app.setMapFormat({ lineWidth })
+  },
+  'mapFormat.lineColor': {
+    label: 'Color de las ramas', icon: 'lineColor', control: 'color', enabled: hasMap,
+    value: s => s.mapFormat.lineColor,
+    // `null` = Automático: el color del tema
+    run: (app, lineColor) => app.setMapFormat({ lineColor })
+  },
+  'mapFormat.rainbow': {
+    label: 'Ramas de colores', tooltip: 'Un color distinto para cada rama principal', icon: 'rainbow', enabled: hasMap,
+    pressed: s => s.hasMap && s.mapFormat.rainbow,
+    run: app => app.setMapFormat({ rainbow: !app.selection.mapFormat.rainbow })
+  },
+  'mapFormat.spacing': {
+    label: 'Espaciado entre temas', control: 'select', enabled: hasMap,
+    options: () => SPACINGS,
+    value: s => s.mapFormat.spacing,
+    run: (app, spacing) => app.setMapFormat({ spacing })
+  },
+  'mapFormat.background': {
+    label: 'Color de fondo', tooltip: 'Color de fondo del mapa', icon: 'background', control: 'color', enabled: hasMap,
+    value: s => s.mapFormat.background,
+    run: (app, background) => app.setMapFormat({ background })
   },
 
   // ---- Vista ----

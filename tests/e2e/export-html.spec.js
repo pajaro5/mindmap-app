@@ -148,6 +148,32 @@ test.describe('el archivo abierto en el navegador', () => {
     expect(errors).toEqual([])
   })
 
+  test('conserva el formato del mapa: tema, fondo, ramas de colores y sombras', async ({ page, maps }, testInfo) => {
+    const data = clone(SAMPLE_TREE)
+    data.root.data._mapFormat = { theme: 'mm-night', rainbow: true, shadow: true, lineStyle: 'direct' }
+    const { app } = await setupMap(page, maps, { data })
+    const { file } = await exportHtml(page, app, testInfo)
+    const { viewer, errors } = await openExported(page, file)
+    await expect(viewerNodes(viewer)).toHaveCount(5)
+    const look = await viewer.evaluate(() => {
+      const mm = window.__viewer.mindMap
+      const root = mm.renderer.root
+      return {
+        background: getComputedStyle(document.getElementById('mindMapContainer')).backgroundColor,
+        theme: mm.opt.theme,
+        lineStyle: mm.themeConfig.lineStyle,
+        rootFilter: root.shapeNode.node.getAttribute('filter'),
+        lineColors: root._lines.map(l => l.node.getAttribute('stroke'))
+      }
+    })
+    expect(look.background).toBe('rgb(30, 37, 48)')
+    expect(look.theme).toBe('mm-night')
+    expect(look.lineStyle).toBe('direct')
+    expect(look.rootFilter).toBe('url(#mm-topic-shadow)')
+    expect(new Set(look.lineColors).size).toBe(3)
+    expect(errors).toEqual([])
+  })
+
   test('las ramas se despliegan y contraen con su botón y con la barra', async ({ page, maps }, testInfo) => {
     const data = clone(SAMPLE_TREE)
     data.root.children[0].data.expand = false   // Alfa contraído: Alfa uno oculto

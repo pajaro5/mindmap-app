@@ -228,15 +228,16 @@
         </div>
       </template>
 
-      <!-- Galería de opciones (formas) -->
+      <!-- Galería de opciones (formas, temas, diseños). La vista previa es la de la opción
+           o, en las formas, la del catálogo de formas -->
       <template x-if="menu && menu.kind === 'options'">
-        <div class="options-gallery">
+        <div class="options-gallery" :data-gallery-for="menu && menu.owner">
           <template x-for="opt in menu.items" :key="opt.value">
             <button class="ribbon-menu-item" role="menuitemradio" :data-option="opt.value"
                     :aria-checked="!!menu && String(currentValueOf(menu.owner)) === String(opt.value)"
                     :class="{ current: !!menu && String(currentValueOf(menu.owner)) === String(opt.value) }"
                     @click="runCommand(menu.owner, opt.value)">
-              <span class="option-preview" x-html="shapeIcons[opt.value] || ''"></span>
+              <span class="option-preview" x-html="opt.preview || shapeIcons[opt.value] || ''"></span>
               <span class="ribbon-menu-label" x-text="opt.label"></span>
             </button>
           </template>
@@ -845,6 +846,7 @@
   <script src="/js/elements.js"></script>
   <script src="/js/mindmap-extensions.js"></script>
   <script src="/js/theme.js"></script>
+<script src="/js/map-format.js"></script>
   <script src="/js/export-html.js"></script>
   <script src="/js/export-doc.js"></script>
   <script src="/js/templates.js"></script>

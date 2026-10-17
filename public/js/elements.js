@@ -147,6 +147,11 @@ function sanitizeMapTree(root) {
       const defs = normalizeMarkerDefs(rd[TEXT_MARKERS_KEY])
       if (JSON.stringify(defs) !== JSON.stringify(rd[TEXT_MARKERS_KEY])) { rd[TEXT_MARKERS_KEY] = defs; fixed++ }
     }
+    // Formato del mapa (tema, ramas, fondo…): solo valores conocidos
+    if (rd[MAP_FORMAT_KEY] !== undefined) {
+      const format = compactMapFormat(normalizeMapFormat(rd[MAP_FORMAT_KEY]))
+      if (JSON.stringify(format) !== JSON.stringify(rd[MAP_FORMAT_KEY])) { rd[MAP_FORMAT_KEY] = format; fixed++ }
+    }
     // Definición del diagrama (tipo, tamaños, rótulos, colores y reglas)
     if (rd[DIAGRAM_KEY] !== undefined) {
       const diagram = normalizeDiagram(rd[DIAGRAM_KEY])

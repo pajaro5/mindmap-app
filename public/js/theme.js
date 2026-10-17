@@ -104,12 +104,12 @@ function themeTemplateOf(savedTheme) {
   return !template || template === 'default' ? THEME_NAME : template
 }
 
-// Registra el tema, la etiqueta de Información de tarea y los parches de la librería.
-// Una vez por constructor (la librería ignora los plugins ya registrados).
+// Registra los temas visuales (map-format.js), la etiqueta de Información de tarea y los
+// parches de la librería. Una vez por constructor (la librería ignora los plugins ya registrados).
 function setupMindMapLibrary(MindMapCtor) {
   if (!MindMapCtor || MindMapCtor.__mmSetup) return
   injectMapContentCss()
-  if (typeof MindMapCtor.defineTheme === 'function') MindMapCtor.defineTheme(THEME_NAME, MINDMANAGER_THEME)
+  if (typeof MindMapCtor.defineTheme === 'function') defineMapThemes(MindMapCtor)
   if (typeof MindMapCtor.usePlugin === 'function') MindMapCtor.usePlugin(TaskInfoPlugin)
   patchLibraryBugs(MindMapCtor)
   MindMapCtor.__mmSetup = true

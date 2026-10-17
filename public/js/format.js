@@ -34,6 +34,19 @@ const SHAPES = [
   { value: 'innerTriangularRectangle', label: 'Banderín' }
 ]
 
+// Variantes de diseño de la librería (galería "Más diseños"). Las de espina de pez hacia la
+// derecha (rightFishbone, rightFishbone2) no se incluyen: en simple-mind-map 0.14 caen a un
+// árbol normal.
+const LAYOUT_VARIANTS = [
+  { value: 'logicalStructureLeft', label: 'Árbol a la izquierda' },
+  { value: 'catalogOrganization', label: 'Organigrama en lista' },
+  { value: 'timeline2', label: 'Línea de tiempo alterna' },
+  { value: 'verticalTimeline', label: 'Línea de tiempo vertical' },
+  { value: 'verticalTimeline2', label: 'Vertical, ramas a la izquierda' },
+  { value: 'verticalTimeline3', label: 'Vertical, ramas a la derecha' },
+  { value: 'fishbone2', label: 'Espina de pez con cabeza' }
+]
+
 // Estilos de límite (marco alrededor de una rama). Son la configuración del plugin
 // outerFrame de simple-mind-map: radius, strokeWidth, strokeColor, strokeDasharray, fill
 const BOUNDARY_STYLES = [

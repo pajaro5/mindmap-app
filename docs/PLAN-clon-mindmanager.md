@@ -20,7 +20,7 @@ Soporte en simple-mind-map: **Nativo** (comando/plugin existente) · **Parcial**
 | Zona | Contenido | Estado |
 |---|---|---|
 | Barra de título | Logo/menú de archivo, barra de acceso rápido (nuevo, abrir, guardar, deshacer, rehacer), nombre del mapa, modo "[Solo lectura]" | 🟡 |
-| Pestañas de la cinta | Home, Insert, Format, Review, View, Export, Connect, Tools (+ add-ins de terceros) | 🟡 (Inicio, Vista, Exportar) |
+| Pestañas de la cinta | Home, Insert, Format, Review, View, Export, Connect, Tools (+ add-ins de terceros) | 🟡 (Inicio, Formato, Vista, Exportar) |
 | Barra de documentos | Pestañas de mapas abiertos, navegación atrás/adelante | ❌ |
 | Panel de tareas (tira derecha) | My Maps, Map Markers, Task Info, Map Parts, Library, Search, Learning, Diagnostics, Wizard | 🟡 (Mis mapas, Marcadores) |
 | Barra de estado | Estado de conexión, filtro, vista Mapa/Esquema, zoom con slider, ajustar, mostrar panel | 🟡 (filtro, vista Mapa/Esquema, zoom, ajustar) |
@@ -78,7 +78,7 @@ Soporte en simple-mind-map: **Nativo** (comando/plugin existente) · **Parcial**
 ### 2.6 Estilo
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
 |---|---|---|---|---|
-| Estilo del tema | Galería: forma (rectángulo, redondeado, cápsula, línea…), relleno, sombra | 🟡 galería de 9 formas · ❌ sombra y estilos predefinidos | Nativo (`SET_NODE_SHAPE`, `SET_NODE_STYLES`) | M |
+| Estilo del tema | Galería: forma (rectángulo, redondeado, cápsula, línea…), relleno, sombra | 🟡 galería de 9 formas · ✅ sombra (Fase 16) · ❌ estilos predefinidos | Nativo (`SET_NODE_SHAPE`, `SET_NODE_STYLES`); la sombra es propia | M |
 
 ### 2.7 Edición
 | Función | Qué hace | Estado | simple-mind-map | Esfuerzo |
@@ -86,6 +86,25 @@ Soporte en simple-mind-map: **Nativo** (comando/plugin existente) · **Parcial**
 | Dividir | Convierte un tema de varias líneas en varios temas | ✅ | Propio (`SPLIT_TOPICS`) | S |
 | Seleccionar (+ desplegable) | Seleccionar todo, solo hermanos, por nivel, por marcador | ✅ todo, hermanos, nivel, rama, mismos marcadores | Parcial (`SELECT_ALL`; el resto es propio) | M |
 | Limpiar (+ desplegable) | Quitar formato, marcadores, notas, vínculos… | ✅ | Propio (`CLEAR_TOPICS`, usa `removeCustomStyles`) | S |
+
+---
+
+## 2b. Pestaña Formato: inventario
+
+En MindManager 8 la pestaña Format agrupa el aspecto de todo el mapa. El formato de un tema
+suelto (fuente, colores, forma) ya está en la pestaña Inicio.
+
+| Grupo | Qué hace en MindManager | Estado | simple-mind-map | Esfuerzo |
+|---|---|---|---|---|
+| Temas del mapa | Galería de temas (colores, ramas, fondo); aplicar al mapa | ✅ 10 temas con vista previa (Fase 16) · ❌ guardar un tema propio | Nativo (`defineTheme`); el cambio de tema es propio para que entre en el historial | M |
+| Sombras | Sombra en los temas | ✅ en todo el mapa y por tema | Propio (estilo `shadow` + filtro SVG) | S |
+| Restablecer | Volver al formato del tema | ✅ | Propio | S |
+| Diseño / dirección de crecimiento | Radial, derecha, izquierda, organigrama, líneas de tiempo, espina de pez | ✅ 5 diseños + 7 variantes · ❌ diseño distinto por rama | Nativo (`setLayout`); las espinas de pez a la derecha fallan en 0.14 | M (L por rama) |
+| Ramas | Forma (curva, en ángulo, recta), grosor y color de las líneas; ramas de colores | ✅ | Nativo (`lineStyle`, `lineWidth`, `lineColor`, plugin `RainbowLines`) | S |
+| Espaciado | Separación entre temas | ✅ compacto, normal, amplio · ❌ equilibrar el mapa | Nativo (`marginX`/`marginY`) | S |
+| Fondo del mapa | Color o imagen de fondo | ✅ color · ❌ imagen | Nativo (`backgroundColor`, `backgroundImage`) | S |
+| Formato de relación | Color, grosor, discontinua, flechas | ❌ (Fase 17) | Nativo (`associativeLineStyle`) | M |
+| Formato de límite | Relleno, color, formas tipo nube | 🟡 5 estilos (Fase 4) · ❌ nube | Parcial | M |
 
 ---
 
@@ -121,6 +140,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 | **13. Diagramas** ✅ | Motor de diagramas (`diagrams.js`): la definición va en el tema central (`_diagram`), que hace de título centrado encima; sus hijos se colocan libremente con la posición propia de la librería (`customLeft/customTop`, coordenadas fijas gracias a `initRootNodePosition`, así no dependen del tamaño de la ventana). Fondo en una capa detrás de los temas generado desde una única geometría (también la vista previa de la galería). Tipos: matriz con ejes, Venn de 2 y 3 círculos (zonas por combinación), embudo, cebolla, cuarto de círculo, carriles horizontales/verticales y mapa conceptual (relaciones con texto). Reglas por zona (SmartRules): icono, relleno (sin degradado, con texto legible) y tamaño de letra, aplicadas en el mismo paso del historial que el movimiento o la inserción. Arrastre propio en diagramas (`beforeDragEnd`): hueco → posición; sobre un tema → subtema; subtema a un hueco → tema del diagrama. Doble clic en un hueco añade un tema y en un rótulo edita la zona. 17 plantillas (67 en total); también en el HTML interactivo. No se clonan las 3 que no son diagramas: balance previsional y previsión de ventas (necesitan fórmulas) y el panel de Outlook. Pendiente: editar reglas desde la interfaz, añadir/quitar zonas y redimensionar el diagrama. | L |
 | **14. Vista: Esquema y Presentación** ✅ | Vista Esquema (`views.js`): el mismo mapa como lista con sangría encima del lienzo, que sigue vivo debajo; las filas son los temas de las ramas desplegadas y todo pasa por los comandos de siempre (historial, autoguardado, búsqueda y filtro iguales en las dos vistas). Clic, Ctrl+clic y Mayús+clic; teclado (↑ ↓ Inicio Fin, ← → contraer/desplegar, Enter, Mayús+Enter, Tab, F2); edición en la fila (texto escapado), iconos, marcadores de texto y columnas de Información de tarea. La librería solo atiende atajos con el foco en `body` o en sus "clases de edición": el esquema se registra con `addEditNodeClass`. Subir/Bajar de nivel (Alt+Mayús+← →, también en el mapa; varios temas a la vez, en un paso del historial). Botones Mapa/Esquema en la barra de estado. Presentación con el plugin `Demonstrate`: pantalla completa propia (la del plugin usa APIs con prefijo), barra con anterior/siguiente/salir, teclas de mando (AvPág, RePág, Espacio, Inicio, Fin); al salir se recupera la vista y el encuadre, y el autoguardado espera al final (si no, guardaba el mapa contraído). Corregido: `init()` se ejecutaba dos veces (Alpine ya lo llama solo y además había `x-init`). Pendiente: Gantt, mostrar por nivel, enfoque en tema y presentación en el HTML exportado. | L |
 | **15. Exportar a Word y Markdown** ✅ | `export-doc.js`: un modelo de documento único a partir del árbol (todas las ramas, también las contraídas) que se convierte en Markdown o en Word. El tema central es el título y cada nivel un título (Markdown: hasta el nivel 6 y listas por debajo; Word: estilos integrados Title/Heading1–9, que Word reconoce para el panel de navegación y el índice); debajo de cada tema, sus marcadores, la información de tarea en una línea, el vínculo, el adjunto, los resúmenes, las notas y las llamadas. Markdown escapado (lo de formato y HTML siempre; los signos de bloque solo al inicio de línea, para que siga siendo legible). `.docx` generado sin librerías: ZIP sin compresión con CRC propio (las pruebas lo comprueban con `zlib.crc32`) y el XML mínimo de WordprocessingML; caracteres de control eliminados. Validado abriéndolo con Word 16. El exportador a Markdown de la librería no se usa: no escapa el texto, convierte todos los niveles en títulos y no lleva marcadores ni tareas. Nueva prueba de que ningún nombre global se declara en dos scripts (un choque con `taskSummary` impedía abrir mapas). Pendiente: opciones de exportación (qué incluir, numeración de títulos) e imágenes de los temas. | M |
+| **16. Pestaña Formato: temas, ramas, espaciado, fondo y sombras** ✅ | `map-format.js`: el formato del mapa vive en el tema central (`_mapFormat`: tema, forma, grosor y color de las ramas, ramas de colores, espaciado, fondo y sombras), así entra en el historial, se guarda, viaja en las plantillas y llega al HTML exportado. La librería no guarda en el historial ni `setTheme` ni `setThemeConfig`: no se llaman; antes de cada render se derivan de `_mapFormat` las opciones de tema (con repintado completo si cambió), y Deshacer devuelve también el aspecto. 10 temas visuales con vista previa en la galería (aplicar un tema quita los cambios de ramas, fondo y sombras, no el formato propio de cada tema); Restablecer. Sombra propia (la librería no tiene): estilo `shadow` en el tema visual o en un tema suelto (Inicio › Estilo › Sombra), pintada con un filtro SVG en el `<defs>` que las exportaciones copian; al ser estilo, Copiar formato la copia y Quitar formato la quita. "Más diseños": 7 variantes (árbol a la izquierda, organigrama en lista, líneas de tiempo alterna y verticales, espina de pez con cabeza). El formato guardado se sanea al abrir. Pendiente: guardar un tema propio, imagen de fondo, equilibrar el mapa y diseño por rama. | M |
 | **10. Exportar HTML interactivo** ✅ | Un único .html de solo lectura (como el HTML5 Interactive Map de MindManager): librería minificada incrustada y cargada como módulo desde un Blob, tema y extensiones compartidos (`theme.js`), datos como JSON escapado, CSP sin red, mapa saneado al abrirlo; desplegar/contraer ramas, expandir/contraer todo, ajustar y zoom. Sin adjuntos (están en el servidor). | M |
 | **9. Vista: Buscar y Filtro** ✅ | Barra Buscar/Reemplazar (Ctrl+F, Ctrl+H) propia: sin distinguir tildes ni mayúsculas (opción "Aa"), también en notas y en ramas contraídas; reemplazo escapado y en una entrada de historial (el plugin `search` de la librería reemplazaba dentro del HTML y sin escapar). Panel Filtro: texto, iconos, marcadores de texto, recursos y estado de la tarea, con "todos/alguno"; atenúa lo que no cumple sin tocar el mapa. Pendiente: buscar en marcadores y guardar filtros con nombre. | M |
 | **8. Llamadas** ✅ | Notas flotantes ancladas a un tema (`_callouts`), pintadas en una capa propia del lienzo con conector: insertar, editar (doble clic), mover arrastrando, eliminar (Supr); salen en las exportaciones. Pendiente: subtemas dentro de una llamada y temas flotantes sin ancla. | L |
@@ -138,7 +158,7 @@ Cada fase termina con: plan de pruebas → pruebas e2e automatizadas → todas e
 
 **Siguientes pestañas (fuera de este plan, por definir):**
 - **Insertar:** tema flotante, imagen desde biblioteca y otros elementos.
-- **Formato:** temas visuales del mapa, diseño y estructura.
+- **Formato:** ~~temas visuales, ramas, espaciado, fondo y sombras~~ ✅ (Fase 16); formato de relación y de límite (Fase 17), diseño por rama.
 - **Revisar:** comentarios y control de cambios.
 - **Vista:** ~~vista Esquema~~ ✅ y ~~presentación~~ ✅ (Fase 14), mostrar/ocultar por nivel, enfoque en tema.
 - **Exportar:** ~~HTML interactivo~~ ✅ (Fase 10), ~~Word y Markdown~~ ✅ (Fase 15), XMind (nativo en simple-mind-map).

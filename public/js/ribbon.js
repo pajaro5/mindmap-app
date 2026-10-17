@@ -72,7 +72,7 @@ const RIBBON_TABS = [
           ]
         ]
       },
-      { label: 'Estilo', items: [{ cmd: 'style.shape' }] },
+      { label: 'Estilo', items: [{ cmd: 'style.shape' }, { cmd: 'style.shadow', size: 'small' }] },
       {
         label: 'Edición',
         items: [
@@ -91,8 +91,29 @@ const RIBBON_TABS = [
     label: 'Formato',
     groups: [
       {
+        label: 'Temas',
+        items: [{ cmd: 'mapTheme.apply' }, { cmd: 'mapFormat.shadow', size: 'small' }, { cmd: 'mapFormat.reset', size: 'small' }]
+      },
+      {
         label: 'Diseño del mapa',
-        items: [{ cmd: 'layout.radial' }, { cmd: 'layout.tree' }, { cmd: 'layout.org' }, { cmd: 'layout.timeline' }, { cmd: 'layout.fishbone' }]
+        items: [
+          { cmd: 'layout.radial' }, { cmd: 'layout.tree' }, { cmd: 'layout.org' }, { cmd: 'layout.timeline' }, { cmd: 'layout.fishbone' },
+          { cmd: 'layout.more' }
+        ]
+      },
+      {
+        label: 'Ramas',
+        rows: [
+          [{ cmd: 'mapFormat.lineStyle', width: 124 }, { cmd: 'mapFormat.lineColor' }],
+          [{ cmd: 'mapFormat.lineWidth', width: 124 }, { cmd: 'mapFormat.rainbow' }]
+        ]
+      },
+      {
+        label: 'Mapa',
+        rows: [
+          [{ cmd: 'mapFormat.spacing', width: 138 }],
+          [{ cmd: 'mapFormat.background' }]
+        ]
       }
     ]
   },

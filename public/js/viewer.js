@@ -24,8 +24,8 @@ async function startInteractiveViewer() {
       el: document.getElementById('mindMapContainer'),
       data: data.root,
       layout: data.layout || 'mindMap',
-      theme: themeTemplateOf(savedTheme),
-      themeConfig: savedTheme.config || {},
+      // Tema, ramas, fondo y sombras del mapa (map-format.js)
+      ...mapFormatOptions(data.root.data, savedTheme),
       readonly: true,
       fit: true,
       maxTag: 10,
@@ -36,6 +36,7 @@ async function startInteractiveViewer() {
       ...diagramMapOptions(data.root.data)
     })
     guardTextEditBoxes(mindMap)
+    installMapFormat(mindMap, savedTheme)
     // Diagramas: fondo (zonas y rótulos) y sin líneas desde el título
     attachDiagram(mindMap)
 

@@ -42,7 +42,10 @@ function mindMapApp() {
     colorPalette: COLOR_PALETTE,
     shapeIcons: SHAPE_ICONS,
     // Último color usado por cada botón de color (el botón principal lo vuelve a aplicar)
-    lastColors: { 'format.fillColor': '#ffff00', 'format.borderColor': '#c00000', 'format.fontColor': '#c00000' },
+    lastColors: {
+      'format.fillColor': '#ffff00', 'format.borderColor': '#c00000', 'format.fontColor': '#c00000',
+      'mapFormat.lineColor': '#0070c0', 'mapFormat.background': '#f2f2f2'
+    },
     // Cambia en cada render del mapa; `selection` lo lee para recalcular el estilo del tema
     // activo (los estilos viven en simple-mind-map, fuera de la reactividad de Alpine)
     renderTick: 0,
@@ -219,8 +222,15 @@ function mindMapApp() {
         fillColor: read('fillColor'),
         borderColor: read('borderColor'),
         textAlign: read('textAlign'),
-        shape: read('shape')
+        shape: read('shape'),
+        shadow: !!read('shadow')
       }
+    },
+
+    // Formato del mapa (pestaña Formato): valores efectivos para la cinta
+    get mapFormatState() {
+      void this.renderTick
+      return describeMapFormat(this.mindMap && Alpine.raw(this.mindMap))
     },
 
     // Estado de selección centralizado: lo único que consultan los comandos para decidir
@@ -248,6 +258,7 @@ function mindMapApp() {
         filterActive: isFilterActive(this.filter),
         painterActive: this.painterActive,
         layout: this.currentLayout,
+        mapFormat: this.mapFormatState,
         pane: this.pane
       }
     },
@@ -1253,7 +1264,6 @@ function mindMapApp() {
         if (fixed > 0) console.warn(`Se corrigieron ${fixed} valores no seguros del mapa`)
 
         const savedTheme = map.data.theme || {}
-        const template = themeTemplateOf(savedTheme)
 
         this.painterActive = false
         this.mindMap = new MindMapCtor({
@@ -1261,8 +1271,8 @@ function mindMapApp() {
           fit,
           data: map.data.root,
           layout: this.currentLayout,
-          theme: template,
-          themeConfig: savedTheme.config || {},
+          // Tema, ramas, fondo y sombras del mapa (map-format.js)
+          ...mapFormatOptions(map.data.root.data, savedTheme),
           defaultInsertSecondLevelNodeText: 'Tema principal',
           defaultInsertBelowSecondLevelNodeText: 'Subtema',
           defaultGeneralizationText: 'Resumen',
@@ -1287,6 +1297,7 @@ function mindMapApp() {
         })
         this.mindMapId = map.id
         extendMindMap(this.mindMap)
+        installMapFormat(Alpine.raw(this.mindMap), savedTheme)
         attachDiagram(Alpine.raw(this.mindMap), {
           editable: true,
           handlers: {
@@ -1458,6 +1469,15 @@ function mindMapApp() {
       if (!this.mindMap) return
       this.currentLayout = layout
       this.mindMap.setLayout(layout)
+    },
+
+    // Cambia parte del formato del mapa (un paso de deshacer). Con `reset` se parte solo del
+    // tema: aplicar un tema o "Restablecer" quitan los cambios de ramas, fondo, sombras…
+    setMapFormat(change, { reset = false } = {}) {
+      if (!this.mindMap) return
+      const current = currentMapFormat(Alpine.raw(this.mindMap))
+      const from = reset ? { theme: current.theme } : current
+      this.mindMap.execCommand('SET_MAP_FORMAT', { ...from, ...change })
     },
 
     // ---- Marcadores ----

@@ -352,6 +352,13 @@ button { font-family: inherit; }
 .options-gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; width: 360px; }
 .option-preview svg { display: block; width: 32px; height: 20px; }
 .options-gallery .ribbon-menu-item.current { background: linear-gradient(#ffd99a, #f8b955); border-color: #c2862a; }
+/* Temas del mapa: miniatura grande con el nombre debajo, en tres columnas */
+.options-gallery[data-gallery-for="mapTheme.apply"] { grid-template-columns: repeat(3, 1fr); width: 312px; gap: 2px; }
+.options-gallery[data-gallery-for="mapTheme.apply"] .ribbon-menu-item { flex-direction: column; gap: 3px; padding: 5px 4px; }
+.options-gallery[data-gallery-for="mapTheme.apply"] .option-preview svg { width: 84px; height: 60px; }
+.options-gallery[data-gallery-for="mapTheme.apply"] .ribbon-menu-label { text-align: center; }
+.options-gallery[data-gallery-for="layout.more"] { width: 470px; }
+.options-gallery[data-gallery-for="layout.more"] .option-preview svg { width: 26px; height: 26px; }
 
 .ribbon-menu {
   position: fixed;
