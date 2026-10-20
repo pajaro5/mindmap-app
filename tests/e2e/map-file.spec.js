@@ -83,6 +83,15 @@ test('el ejemplo de howToCreateAMindmap.md se abre completo desde un .zip de su 
   const guide = fs.readFileSync(path.join(__dirname, '..', '..', 'howToCreateAMindmap.md'), 'utf8')
   const example = [...guide.matchAll(/```json\r?\n([\s\S]*?)```/g)].map(m => m[1]).find(b => b.includes('Git básico'))
   expect(example).toBeTruthy()
+  // El ejemplo cumple sus propias reglas: ningún campo de la lista "NO debes generar" y textos
+  // de una línea
+  const forbidden = ['image', 'imageSize', 'attachmentUrl', '_noteHtml', 'customLeft', 'customTop', '_diagram', '_diagramRule', '_mapFormat', 'richText']
+  const walk = node => {
+    expect(Object.keys(node.data).filter(k => forbidden.includes(k)), node.data.text).toEqual([])
+    expect(node.data.text, 'text sin saltos de línea').not.toContain('\n')
+    ;(node.children || []).forEach(walk)
+  }
+  walk(JSON.parse(example).data.root)
   const png = Buffer.from(await page.evaluate(() => {
     const c = document.createElement('canvas')
     c.width = 800

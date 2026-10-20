@@ -57,24 +57,13 @@ Cada **nodo** tiene siempre esta forma:
 
 | Campo    | Tipo    | Ejemplo | Notas |
 |----------|---------|---------|-------|
-| `text`   | string  | `"Variables"` | Texto del tema. Corto (1–6 palabras). Usa `\n` para salto de línea. Evita `<`, `>` y `&`. |
+| `text`   | string  | `"Variables"` | Texto del tema. Corto (1–6 palabras), en **una sola línea**: un `\n` aquí no hace salto de línea (se muestra como espacio). Los caracteres `<`, `>`, `&` y comillas se muestran tal cual. |
 | `expand` | boolean | `true`  | `false` = rama plegada al abrir. Por defecto `true`. |
 | `note`   | string  | `"Una variable guarda un valor.\n\nEjemplo: x = 5"` | Nota del tema (texto plano). Aquí va la **explicación larga** del tutorial. `\n\n` separa párrafos. |
 
-### Nota con formato (opcional)
-
-Si quieres negritas, listas o vínculos en la nota, añade **además** de `note`:
-
-| Campo       | Tipo   | Notas |
-|-------------|--------|-------|
-| `_noteHtml` | string | HTML con **solo** estas etiquetas: `p br b i u s ul ol li a`. En `<a>` solo `href` (http/https/mailto). Todo lo demás se elimina. |
-
-`note` debe contener el mismo texto sin formato (se usa en búsquedas y exportaciones).
-
-```json
-"note": "Pasos:\nAbrir el editor\nEscribir el código",
-"_noteHtml": "<p><b>Pasos:</b></p><ol><li>Abrir el editor</li><li>Escribir el código</li></ol>"
-```
+Las notas son **texto plano**: no uses Markdown ni HTML (se verían los símbolos). Para estructurar,
+usa saltos de línea, guiones al inicio de línea (`- paso`) o numeración (`1. paso`). El formato
+enriquecido en las notas (negrita, listas, vínculos) todavía no está disponible.
 
 ### Iconos (marcadores) — `icon`
 
@@ -205,7 +194,7 @@ necesitas un símbolo visual que no está, usa una etiqueta (`tag`) o una imagen
 ### Campos que NO debes generar
 
 `image`, `imageSize`, `attachmentUrl` (los rellena la app a partir de `imageFile` y
-`attachmentFile`), `customLeft`, `customTop`, `_diagram`, `_diagramRule`, `_mapFormat`,
+`attachmentFile`), `_noteHtml`, `customLeft`, `customTop`, `_diagram`, `_diagramRule`, `_mapFormat`,
 `richText`, y cualquier estilo visual (colores, fuentes, formas). Dependen del servidor o de la
 maquetación interna; la app los ignora o los gestiona ella misma.
 
@@ -218,7 +207,7 @@ maquetación interna; la app los ignora o los gestiona ella misma.
    Usa `priority_1`, `priority_2`… para indicar el orden de lectura.
 3. **Subtemas** (nivel 2–3) = conceptos concretos. No pases de 4 niveles de profundidad.
 4. **Texto del tema corto**; la explicación va en `note`. Un tema = una idea.
-5. Ejemplos, código y detalles largos → `note` / `_noteHtml`.
+5. Ejemplos, código y detalles largos → `note` (texto plano; código en líneas propias).
 6. Consejos → `symbol_idea`; errores frecuentes → `symbol_warning`; ejercicios → `symbol_question`
    (y la solución en su nota); recursos externos → `hyperlink`.
 7. Usa relaciones (§2) solo cuando aporten algo (p. ej. “requiere”, “se usa en”).
@@ -286,8 +275,7 @@ maquetación interna; la app los ignora o los gestiona ella misma.
               "data": {
                 "text": "Commit",
                 "uid": "7f1c2e10-0000-4000-8000-000000000001",
-                "note": "git add .\ngit commit -m \"Mensaje\"",
-                "_noteHtml": "<p><b>Dos pasos:</b></p><ol><li>git add .</li><li>git commit -m \"Mensaje\"</li></ol>"
+                "note": "Dos pasos:\n1. git add .\n2. git commit -m \"Mensaje\""
               },
               "children": []
             }
@@ -339,6 +327,7 @@ maquetación interna; la app los ignora o los gestiona ella misma.
 - [ ] Los colores son `#rrggbb`; las fechas, `AAAA-MM-DD`; los vínculos, `https://`/`mailto:`.
 - [ ] Cada `uid` usado en `associativeLineTargets` existe en algún tema y es único.
 - [ ] Ningún campo de la lista “NO debes generar”.
+- [ ] Ningún `text` lleva `\n`; las notas son texto plano (sin Markdown ni HTML).
 - [ ] Cada `imageFile` / `attachmentFile` existe en la ruta indicada (relativa al JSON).
 - [ ] El archivo se guarda con extensión `.json` y codificación UTF-8.
 
