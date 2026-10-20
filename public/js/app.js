@@ -25,6 +25,9 @@ function mindMapApp() {
     iconQuery: '',
     // Exportación a HTML interactivo en curso
     exporting: false,
+    // Abrir / guardar como archivo en curso (map-file.js) y arrastre de un archivo sobre la app
+    fileBusy: '',
+    fileDragOver: false,
     // Plantillas guardadas por el usuario (se cargan al abrir la galería)
     userTemplates: [],
     // Panel Info. de tarea: recurso que se está escribiendo y último error de validación
@@ -1321,6 +1324,12 @@ function mindMapApp() {
           this.runCommand(e.key.toLowerCase() === 'f' ? 'view.find' : 'view.replace')
           return
         }
+        // Ctrl+O: abrir un mapa guardado como archivo (en lugar de abrir del navegador)
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'o' && !this.dialog) {
+          e.preventDefault()
+          this.runCommand('map.openFile')
+          return
+        }
         // Supr con una llamada seleccionada la elimina (no hay temas seleccionados)
         if ((e.key === 'Delete' || e.key === 'Backspace') && this.calloutActive && e.target === document.body && !this.dialog) {
           e.preventDefault()
@@ -1908,6 +1917,101 @@ function mindMapApp() {
     exportMap(type) {
       if (!this.mindMap) return
       this.mindMap.export(type, true, this.currentTitle || 'mapa-mental')
+    },
+
+    // ---- Abrir y guardar como archivo (map-file.js) ----
+    async openMapFile() {
+      const file = await pickFile('.json,.zip,application/json,application/zip')
+      if (file) await this.importMapFile(file)
+    },
+
+    // Crea un mapa nuevo con el contenido del archivo, sube sus adjuntos y lo abre
+    async importMapFile(file) {
+      if (this.fileBusy) return
+      this.fileBusy = 'Abriendo archivo…'
+      this.errorMsg = ''
+      let createdId = null
+      try {
+        const map = await readMapFile(file)
+        const res = await fetch('/api/maps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: map.title, data: map.data })
+        })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) throw new MapFileError(`El servidor no aceptó el mapa: ${body.error || `HTTP ${res.status}`}`)
+        createdId = body.id
+        const warnings = [...map.warnings]
+        if (map.attachments.length) {
+          for (const a of map.attachments) {
+            try {
+              const type = (a.name.match(/\.(\w+)$/) || [])[1]
+              const uploaded = await uploadAttachment(body.id, new File([a.bytes], a.name, { type: IMAGE_FILE_TYPES[(type || '').toLowerCase()] || 'application/octet-stream' }))
+              a.data.attachmentUrl = uploaded.url
+              a.data.attachmentName = escapeXml(uploaded.name)
+            } catch (err) {
+              warnings.push(`No se pudo subir el adjunto "${a.name}": ${err.message}`)
+            }
+          }
+          const put = await fetch(`/api/maps/${body.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: map.data })
+          })
+          if (!put.ok) warnings.push(`No se pudieron enlazar los adjuntos (HTTP ${put.status}).`)
+        }
+        await this.loadMapList()
+        await this.openMap(body.id, { fit: true })
+        if (warnings.length) this.showDialog({ kind: 'fileReport', title: map.title, warnings })
+      } catch (err) {
+        if (!(err instanceof MapFileError)) console.error(err)
+        this.errorMsg = `No se pudo abrir "${file.name}": ${err.message || err}`
+        if (createdId) await this.loadMapList()
+      } finally {
+        this.fileBusy = ''
+      }
+    },
+
+    async saveMapFile() {
+      if (!this.mindMap || this.fileBusy) return
+      this.fileBusy = 'Preparando archivo…'
+      try {
+        await this.flushPendingSave()
+        const file = await buildMapFile(Alpine.raw(this.mindMap).getData(true), this.currentTitle, async url => {
+          const res = await fetch(url)
+          if (!res.ok) throw new Error(`no se pudo leer el adjunto (HTTP ${res.status})`)
+          return new Uint8Array(await res.arrayBuffer())
+        })
+        const url = URL.createObjectURL(file.blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = file.name
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 10000)
+      } catch (err) {
+        console.error(err)
+        this.errorMsg = `No se pudo guardar el archivo: ${err.message || err}`
+      } finally {
+        this.fileBusy = ''
+      }
+    },
+
+    // Arrastrar un .json o .zip sobre la app lo abre
+    onFileDragOver(e) {
+      if (!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+      this.fileDragOver = true
+    },
+
+    onFileDrop(e) {
+      if (!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return
+      e.preventDefault()
+      this.fileDragOver = false
+      const file = [...e.dataTransfer.files].find(f => isMapFileName(f.name)) || e.dataTransfer.files[0]
+      if (file) this.importMapFile(file)
     }
   }
 }

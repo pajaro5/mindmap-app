@@ -160,7 +160,7 @@ van aquí: se expresan con los iconos `priority_N` y `progress_N`.
 ### Imágenes (capturas de pantalla) — `imageFile`
 
 **No** incrustes la imagen en el JSON a mano. Guarda cada captura como archivo junto al JSON y
-referénciala por ruta; el script de importación (§7) la convierte en imagen del tema.
+referénciala por ruta; al abrir el `.zip` (§7) la app la convierte en imagen del tema.
 
 | Campo        | Tipo   | Notas |
 |--------------|--------|-------|
@@ -180,9 +180,9 @@ referénciala por ruta; el script de importación (§7) la convierte en imagen d
 
 Recomendaciones para capturas:
 - Una captura por tema, en el tema del paso que ilustra; la explicación, en `note`.
-- Recórtalas a la zona relevante y que no pasen de **1024 px** de lado (el script avisa si es así).
+- Recórtalas a la zona relevante; si pasan de **1024 px** de lado, la app las reduce al abrirlas.
 - PNG para pantallas con texto; JPEG si la captura es una foto o muy grande.
-- **Todo el mapa, con imágenes, debe ocupar menos de 20 MB** (el script lo comprueba).
+- **Todo el mapa, con imágenes, debe ocupar menos de 20 MB** (la app lo comprueba al abrirlo).
   Como orientación: 30–40 capturas PNG recortadas suelen caber de sobra.
 - Nombra los archivos con el número de paso (`01-…`, `02-…`) y guárdalos en una carpeta `capturas/`.
 
@@ -204,7 +204,7 @@ necesitas un símbolo visual que no está, usa una etiqueta (`tag`) o una imagen
 
 ### Campos que NO debes generar
 
-`image`, `imageSize`, `attachmentUrl` (los rellena el script a partir de `imageFile` y
+`image`, `imageSize`, `attachmentUrl` (los rellena la app a partir de `imageFile` y
 `attachmentFile`), `customLeft`, `customTop`, `_diagram`, `_diagramRule`, `_mapFormat`,
 `richText`, y cualquier estilo visual (colores, fuentes, formas). Dependen del servidor o de la
 maquetación interna; la app los ignora o los gestiona ella misma.
@@ -358,16 +358,21 @@ tutorial-git/
     └── ejercicio.zip
 ```
 
-Mientras no exista un botón “Abrir archivo” en la app, se carga con el script de importación
-(con la app arrancada):
+Para cargarlo en la app:
 
-```powershell
-node scripts/import-map.js tutorial-git/mapa.json
-```
+1. **Comprime la carpeta** en un `.zip` (en Windows: clic derecho › Enviar a › Carpeta comprimida).
+   Si el mapa no tiene capturas ni adjuntos, basta con el `.json` suelto.
+2. En la app: **Abrir** (barra de acceso rápido, `Ctrl+O`, pestaña Exportar › Archivo, o
+   “Abrir archivo…” en Mis mapas), o **arrastra** el `.zip` sobre la ventana.
 
-El script incrusta las imágenes, crea el mapa, sube los adjuntos y avisa de cualquier ruta que no
-exista o de un tamaño excesivo. El mapa aparece en la lista “Mis mapas”.
+La app crea un mapa nuevo (nunca sobrescribe otro), incrusta las imágenes (reduciéndolas a
+1024 px de lado), sube los adjuntos y lo abre. Si alguna ruta no existe o un archivo no se puede
+usar, el mapa se abre igualmente y muestra la lista de avisos.
 
-- `--server http://otro-host:puerto` para otra instancia (por defecto `http://localhost:3001`).
-- `--out salida.json` solo genera el JSON con las imágenes incrustadas, sin crear el mapa
-  (útil para revisarlo; los adjuntos se descartan).
+Notas:
+- El `.json` puede llamarse `mapa.json` o tener cualquier nombre si es el único `.json` del `.zip`.
+- Las rutas no distinguen mayúsculas si no hay coincidencia exacta.
+- Sin `title`, el mapa toma el nombre del archivo.
+- **Exportar › Guardar como archivo** produce este mismo formato (`.json`, o `.zip` con
+  `adjuntos/` si el mapa tiene adjuntos), así que un mapa guardado se puede volver a abrir o
+  compartir.

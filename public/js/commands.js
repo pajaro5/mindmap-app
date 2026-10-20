@@ -64,6 +64,16 @@ const COMMANDS = {
     enabled: hasMap,
     run: app => app.openSaveTemplateDialog()
   },
+  'map.openFile': {
+    label: 'Abrir', menuLabel: 'Abrir archivo…', shortcut: 'Ctrl+O', icon: 'openFile',
+    tooltip: 'Abrir un mapa guardado como archivo (.json, o .zip con imágenes y adjuntos). Se crea un mapa nuevo',
+    run: app => app.openMapFile()
+  },
+  'map.saveFile': {
+    label: 'Guardar como archivo', icon: 'saveFile', enabled: hasMap,
+    tooltip: 'Descargar el mapa como archivo para guardarlo o compartirlo (.json, o .zip si tiene adjuntos)',
+    run: app => app.saveMapFile()
+  },
 
   // ---- Edición ----
   'edit.undo': {

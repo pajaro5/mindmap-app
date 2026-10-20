@@ -12,7 +12,7 @@
 
 const DROPDOWN_KINDS = ['iconMarkers', 'textMarkers']
 
-const QUICK_ACCESS = ['map.new', 'edit.undo', 'edit.redo']
+const QUICK_ACCESS = ['map.new', 'map.openFile', 'edit.undo', 'edit.redo']
 
 const RIBBON_TABS = [
   {
@@ -141,6 +141,7 @@ const RIBBON_TABS = [
     id: 'export',
     label: 'Exportar',
     groups: [
+      { label: 'Archivo', items: [{ cmd: 'map.saveFile' }, { cmd: 'map.openFile' }] },
       { label: 'Exportar', items: [{ cmd: 'export.png' }, { cmd: 'export.pdf' }, { cmd: 'export.html' }] },
       { label: 'Documento', items: [{ cmd: 'export.word' }, { cmd: 'export.markdown' }] },
       { label: 'Plantillas', items: [{ cmd: 'map.saveAsTemplate' }, { cmd: 'map.newFromTemplate' }] }

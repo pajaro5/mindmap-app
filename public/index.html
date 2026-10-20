@@ -9,7 +9,9 @@
   <script src="/vendor/simple-mind-map.umd.min.js"></script>
 </head>
 <!-- Alpine llama solo a init() del objeto de x-data: con x-init="init()" se ejecutaba dos veces -->
-<body x-data="mindMapApp()" :class="{ 'painter-active': painterActive, presenting: !!presenting }">
+<body x-data="mindMapApp()" :class="{ 'painter-active': painterActive, presenting: !!presenting, 'file-drag-over': fileDragOver }"
+      @dragover="onFileDragOver($event)" @drop="onFileDrop($event)"
+      @dragleave="if (!$event.relatedTarget) fileDragOver = false">
 
   <div class="app-shell">
     <!-- Barra de título: logo, barra de acceso rápido y nombre del mapa -->
@@ -344,6 +346,8 @@
         <div class="task-pane-body" x-show="pane === 'maps'">
           <button class="btn btn-primary btn-block" @click="runCommand('map.new')">+ Nuevo mapa</button>
           <button class="btn btn-block template-open" data-action="open-templates" @click="runCommand('map.newFromTemplate')">Nuevo desde plantilla…</button>
+          <button class="btn btn-block file-open" data-action="open-file" @click="runCommand('map.openFile')"
+                  title="Abrir un mapa guardado como .json o .zip (también puedes arrastrarlo aquí)">Abrir archivo…</button>
           <ul class="map-list">
             <template x-for="m in maps" :key="m.id">
               <li :class="{ active: m.id === currentId }" @click="openMap(m.id)">
@@ -628,6 +632,21 @@
       </template>
 
       <!-- Guardar el mapa abierto como plantilla propia -->
+      <!-- Avisos al abrir un archivo: el mapa se abrió, pero algo no se pudo usar -->
+      <template x-if="dialog && dialog.kind === 'fileReport'">
+        <form class="dialog-form" @submit.prevent="closeDialog()">
+          <h2 id="appDialogTitle" class="dialog-title">Mapa abierto con avisos</h2>
+          <p>Se abrió "<span x-text="dialog.title"></span>", pero:</p>
+          <ul class="file-report">
+            <template x-for="(w, i) in dialog.warnings" :key="i"><li x-text="w"></li></template>
+          </ul>
+          <div class="dialog-actions">
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary">Aceptar</button>
+          </div>
+        </form>
+      </template>
+
       <template x-if="dialog && dialog.kind === 'saveTemplate'">
         <form class="dialog-form" @submit.prevent="saveAsTemplate()" novalidate>
           <h2 id="appDialogTitle" class="dialog-title">Guardar como plantilla</h2>
@@ -846,6 +865,7 @@
       <span class="status-item" x-text="maps.length + (maps.length === 1 ? ' mapa' : ' mapas')"></span>
       <span class="status-item save-status" x-text="saveStatus"></span>
       <span class="status-item export-status" role="status" x-show="exporting" x-cloak>Generando HTML interactivo…</span>
+      <span class="status-item file-status" role="status" x-show="fileBusy" x-cloak x-text="fileBusy"></span>
       <span class="status-item filter-status" x-show="isFilterActive(filter)" x-cloak>
         <span x-text="`Filtro: ${filterSummary.matched} de ${filterSummary.total} temas`"></span>
         <button type="button" class="status-link" data-action="status-clear-filter" @click="clearFilter()">Quitar filtro</button>
@@ -900,6 +920,7 @@
 <script src="/js/paste-special.js"></script>
   <script src="/js/export-html.js"></script>
   <script src="/js/export-doc.js"></script>
+  <script src="/js/map-file.js"></script>
   <script src="/js/templates.js"></script>
   <script src="/js/commands.js"></script>
   <script src="/js/ribbon.js"></script>

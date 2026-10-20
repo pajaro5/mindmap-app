@@ -817,6 +817,11 @@ details.icon-category.classic > summary { color: var(--muted); font-weight: 400;
 /* ---------- Plantillas ---------- */
 .app-dialog.wide { width: min(900px, calc(100vw - 32px)); }
 .template-open { margin-top: 6px; }
+/* Abrir y guardar como archivo */
+.file-open { margin-top: 6px; }
+body.file-drag-over .app-shell { outline: 3px dashed #3d8fd8; outline-offset: -6px; }
+.file-report { margin: 8px 0 4px; padding-left: 20px; max-height: 260px; overflow: auto; }
+.file-report li { margin: 4px 0; }
 /* La altura de la galería deja sitio al título y a los botones del diálogo, que no deben
    quedar encima de las tarjetas */
 .template-gallery { display: grid; grid-template-columns: 170px 1fr; gap: 12px; height: min(560px, calc(100vh - 220px)); min-height: 0; }

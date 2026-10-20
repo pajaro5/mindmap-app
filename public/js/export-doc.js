@@ -211,7 +211,7 @@ function crc32(bytes) {
   return (crc ^ 0xffffffff) >>> 0
 }
 
-// Devuelve el ZIP como Uint8Array. `files`: [{ name, text }]
+// Devuelve el ZIP como Uint8Array. `files`: [{ name, text }] o [{ name, data: Uint8Array }]
 function buildZip(files, now = new Date()) {
   const enc = new TextEncoder()
   const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)
@@ -221,7 +221,7 @@ function buildZip(files, now = new Date()) {
   let offset = 0
   files.forEach(file => {
     const name = enc.encode(file.name)
-    const data = enc.encode(file.text)
+    const data = file.data instanceof Uint8Array ? file.data : enc.encode(file.text)
     const crc = crc32(data)
     // Cabecera local: firma, versión 2.0, bit 11 (nombres en UTF-8), sin compresión
     const local = new DataView(new ArrayBuffer(30))
