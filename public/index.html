@@ -656,10 +656,35 @@
       <template x-if="dialog && dialog.kind === 'hyperlink'">
         <form class="dialog-form" @submit.prevent="saveHyperlink()" novalidate>
           <h2 id="appDialogTitle" class="dialog-title">Hipervínculo</h2>
-          <label class="dialog-field">
+          <fieldset class="dialog-choice">
+            <legend>Vincular a</legend>
+            <label><input type="radio" name="linkKind" value="web" x-model="dialog.linkKind" @change="dialog.error = ''" /> Página web o correo</label>
+            <label><input type="radio" name="linkKind" value="topic" x-model="dialog.linkKind" @change="dialog.error = ''" /> Tema de este mapa</label>
+            <label><input type="radio" name="linkKind" value="map" x-model="dialog.linkKind" @change="dialog.error = ''"
+                          :disabled="!dialog.mapOptions.length" /> Otro mapa</label>
+          </fieldset>
+          <label class="dialog-field" x-show="dialog.linkKind === 'web'">
             <span>Dirección</span>
             <input name="url" type="text" x-model="dialog.url" placeholder="https://ejemplo.com" autocomplete="off"
                    :aria-invalid="!!dialog.error" @input="dialog.error = ''" />
+          </label>
+          <label class="dialog-field" x-show="dialog.linkKind === 'topic'">
+            <span>Tema</span>
+            <select name="linkTopic" x-model="dialog.linkTopic" @change="dialog.error = ''">
+              <option value="">Elige un tema…</option>
+              <template x-for="t in dialog.topics" :key="t.value">
+                <option :value="t.value" x-text="t.label" :selected="t.value === dialog.linkTopic"></option>
+              </template>
+            </select>
+          </label>
+          <label class="dialog-field" x-show="dialog.linkKind === 'map'">
+            <span>Mapa</span>
+            <select name="linkMap" x-model="dialog.linkMap" @change="dialog.error = ''">
+              <option value="">Elige un mapa…</option>
+              <template x-for="m in dialog.mapOptions" :key="m.value">
+                <option :value="m.value" x-text="m.label" :selected="m.value === dialog.linkMap"></option>
+              </template>
+            </select>
           </label>
           <label class="dialog-field">
             <span>Texto que se muestra al pasar el ratón <em>(opcional)</em></span>
@@ -670,6 +695,29 @@
             <button type="button" class="btn dialog-remove" x-show="dialog.canRemove" @click="removeHyperlink()">Quitar vínculo</button>
             <span class="dialog-spacer"></span>
             <button type="submit" class="btn btn-primary">Aceptar</button>
+            <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+      </template>
+
+      <!-- Pegado especial: el texto como un tema o como un tema por línea -->
+      <template x-if="dialog && dialog.kind === 'pasteSpecial'">
+        <form class="dialog-form" @submit.prevent="savePasteSpecial()" novalidate>
+          <h2 id="appDialogTitle" class="dialog-title">Pegado especial</h2>
+          <label class="dialog-field">
+            <span>Texto (pega aquí con Ctrl+V si no aparece)</span>
+            <textarea name="pasteText" rows="8" x-model="dialog.text" @input="dialog.error = ''" spellcheck="false"></textarea>
+          </label>
+          <fieldset class="dialog-choice">
+            <legend>Pegar como</legend>
+            <label><input type="radio" name="pasteMode" value="lines" x-model="dialog.mode" /> Un tema por línea (la sangría marca el nivel)</label>
+            <label><input type="radio" name="pasteMode" value="single" x-model="dialog.mode" /> Un solo tema</label>
+          </fieldset>
+          <p class="dialog-hint" x-text="pasteSpecialSummary"></p>
+          <p class="dialog-error" role="alert" x-show="dialog.error" x-text="dialog.error"></p>
+          <div class="dialog-actions">
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary">Pegar</button>
             <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
           </div>
         </form>
@@ -848,6 +896,8 @@
   <script src="/js/theme.js"></script>
 <script src="/js/map-format.js"></script>
 <script src="/js/relation-format.js"></script>
+<script src="/js/topic-links.js"></script>
+<script src="/js/paste-special.js"></script>
   <script src="/js/export-html.js"></script>
   <script src="/js/export-doc.js"></script>
   <script src="/js/templates.js"></script>

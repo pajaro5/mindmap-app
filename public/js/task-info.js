@@ -87,6 +87,12 @@ function withProgress(icons, percent) {
   return step >= 1 ? toggleIconList(list, `progress_${step}`, true) : list
 }
 
+// Siguiente cuarto al hacer clic en el icono de progreso: 25 → 50 → 75 → 100 → 25
+function nextProgressQuarter(percent) {
+  const next = Math.floor((Number(percent) || 0) / 25) * 25 + 25
+  return next > 100 ? 25 : next
+}
+
 // Opciones del selector de % completado: cuartos, como MindManager, más el valor actual si
 // viene de un icono intermedio (p. ej. 38 %)
 function progressOptions(current) {

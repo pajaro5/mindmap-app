@@ -225,6 +225,7 @@ function mindMapApp() {
         color: read('color'),
         fillColor: read('fillColor'),
         borderColor: read('borderColor'),
+        borderWidth: read('borderWidth'),
         textAlign: read('textAlign'),
         shape: read('shape'),
         shadow: !!read('shadow')
@@ -1048,22 +1049,100 @@ function mindMapApp() {
       this.mindMap.execCommand('CLEAR_TOPICS', part)
     },
 
+    // ---- Pegado especial ----
+    // El cuadro se rellena con el portapapeles si el navegador deja leerlo; si no, el usuario
+    // pega dentro (Ctrl+V en un campo de texto no necesita permiso)
+    async openPasteSpecial() {
+      let text = ''
+      try {
+        if (navigator.clipboard && navigator.clipboard.readText) text = await navigator.clipboard.readText()
+      } catch (err) {
+        text = ''
+      }
+      this.showDialog({ kind: 'pasteSpecial', text: String(text || ''), mode: 'lines', error: '' }, 'pasteText')
+    },
+
+    // "3 temas" / "1 tema" según el texto y el modo del diálogo
+    get pasteSpecialSummary() {
+      const d = this.dialog
+      if (!d || d.kind !== 'pasteSpecial') return ''
+      const n = countOutline(d.mode === 'single' ? parseSingleTopicText(d.text) : parseOutlineText(d.text))
+      return n === 1 ? 'Se añadirá 1 tema' : `Se añadirán ${n} temas`
+    },
+
+    savePasteSpecial() {
+      if (!this.dialog.text.trim()) {
+        this.dialog.error = 'Escribe o pega el texto que quieres añadir.'
+        return
+      }
+      this.pasteSpecialText(this.dialog.text, this.dialog.mode)
+      this.closeDialog()
+    },
+
+    // Añade el texto como subtemas del tema seleccionado (un paso de deshacer)
+    pasteSpecialText(text, mode) {
+      this.syncSelection()
+      if (!this.mindMap || !this.hasActiveNode) return
+      const items = mode === 'single' ? parseSingleTopicText(text) : parseOutlineText(text)
+      if (items.length) this.mindMap.execCommand('PASTE_OUTLINE', items)
+    },
+
+    // ---- Clic en un icono del tema: la prioridad y el progreso avanzan, como en MindManager ----
+    onTopicIconClick(node, iconId) {
+      const group = iconGroupOf(iconId)
+      if (!node || (group !== 'priority' && group !== 'progress') || !this.mindMap) return
+      const icons = node.getData('icon') || []
+      const next = group === 'priority'
+        ? withPriority(icons, priorityOf(icons) % PRIORITY_MAX + 1)
+        : withProgress(icons, nextProgressQuarter(progressOf(icons)))
+      Alpine.raw(this.mindMap).renderer.setNodeDataRender(node, { icon: next })
+    },
+
     // ---- Elementos del tema ----
     setElementData(data) {
       if (!this.mindMap || !this.hasActiveNode) return
       this.mindMap.execCommand('SET_ACTIVE_NODES_DATA', data)
     },
 
+    // Vínculo web, a un tema de este mapa o a otro mapa (topic-links.js)
     openHyperlinkDialog() {
       const node = Alpine.raw(this.activeNodeList[0])
       if (!node) return
+      const current = node.getData('hyperlink') || ''
+      const internal = internalLinkOf(current)
+      const tree = Alpine.raw(this.mindMap).renderer.renderTree
       this.showDialog({
         kind: 'hyperlink',
-        url: node.getData('hyperlink') || '',
+        linkKind: internal ? internal.kind : 'web',
+        url: internal ? '' : current,
+        linkTopic: internal && internal.kind === 'topic' ? internal.uid : '',
+        linkMap: internal && internal.kind === 'map' ? internal.id : '',
+        topics: linkableTopics(tree, node.uid).map(t => ({ value: t.uid, label: `${'  '.repeat(t.depth)}${t.text.split('\n')[0]}` })),
+        mapOptions: this.maps.filter(m => m.id !== this.currentId).map(m => ({ value: m.id, label: m.title })),
         title: unescapeXml(node.getData('hyperlinkTitle') || ''),
         error: '',
         canRemove: this.activeNodeList.some(n => !!Alpine.raw(n).getData('hyperlink'))
       }, 'url')
+    },
+
+    // Clic en un vínculo del mapa: los internos saltan al tema o abren el mapa
+    followHyperlink(url) {
+      const internal = internalLinkOf(url)
+      if (!internal) return openHyperlinkSafely(url)
+      if (internal.kind === 'topic') {
+        const mindMap = Alpine.raw(this.mindMap)
+        if (!findTopicData(mindMap.renderer.renderTree, internal.uid)) {
+          this.errorMsg = 'El tema vinculado ya no existe en este mapa.'
+          return
+        }
+        mindMap.execCommand('GO_TARGET_NODE', internal.uid)
+        return
+      }
+      if (!this.maps.some(m => m.id === internal.id)) {
+        this.errorMsg = 'El mapa vinculado ya no existe.'
+        return
+      }
+      this.openMap(internal.id)
     },
 
     // Abre el diálogo modal con el estado dado y selecciona el campo `focusName`
@@ -1085,13 +1164,26 @@ function mindMapApp() {
     },
 
     saveHyperlink() {
-      const result = normalizeHyperlink(this.dialog.url)
-      if (!result.ok) {
-        this.dialog.error = result.error
-        return
+      const d = this.dialog
+      let url
+      let fallbackTitle = ''
+      if (d.linkKind === 'topic') {
+        const topic = d.topics.find(t => t.value === d.linkTopic)
+        if (!topic) { d.error = 'Elige el tema al que lleva el vínculo.'; return }
+        url = topicLinkUrl(topic.value)
+        fallbackTitle = `Ir a: ${topic.label.replace(/^ +/, '')}`
+      } else if (d.linkKind === 'map') {
+        const map = d.mapOptions.find(m => m.value === d.linkMap)
+        if (!map) { d.error = 'Elige el mapa que abre el vínculo.'; return }
+        url = mapLinkUrl(map.value)
+        fallbackTitle = `Abrir el mapa: ${map.label}`
+      } else {
+        const result = normalizeHyperlink(d.url)
+        if (!result.ok) { d.error = result.error; return }
+        url = result.url
       }
-      const title = this.dialog.title.trim()
-      this.setElementData({ hyperlink: result.url, hyperlinkTitle: title ? escapeXml(title) : undefined })
+      const title = d.title.trim() || fallbackTitle
+      this.setElementData({ hyperlink: url, hyperlinkTitle: title ? escapeXml(title) : undefined })
       this.closeDialog()
     },
 
@@ -1351,7 +1443,7 @@ function mindMapApp() {
           // la cinta (ratón fuera) Ctrl+B, Tab… no harían nada. Como en Office, se atienden
           // siempre que el foco no esté en un campo (la librería ya ignora inputs y selects).
           enableShortcutOnlyWhenMouseInSvg: false,
-          customHyperlinkJump: url => openHyperlinkSafely(url),
+          customHyperlinkJump: url => this.followHyperlink(url),
           // Presentación: sin el "modo rellenar huecos" (ocultaría el texto subrayado)
           demonstrateConfig: { openBlankMode: false },
           // Diagramas: título fijo encima del diagrama y temas que se sueltan donde se dejan
@@ -1401,6 +1493,7 @@ function mindMapApp() {
           this.$nextTick(() => this.openNotes())
         })
         this.mindMap.on('node_attachmentClick', node => this.openAttachment(node))
+        this.mindMap.on('node_icon_click', (node, iconId) => this.onTopicIconClick(node, iconId))
         this.relationshipActive = false
         this.boundaryActive = false
         this.creatingRelationship = false

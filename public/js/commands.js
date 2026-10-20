@@ -30,6 +30,11 @@ const COMMANDS = {
     label: 'Pegar', tooltip: 'Pegar como subtema del tema seleccionado', shortcut: 'Ctrl+V', icon: 'paste', enabled: hasActiveNode,
     run: app => app.mindMap.renderer.paste()
   },
+  'clipboard.pasteSpecial': {
+    label: 'Pegado especial…', tooltip: 'Pegar texto como un tema o como un tema por línea (la sangría marca el nivel)',
+    icon: 'paste', enabled: hasActiveNode,
+    run: app => app.openPasteSpecial()
+  },
   'clipboard.cut': {
     label: 'Cortar', tooltip: 'Cortar el tema y su rama', shortcut: 'Ctrl+X', icon: 'cut', enabled: hasNonRootActiveNode,
     run: app => app.mindMap.renderer.cut()
@@ -247,6 +252,16 @@ const COMMANDS = {
     options: () => SHAPES,
     value: s => s.style.shape,
     run: (app, shape) => app.applyStyle({ shape })
+  },
+  'style.quick': {
+    label: 'Estilos rápidos', tooltip: 'Aplicar un estilo predefinido (forma, relleno, borde y texto)', icon: 'quickStyles',
+    control: 'gallery', enabled: hasActiveNode,
+    options: () => QUICK_STYLES.map(q => ({ value: q.value, label: q.label, preview: quickStylePreview(q.style) })),
+    value: s => quickStyleOf(s.style),
+    run: (app, id) => {
+      const quick = QUICK_STYLES.find(q => q.value === id)
+      if (quick) app.applyStyle({ ...quick.style, gradientStyle: false })
+    }
   },
   'style.shadow': {
     label: 'Sombra', tooltip: 'Sombra en los temas seleccionados', icon: 'shadow', enabled: hasActiveNode,

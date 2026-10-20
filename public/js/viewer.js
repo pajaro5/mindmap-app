@@ -31,7 +31,12 @@ async function startInteractiveViewer() {
       maxTag: 10,
       iconList: libraryIconList(),
       enableShortcutOnlyWhenMouseInSvg: true,
-      customHyperlinkJump: url => openHyperlinkSafely(url),
+      // Un vínculo a otro tema salta a él; a otro mapa no se puede (no está en el archivo)
+      customHyperlinkJump: url => {
+        const internal = internalLinkOf(url)
+        if (!internal) return openHyperlinkSafely(url)
+        if (internal.kind === 'topic' && window.__viewer) window.__viewer.mindMap.execCommand('GO_TARGET_NODE', internal.uid)
+      },
       errorHandler: (code, error) => console.error(code, error),
       ...diagramMapOptions(data.root.data)
     })

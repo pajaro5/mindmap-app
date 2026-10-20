@@ -22,7 +22,7 @@ const RIBBON_TABS = [
       {
         label: 'Portapapeles',
         items: [
-          { cmd: 'clipboard.paste' },
+          { cmd: 'clipboard.paste', menu: ['clipboard.paste', 'clipboard.pasteSpecial'] },
           { cmd: 'clipboard.cut', size: 'small' },
           { cmd: 'clipboard.copy', size: 'small' },
           { cmd: 'clipboard.formatPainter', size: 'small' }
@@ -72,7 +72,7 @@ const RIBBON_TABS = [
           ]
         ]
       },
-      { label: 'Estilo', items: [{ cmd: 'style.shape' }, { cmd: 'style.shadow', size: 'small' }] },
+      { label: 'Estilo', items: [{ cmd: 'style.shape' }, { cmd: 'style.quick' }, { cmd: 'style.shadow', size: 'small' }] },
       {
         label: 'Edición',
         items: [

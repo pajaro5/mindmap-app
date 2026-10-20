@@ -426,6 +426,18 @@ button { font-family: inherit; }
 }
 .dialog-field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .dialog-field input[aria-invalid="true"] { border-color: #c0392b; }
+.dialog-field textarea {
+  font: 12.5px/1.4 Consolas, 'Courier New', monospace;
+  padding: 6px 8px;
+  border: 1px solid #a9c3e4;
+  border-radius: 3px;
+  resize: vertical;
+  tab-size: 4;
+}
+.dialog-field textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.dialog-choice { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 6px 10px 8px; border: 1px solid #d3e0f0; border-radius: 4px; font-size: 12.5px; }
+.dialog-choice legend { padding: 0 4px; color: var(--group-label); font-weight: 600; }
+.dialog-choice label { display: flex; align-items: center; gap: 6px; }
 .dialog-error { margin: -4px 0 0; color: #b3261e; font-size: 12.5px; }
 .dialog-actions { display: flex; align-items: center; gap: 6px; }
 .dialog-spacer { flex: 1; }

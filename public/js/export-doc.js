@@ -17,8 +17,9 @@ function mapDocument(root, { iconLabel = id => id } = {}) {
     const data = node.data
     const icons = Array.isArray(data.icon) ? data.icon : []
     const task = normalizeTask(data[TASK_KEY]) || {}
+    // Los vínculos a otro tema o a otro mapa (internos) no son direcciones: se exporta su texto
     const link = typeof data.hyperlink === 'string' && isSafeHyperlink(data.hyperlink)
-      ? { url: data.hyperlink, title: unescapeXml(data.hyperlinkTitle || '') }
+      ? { url: data.hyperlink, title: unescapeXml(data.hyperlinkTitle || ''), internal: !!internalLinkOf(data.hyperlink) }
       : null
     const generalization = [].concat(data.generalization || []).filter(g => g && g.text)
     topics.push({
@@ -83,7 +84,8 @@ function buildMarkdown(topics) {
     if (t.markers.length) body.push(`*${t.markers.map(escapeMarkdown).join(' · ')}*`)
     const task = documentTaskLine(t.task)
     if (task) body.push(`*${escapeMarkdown(task)}*`)
-    if (t.link) body.push(`[${escapeMarkdown(t.link.title || t.link.url)}](<${t.link.url.replace(/[<>\s]/g, encodeURIComponent)}>)`)
+    if (t.link && t.link.internal) body.push(`→ ${escapeMarkdown(t.link.title || 'Vínculo interno')}`)
+    else if (t.link) body.push(`[${escapeMarkdown(t.link.title || t.link.url)}](<${t.link.url.replace(/[<>\s]/g, encodeURIComponent)}>)`)
     if (t.attachment) body.push(`Adjunto: ${escapeMarkdown(t.attachment)}`)
     if (t.summaries.length) body.push(`Resumen: ${t.summaries.map(escapeMarkdown).join(' · ')}`)
     // Notas: un párrafo por bloque de líneas; los saltos de línea se respetan
@@ -123,7 +125,9 @@ function buildDocxDocument(topics) {
     if (t.markers.length) paragraphs.push(docxParagraph('TopicMeta', [{ text: t.markers.join(' · ') }]))
     const task = documentTaskLine(t.task)
     if (task) paragraphs.push(docxParagraph('TopicMeta', [{ text: task }]))
-    if (t.link) {
+    if (t.link && t.link.internal) {
+      paragraphs.push(docxParagraph('TopicMeta', [{ text: `→ ${t.link.title || 'Vínculo interno'}` }]))
+    } else if (t.link) {
       links.push(t.link.url)
       paragraphs.push(docxParagraph('TopicMeta', [{ text: t.link.title || t.link.url, link: `rIdLink${links.length}` }]))
     }

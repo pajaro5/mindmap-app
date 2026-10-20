@@ -29,4 +29,14 @@ function isValidMapData(data) {
   return true
 }
 
-module.exports = { cleanTitle, cleanDescription, isValidMapData, TITLE_MAX }
+// Formato de un tema propio: objeto plano pequeño con las claves del formato del mapa y
+// valores simples (el cliente vuelve a normalizarlo al aplicarlo)
+const THEME_FORMAT_KEYS = ['theme', 'lineStyle', 'lineWidth', 'lineColor', 'rainbow', 'spacing', 'background', 'shadow']
+function isValidThemeFormat(format) {
+  if (!format || typeof format !== 'object' || Array.isArray(format)) return false
+  if (JSON.stringify(format).length > 2000) return false
+  return Object.entries(format).every(([key, value]) => THEME_FORMAT_KEYS.includes(key) &&
+    ['string', 'boolean', 'number'].includes(typeof value) && String(value).length <= 64)
+}
+
+module.exports = { cleanTitle, cleanDescription, isValidMapData, isValidThemeFormat, TITLE_MAX }

@@ -2,7 +2,7 @@ const express = require('express')
 const crypto = require('crypto')
 const db = require('./db')
 const files = require('./files')
-const { cleanTitle, cleanDescription, isValidMapData } = require('./validation')
+const { cleanTitle, cleanDescription, isValidMapData, isValidThemeFormat } = require('./validation')
 
 const app = express()
 const PORT = process.env.PORT || 3001
@@ -102,6 +102,30 @@ app.post('/api/templates', (req, res) => {
 app.delete('/api/templates/:id', (req, res) => {
   const result = db.prepare('DELETE FROM templates WHERE id = ?').run(req.params.id)
   if (!result.changes) return res.status(404).json({ error: 'Plantilla no encontrada' })
+  res.status(204).end()
+})
+
+// ---- Temas propios (formato de mapa con nombre) ----
+const themeRow = row => ({ id: row.id, title: row.title, created_at: row.created_at, format: JSON.parse(row.data) })
+
+app.get('/api/themes', (req, res) => {
+  const rows = db.prepare('SELECT * FROM themes ORDER BY created_at, title').all()
+  res.json(rows.map(themeRow))
+})
+
+app.post('/api/themes', (req, res) => {
+  const body = req.body || {}
+  const title = cleanTitle(body.title, '')
+  if (!title.ok || !title.value) return res.status(400).json({ error: title.error || 'El tema necesita un nombre' })
+  if (!isValidThemeFormat(body.format)) return res.status(400).json({ error: 'Formato de tema no válido' })
+  const id = crypto.randomUUID()
+  db.prepare('INSERT INTO themes (id, title, data) VALUES (?, ?, ?)').run(id, title.value.slice(0, 60), JSON.stringify(body.format))
+  res.status(201).json(themeRow(db.prepare('SELECT * FROM themes WHERE id = ?').get(id)))
+})
+
+app.delete('/api/themes/:id', (req, res) => {
+  const result = db.prepare('DELETE FROM themes WHERE id = ?').run(req.params.id)
+  if (!result.changes) return res.status(404).json({ error: 'Tema no encontrado' })
   res.status(204).end()
 })
 

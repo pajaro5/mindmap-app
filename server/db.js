@@ -37,6 +37,14 @@ db.exec(`
     data TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  -- Temas propios ("Guardar tema actual"): un formato de mapa con nombre (map-format.js)
+  CREATE TABLE IF NOT EXISTS themes (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    data TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `)
 
 module.exports = db

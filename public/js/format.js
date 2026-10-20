@@ -34,6 +34,34 @@ const SHAPES = [
   { value: 'innerTriangularRectangle', label: 'Banderín' }
 ]
 
+// Estilos rápidos de tema (Inicio › Estilo): forma, relleno, borde y texto de una vez
+const quickStyle = (shape, fillColor, borderColor, color, { borderWidth = 1, fontWeight = 'bold' } = {}) =>
+  ({ shape, fillColor, borderColor, borderWidth, color, fontWeight })
+const QUICK_STYLES = [
+  { value: 'blue', label: 'Azul', style: quickStyle('roundedRectangle', '#3d8fd8', '#24609f', '#ffffff') },
+  { value: 'green', label: 'Verde', style: quickStyle('roundedRectangle', '#7dc142', '#57962a', '#ffffff') },
+  { value: 'orange', label: 'Naranja', style: quickStyle('roundedRectangle', '#f79646', '#c55a11', '#ffffff') },
+  { value: 'red', label: 'Alerta', style: quickStyle('rectangle', '#c00000', '#7f0000', '#ffffff') },
+  { value: 'note', label: 'Nota', style: quickStyle('rectangle', '#fff2cc', '#d6b656', '#5c4a00', { fontWeight: 'normal' }) },
+  { value: 'outline', label: 'Contorno', style: quickStyle('roundedRectangle', '#ffffff', '#3d8fd8', '#1f497d', { borderWidth: 2 }) },
+  { value: 'lavender', label: 'Lavanda', style: quickStyle('roundedRectangle', '#e5e0ec', '#8064a2', '#3f3151') },
+  { value: 'plain', label: 'Solo texto', style: quickStyle('rectangle', 'transparent', 'transparent', '#1e2a3a', { borderWidth: 0, fontWeight: 'normal' }) }
+]
+
+// Estilo rápido que coincide con el estilo efectivo del tema, o ''
+function quickStyleOf(style) {
+  const found = QUICK_STYLES.find(q => Object.entries(q.style).every(([k, v]) =>
+    k === 'borderWidth' ? Number(style[k]) === v : String(style[k] || '').toLowerCase() === v.toLowerCase()))
+  return found ? found.value : ''
+}
+
+function quickStylePreview({ shape, fillColor, borderColor, borderWidth, color, fontWeight }) {
+  const rx = shape === 'roundedRectangle' ? 6 : 1
+  const fill = fillColor === 'transparent' ? 'none' : fillColor
+  const stroke = borderWidth > 0 && borderColor !== 'transparent' ? borderColor : 'none'
+  return `<svg viewBox="0 0 32 20"><rect x="2" y="3" width="28" height="14" rx="${rx}" fill="${fill}" stroke="${stroke}" stroke-width="${Math.max(borderWidth, 1)}"/><text x="16" y="13.5" text-anchor="middle" font-family="Arial" font-size="8" font-weight="${fontWeight === 'bold' ? 700 : 400}" fill="${color}">Abc</text></svg>`
+}
+
 // Variantes de diseño de la librería (galería "Más diseños"). Las de espina de pez hacia la
 // derecha (rightFishbone, rightFishbone2) no se incluyen: en simple-mind-map 0.14 caen a un
 // árbol normal.

@@ -32,6 +32,8 @@ function normalizeHyperlink(raw) {
 }
 
 function isSafeHyperlink(url) {
+  // Vínculos a otro tema o a otro mapa (topic-links.js)
+  if (internalLinkOf(url)) return true
   try {
     return SAFE_LINK_SCHEMES.includes(new URL(url).protocol)
   } catch {
