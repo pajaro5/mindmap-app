@@ -3,9 +3,11 @@
 // variante .pairwise si existe). Al crear un módulo o un spec nuevo hay que añadirlo aquí: una
 // prueba (tests/unit/impact-map.test.js) comprueba que todo módulo y todo spec aparecen.
 
-// Cuarentena: specs de fases empezadas y sin terminar (sus módulos aún no se cargan en la app).
-// Playwright no los ejecuta (playwright.config.js) salvo con QUARANTINE=off. Al retomar una
-// fase se quita de aquí y se añaden sus módulos a IMPACT.
+// Cuarentena: specs de fases empezadas y sin terminar. Su código y sus pruebas están en la rama
+// wip/fases-pendientes; si se traen a main sin terminar, Playwright no los ejecuta
+// (playwright.config.js) salvo con QUARANTINE=off. Al retomar una fase:
+//   git checkout wip/fases-pendientes -- <archivos de la fase>
+// y se quita de aquí, añadiendo sus módulos a IMPACT.
 const QUARANTINE = ['diagram-edit', 'callouts-extras', 'format-extras', 'rich-notes', 'view-extras', 'export-options', 'gantt']
 // Módulos de esas fases (aún no se cargan en index.html)
 const QUARANTINE_MODULES = ['public/js/gantt.js', 'public/js/rich-notes.js', 'public/js/view-extras.js']

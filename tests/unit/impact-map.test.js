@@ -28,8 +28,8 @@ test('cada spec e2e aparece en el mapa (humo, impacto o cuarentena)', () => {
   assert.deepEqual([...new Set(specNames)].filter(s => !referenced.has(s)), [])
 })
 
-test('el mapa no nombra specs que no existen', () => {
+test('el mapa no nombra specs que no existen (los de cuarentena viven en la rama wip)', () => {
   const existing = new Set(specNames)
-  const named = [...SMOKE, ...QUARANTINE, ...Object.values(IMPACT).flat()]
+  const named = [...SMOKE, ...Object.values(IMPACT).flat()]
   assert.deepEqual([...new Set(named)].filter(s => !existing.has(s)), [])
 })

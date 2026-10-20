@@ -1,0 +1,70 @@
+# Integración continua: en cada push y pull request.
+#  1. Pruebas unitarias (segundos). Si fallan, no se lanzan las e2e.
+#  2. Suite e2e completa en Chromium y Firefox, repartida en trozos (shards) en paralelo.
+#     Firefox va con un solo worker por trozo (inestable en paralelo con Playwright 1.63), por
+#     eso tiene más trozos.
+# Los specs en cuarentena (tests/impact-map.js) no se ejecutan, igual que en local.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unitarias
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+
+  e2e:
+    name: E2E ${{ matrix.project }} ${{ matrix.shard }}
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: chromium, shard: 1/2 }
+          - { project: chromium, shard: 2/2 }
+          - { project: firefox, shard: 1/4 }
+          - { project: firefox, shard: 2/4 }
+          - { project: firefox, shard: 3/4 }
+          - { project: firefox, shard: 4/4 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Instalar ${{ matrix.project }}
+        run: npx playwright install --with-deps ${{ matrix.project }}
+      - name: Pruebas e2e
+        run: npx playwright test --project=${{ matrix.project }} --shard=${{ matrix.shard }}
+      - name: Resumen (inestables y más lentas)
+        if: always()
+        run: node scripts/test-report.js 10 || true
+      - name: Guardar trazas e informe si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-${{ matrix.project }}-${{ strategy.job-index }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
