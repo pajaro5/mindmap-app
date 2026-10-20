@@ -6,8 +6,8 @@ Referencias visuales:
 
 Ambas capturas son de **MindManager 8** (interfaz tipo Office 2007). El objetivo es replicar la
 **funcionalidad y la ergonomía**, no la marca: no se usan el nombre, el logo ni los iconos de
-Mindjet. El logo rojo con "M" que tenemos ahora se parece demasiado al original y conviene
-sustituirlo antes de difundir la app (el repositorio es público).
+Mindjet. El logo propio es un cerebro estilizado (sin letras ni marca de terceros); una prueba
+de `smoke.spec.js` lo vigila.
 
 Leyenda de estado: ✅ hecho · 🟡 parcial · ❌ pendiente · ⛔ fuera de alcance  
 Esfuerzo: **S** (< ½ día) · **M** (1–2 días) · **L** (3+ días)  

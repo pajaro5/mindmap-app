@@ -111,14 +111,16 @@ test('arrastrar mueve la llamada (una entrada de historial) y deshacer la devuel
     await page.mouse.up()
   })
   await expect.poll(async () => {
-    const [c] = await calloutsOf(app, 'Beta')
+    const [c] = (await calloutsOf(app, 'Beta')) || []
+    if (!c) return null
     return [Math.round((c.dx - 24) * scale), Math.round((c.dy + 14) * scale)]
   }).toEqual([100, 50])
   // El tema no se movió ni se seleccionó por el arrastre
   expect((await app.state()).activeCount).toBe(0)
 
   await app.qat('edit.undo').click()
-  await expect.poll(async () => (await calloutsOf(app, 'Beta'))[0].dx).toBe(24)
+  // Mientras el mapa se vuelve a pintar tras deshacer, el tema puede no estar: el poll reintenta
+  await expect.poll(async () => ((await calloutsOf(app, 'Beta')) || [])[0]?.dx).toBe(24)
 })
 
 test('las llamadas de ramas contraídas no se muestran', async ({ page, maps }) => {

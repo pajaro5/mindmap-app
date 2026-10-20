@@ -277,6 +277,12 @@ class AppPage {
   async openMapByTitle(title) {
     await this.showMapsPane()
     await this.page.locator('.map-list li', { hasText: title }).click()
+    // El tema central visible puede ser aún el del mapa anterior: esperar a que el mapa cargado
+    // en el lienzo sea el pedido (en máquinas rápidas, como las de CI, se leía el anterior)
+    await this.page.waitForFunction(t => {
+      const d = window.Alpine.$data(document.body)
+      return !!d.mindMap && d.mindMapId === d.currentId && d.currentTitle.includes(t)
+    }, title)
     await expect(this.rootNode).toBeVisible()
     // Esperar también a la entrada inicial del historial (llega con 100 ms de retardo); si la
     // prueba cambia algo antes, ese cambio se funde con el estado inicial y no se puede deshacer
