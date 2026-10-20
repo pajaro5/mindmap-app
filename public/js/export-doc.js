@@ -221,7 +221,8 @@ function buildZip(files, now = new Date()) {
   let offset = 0
   files.forEach(file => {
     const name = enc.encode(file.name)
-    const data = file.data instanceof Uint8Array ? file.data : enc.encode(file.text)
+    // ArrayBuffer.isView y no instanceof: los bytes pueden venir de otro contexto (iframe, worker)
+    const data = ArrayBuffer.isView(file.data) ? new Uint8Array(file.data.buffer, file.data.byteOffset, file.data.byteLength) : enc.encode(file.text)
     const crc = crc32(data)
     // Cabecera local: firma, versión 2.0, bit 11 (nombres en UTF-8), sin compresión
     const local = new DataView(new ArrayBuffer(30))

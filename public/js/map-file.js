@@ -150,7 +150,8 @@ async function resolveMapFiles(data, files, baseDir = '') {
     if (d.attachmentUrl !== undefined) {
       warnings.push(`Se quitó el adjunto del tema ${topicLabel(d)}: pertenece a otro mapa.`)
       delete d.attachmentUrl
-      delete d.attachmentName
+      // El nombre se conserva si el tema trae su propio archivo (attachmentFile)
+      if (d.attachmentFile === undefined) delete d.attachmentName
     }
     if (d.imageFile !== undefined) {
       const ref = String(d.imageFile)

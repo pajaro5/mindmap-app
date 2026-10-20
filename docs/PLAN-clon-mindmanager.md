@@ -141,10 +141,24 @@ solo worker). Desde la Fase 19 las pruebas se diseñan y se ejecutan con cobertu
    con las funciones de la propia app.
 4. **Escenarios solo para lo que no es combinable:** secuencias (deshacer, recargar), mensajes de
    error concretos y seguridad. Pocos y en Chromium.
-5. **Regresión al cerrar una fase:** suite completa en Chromium (~15 min) + las pruebas de la
-   fase en Firefox. La suite completa en Firefox solo bajo petición o antes de una versión.
-6. **Comprobación de mutaciones:** para las pruebas nuevas, romper a propósito la función
-   probada y verificar que alguna fila falla (ver que el archivo mutado sí cambió).
+5. **Pirámide.** La lógica pura se prueba con pruebas unitarias (`tests/unit`, `node:test`,
+   `npm run test:unit`): `load-app.js` carga los scripts de la app en Node en el orden de
+   `index.html`, sin navegador. Ahí van las tablas t=2 grandes (cientos de filas en menos de
+   un segundo). Las e2e quedan para lo que solo se ve en el navegador: clics, diálogos,
+   descargas, pintado e integración con el servidor.
+6. **Regresión selectiva al cerrar una fase** (`npm run test:changed`): unitarias + las e2e
+   de los módulos tocados (`tests/impact-map.js`, a partir de `git diff`) + batería de humo,
+   en Chromium; las filas de Firefox, para los specs de la fase. Un archivo que no está en el
+   mapa, o un cambio en fixtures/configuración, lanza la suite completa. Una prueba unitaria
+   exige que el mapa esté completo. Suite completa en Chromium (~13 min) antes de una versión;
+   en Firefox, solo bajo petición.
+7. **Cero inestables.** `retries: 1` solo para detectarlas (salen como "inestables" en
+   `npm run test:stats`, que también lista las más lentas) y se corrigen. Máximo 4 workers en
+   local (con más, la máquina se satura y aparecen tiempos de espera falsos).
+8. **Cuarentena.** Los specs de fases sin terminar no se ejecutan (`QUARANTINE` en
+   `tests/impact-map.js`; `QUARANTINE=off` los incluye), para que un rojo siempre signifique algo.
+9. **Comprobación de mutaciones:** para las pruebas nuevas, romper a propósito la función
+   probada y verificar que alguna prueba falla (ver que el archivo mutado sí cambió).
 
 | Fase | Contenido | Esfuerzo estimado |
 |---|---|---|

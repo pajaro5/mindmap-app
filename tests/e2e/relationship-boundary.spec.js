@@ -26,7 +26,6 @@ test.describe('Relación', () => {
     const box = await app.node('Gamma').boundingBox()
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 })
     await app.node('Gamma').click()
-    await page.waitForTimeout(250)
 
     await expect.poll(() => targetsOf(page, 'Alfa')).toEqual(['Gamma'])
     await expect(page.locator('.status-hint')).toBeHidden()
