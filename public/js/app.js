@@ -2017,7 +2017,7 @@ function mindMapApp() {
 
     // ---- Abrir y guardar como archivo (map-file.js) ----
     async openMapFile() {
-      const file = await pickFile('.json,.zip,application/json,application/zip')
+      const file = await pickFile('.json,.zip,.mmap,.mm,application/json,application/zip')
       if (file) await this.importMapFile(file)
     },
 

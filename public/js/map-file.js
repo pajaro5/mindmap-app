@@ -9,6 +9,7 @@
 //            imageWidth      ancho con el que se muestra (opcional)
 //            attachmentFile  adjunto (se sube a la API de archivos del mapa nuevo)
 //          Las rutas son relativas al .json; vale comprimir la carpeta entera.
+// También abre mapas de MindManager (.mmap) y FreeMind (.mm): los convierte import-formats.js.
 // Al guardar, las imágenes van incrustadas en el .json y los adjuntos van en adjuntos/ del
 // .zip; sin adjuntos se guarda un .json suelto.
 // Abrir un archivo siempre crea un mapa nuevo: nunca sobrescribe otro.
@@ -195,24 +196,39 @@ async function resolveMapFiles(data, files, baseDir = '') {
 async function readMapFile(file) {
   if (file.size > MAP_FILE_MAX_BYTES) throw new MapFileError(`El archivo supera ${MAP_FILE_MAX_BYTES / 1024 / 1024} MB.`)
   const bytes = new Uint8Array(await file.arrayBuffer())
-  const isZip = bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04
-  if (!isZip && !/\.json$/i.test(file.name)) throw new MapFileError('Elige un mapa guardado como .json o .zip.')
+  // Formatos de otras aplicaciones: import-formats.js
+  const kind = detectMapFile(bytes, file.name)
+  if (kind === 'mmap-legacy') {
+    throw new MapFileError('Este .mmap es de MindManager X5 o anterior (formato binario antiguo). Ábrelo en una versión más reciente de MindManager y guárdalo de nuevo, o expórtalo como FreeMind (.mm).')
+  }
+  if (!kind) throw new MapFileError('Elige un mapa guardado como .json o .zip, o un mapa de MindManager (.mmap) o FreeMind (.mm).')
   let map
   let resolved
-  if (isZip) {
+  let warnings = []
+  if (kind === 'zip') {
     const files = await readZip(bytes)
-    const jsonName = findMapJson(files)
-    map = parseMapFile(new TextDecoder().decode(files.get(jsonName)), file.name)
-    resolved = await resolveMapFiles(map.data, files, zipDir(jsonName))
+    const mindManager = mindManagerDocument(files)
+    if (mindManager && (/\.mmap$/i.test(file.name) || ![...files.keys()].some(n => /\.json$/i.test(n)))) {
+      map = convertMindManager(decodeXml(files.get(mindManager)), file.name)
+      resolved = await resolveMapFiles(map.data, files, '')
+    } else {
+      const jsonName = findMapJson(files)
+      map = parseMapFile(new TextDecoder().decode(files.get(jsonName)), file.name)
+      resolved = await resolveMapFiles(map.data, files, zipDir(jsonName))
+    }
+  } else if (kind === 'mm') {
+    map = convertFreeMind(decodeXml(bytes), file.name)
+    resolved = await resolveMapFiles(map.data, null)
   } else {
     map = parseMapFile(new TextDecoder().decode(bytes), file.name)
     resolved = await resolveMapFiles(map.data, null)
   }
+  warnings = [...(map.warnings || []), ...resolved.warnings]
   const size = new Blob([JSON.stringify({ title: map.title, data: map.data })]).size
   if (size > MAP_JSON_MAX_BYTES) {
     throw new MapFileError(`El mapa ocupa ${(size / 1024 / 1024).toFixed(1)} MB con sus imágenes; el máximo es ${MAP_JSON_MAX_BYTES / 1024 / 1024} MB. Reduce las imágenes.`)
   }
-  return { ...map, ...resolved }
+  return { title: map.title, data: map.data, attachments: resolved.attachments, warnings }
 }
 
 // ---- Guardar ----
@@ -257,4 +273,4 @@ async function buildMapFile(mapData, title, fetchFile) {
   return { name: `${base}.zip`, blob: new Blob([zip], { type: 'application/zip' }) }
 }
 
-const isMapFileName = name => /\.(json|zip)$/i.test(String(name || ''))
+const isMapFileName = name => /\.(json|zip|mmap|mm)$/i.test(String(name || ''))

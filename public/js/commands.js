@@ -66,7 +66,7 @@ const COMMANDS = {
   },
   'map.openFile': {
     label: 'Abrir', menuLabel: 'Abrir archivo…', shortcut: 'Ctrl+O', icon: 'openFile',
-    tooltip: 'Abrir un mapa guardado como archivo (.json, o .zip con imágenes y adjuntos). Se crea un mapa nuevo',
+    tooltip: 'Abrir un mapa guardado como archivo (.json, o .zip con imágenes y adjuntos) o un mapa de MindManager (.mmap) o FreeMind (.mm). Se crea un mapa nuevo',
     run: app => app.openMapFile()
   },
   'map.saveFile': {
