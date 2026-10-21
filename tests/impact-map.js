@@ -8,7 +8,7 @@
 // (playwright.config.js) salvo con QUARANTINE=off. Al retomar una fase:
 //   git checkout wip/fases-pendientes -- <archivos de la fase>
 // y se quita de aquí, añadiendo sus módulos a IMPACT.
-const QUARANTINE = ['diagram-edit', 'callouts-extras', 'format-extras', 'export-options', 'gantt']
+const QUARANTINE = ['diagram-edit', 'callouts-extras', 'format-extras', 'gantt']
 // Módulos de esas fases (aún no se cargan en index.html)
 const QUARANTINE_MODULES = ['public/js/gantt.js']
 
@@ -27,8 +27,8 @@ const IMPACT = {
   'public/js/commands.js': ['topic-menu', 'edit-group'],
   'public/js/diagrams.js': ['diagrams', 'templates'],
   'public/js/elements.js': ['elements', 'files-api', 'map-file', 'export-html'],
-  'public/js/export-doc.js': ['export-doc', 'map-file'],
-  'public/js/export-html.js': ['export-html', 'export', 'map-file'],
+  'public/js/export-doc.js': ['export-doc', 'export-options', 'map-file'],
+  'public/js/export-html.js': ['export-html', 'export', 'export-options', 'map-file'],
   'public/js/format.js': ['format', 'format-painter'],
   'public/js/icon-library.js': ['markers', 'task-info'],
   'public/js/icons.js': ['ribbon'],
@@ -47,7 +47,7 @@ const IMPACT = {
   'public/js/templates.js': ['templates', 'diagrams'],
   'public/js/theme.js': ['export-html', 'map-format', 'view'],
   'public/js/topic-links.js': ['home-extras', 'elements', 'export-html'],
-  'public/js/viewer.js': ['export-html'],
+  'public/js/viewer.js': ['export-html', 'export-options'],
   'public/js/view-extras.js': ['view-extras', 'find-filter', 'export-html'],
   'public/js/views.js': ['outline-presentation', 'view'],
   'docs/': [],

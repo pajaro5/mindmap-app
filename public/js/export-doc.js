@@ -9,9 +9,46 @@
 // niveles en títulos y no incluye marcadores ni tareas.
 
 // ---- Modelo del documento ----
-// Temas en orden de lectura: { depth, lines, markers, task, link, attachment, note, callouts, summaries }
-function mapDocument(root, { iconLabel = id => id } = {}) {
+// Qué se incluye al exportar (diálogo "Opciones de exportación"); `extras` = adjuntos y resúmenes
+const DOC_EXPORT_DEFAULTS = { markers: true, task: true, links: true, notes: true, callouts: true, extras: true, images: true, numbering: false }
+function normalizeDocOptions(raw) {
+  const options = { ...DOC_EXPORT_DEFAULTS }
+  for (const key of Object.keys(DOC_EXPORT_DEFAULTS)) if (raw && typeof raw[key] === 'boolean') options[key] = raw[key]
+  return options
+}
+// Las opciones se recuerdan en este navegador
+const EXPORT_OPTIONS_STORAGE_KEY = 'mindmap.exportOptions'
+function loadExportOptions() {
+  try {
+    return normalizeDocOptions(JSON.parse(localStorage.getItem(EXPORT_OPTIONS_STORAGE_KEY) || 'null'))
+  } catch {
+    return normalizeDocOptions(null)
+  }
+}
+const EMPTY_DOC_TASK ={ priority: 0, progress: 0, start: '', due: '', resources: [], milestone: false }
+
+// Imagen de un tema como data URL (puede estar como clave en root.data.imgMap) con su tamaño
+function documentImage(data, imgMap) {
+  const url = imgMap && imgMap[data.image] ? imgMap[data.image] : data.image
+  const size = data.imageSize || {}
+  if (!/^data:image\/[\w.+-]+;base64,/i.test(String(url || '')) || !(size.width > 0) || !(size.height > 0)) return null
+  return { url, width: Number(size.width), height: Number(size.height) }
+}
+
+// Temas en orden de lectura: { depth, number, lines, markers, task, link, attachment, note,
+// noteHtml, callouts, summaries, image } con lo que pidan las opciones
+function mapDocument(root, { iconLabel = id => id, options } = {}) {
+  const opts = normalizeDocOptions(options)
+  const imgMap = root && root.data && root.data.imgMap
   const topics = []
+  // Numeración de los títulos: "1.", "1.1."… (el tema central no se numera)
+  const counters = []
+  const numberFor = depth => {
+    if (!opts.numbering || depth === 0) return ''
+    counters.length = depth
+    counters[depth - 1] = (counters[depth - 1] || 0) + 1
+    return counters.slice(0, depth).map(n => n || 1).join('.') + '.'
+  }
   const walk = (node, depth) => {
     if (!node || !node.data) return
     const data = node.data
@@ -24,26 +61,28 @@ function mapDocument(root, { iconLabel = id => id } = {}) {
     const generalization = [].concat(data.generalization || []).filter(g => g && g.text)
     topics.push({
       depth,
+      number: numberFor(depth),
       lines: topicPlainText(data).split('\n').map(l => l.trim()).filter(Boolean),
-      markers: [
+      markers: opts.markers ? [
         ...icons.filter(id => !['priority', 'progress'].includes(iconGroupOf(id))).map(iconLabel),
         ...(Array.isArray(data.tag) ? data.tag : []).map(tagText).filter(Boolean)
-      ],
-      task: {
+      ] : [],
+      task: opts.task ? {
         priority: priorityOf(icons),
         progress: progressOf(icons),
         start: task.start || '',
         due: task.due || '',
         resources: task.resources || [],
         milestone: !!task.milestone
-      },
-      link,
-      attachment: data.attachmentName ? unescapeXml(data.attachmentName) : '',
-      note: typeof data.note === 'string' ? data.note.replace(/\r\n?/g, '\n').trim() : '',
+      } : EMPTY_DOC_TASK,
+      link: opts.links ? link : null,
+      attachment: opts.extras && data.attachmentName ? unescapeXml(data.attachmentName) : '',
+      note: opts.notes && typeof data.note === 'string' ? data.note.replace(/\r\n?/g, '\n').trim() : '',
       // Nota con formato (rich-notes.js): Markdown la conserva; Word usa el texto plano
-      noteHtml: typeof data.note === 'string' && data.note && typeof data[NOTE_HTML_KEY] === 'string' ? data[NOTE_HTML_KEY] : '',
-      callouts: (normalizeCallouts(data[CALLOUTS_KEY]) || []).map(c => c.text),
-      summaries: generalization.map(g => topicPlainText(g)).filter(Boolean)
+      noteHtml: opts.notes && typeof data.note === 'string' && data.note && typeof data[NOTE_HTML_KEY] === 'string' ? data[NOTE_HTML_KEY] : '',
+      callouts: opts.callouts ? (normalizeCallouts(data[CALLOUTS_KEY]) || []).map(c => c.text) : [],
+      summaries: opts.extras ? generalization.map(g => topicPlainText(g)).filter(Boolean) : [],
+      image: opts.images ? documentImage(data, imgMap) : null
     })
     ;(node.children || []).forEach(child => walk(child, depth + 1))
   }
@@ -77,7 +116,7 @@ const MD_MAX_HEADING = 6
 function buildMarkdown(topics) {
   const out = []
   topics.forEach(t => {
-    const text = t.lines.map(escapeMarkdown).join(' ') || '\\(sin texto\\)'
+    const text = (t.number ? `${t.number} ` : '') + (t.lines.map(escapeMarkdown).join(' ') || '\\(sin texto\\)')
     // Títulos hasta el nivel 6 de Markdown; más abajo, listas con sangría
     const level = t.depth + 1
     const indent = level > MD_MAX_HEADING ? '  '.repeat(level - MD_MAX_HEADING - 1) : ''
@@ -119,13 +158,35 @@ function docxParagraph(style, runs) {
   return `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr>${runXml}</w:p>`
 }
 
-// document.xml y los vínculos externos (cada hipervínculo es una relación del documento)
+// Imagen en línea (DrawingML). Tamaño en EMU: 9525 por píxel
+const DOCX_EMU_PER_PX = 9525
+const DOCX_MAX_IMAGE_PX = 600 // ancho útil de la página A4 con sus márgenes
+function docxImageParagraph(image, n) {
+  const scale = Math.min(1, DOCX_MAX_IMAGE_PX / image.width)
+  const cx = Math.round(image.width * scale) * DOCX_EMU_PER_PX
+  const cy = Math.round(image.height * scale) * DOCX_EMU_PER_PX
+  return `<w:p><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/>` +
+    `<wp:docPr id="${n}" name="Imagen ${n}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">` +
+    '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
+    `<pic:nvPicPr><pic:cNvPr id="${n}" name="${image.name}"/><pic:cNvPicPr/></pic:nvPicPr>` +
+    `<pic:blipFill><a:blip r:embed="rIdImg${n}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+    `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>` +
+    '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>'
+}
+
+// document.xml, los vínculos externos (cada hipervínculo es una relación del documento) y las
+// imágenes que haya preparado prepareDocxImages (t.docxImage)
 function buildDocxDocument(topics) {
   const links = []
+  const images = []
   const paragraphs = []
   topics.forEach(t => {
-    const text = t.lines.join('\n') || '(sin texto)'
+    const text = (t.number ? `${t.number} ` : '') + (t.lines.join('\n') || '(sin texto)')
     paragraphs.push(docxParagraph(t.depth === 0 ? 'Title' : `Heading${Math.min(t.depth, DOCX_MAX_HEADING)}`, [{ text }]))
+    if (t.docxImage) {
+      images.push({ ...t.docxImage, name: `image${images.length + 1}.${t.docxImage.ext}` })
+      paragraphs.push(docxImageParagraph(images[images.length - 1], images.length))
+    }
     if (t.markers.length) paragraphs.push(docxParagraph('TopicMeta', [{ text: t.markers.join(' · ') }]))
     const task = documentTaskLine(t.task)
     if (task) paragraphs.push(docxParagraph('TopicMeta', [{ text: task }]))
@@ -141,8 +202,46 @@ function buildDocxDocument(topics) {
     t.callouts.forEach(c => paragraphs.push(docxParagraph('Callout', [{ text: 'Llamada: ', bold: true }, { text: c }])))
   })
   const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document ${W_NS}><w:body>${paragraphs.join('')}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1418" w:right="1418" w:bottom="1418" w:left="1418" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>`
-  return { xml, links }
+<w:document ${W_NS} xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><w:body>${paragraphs.join('')}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1418" w:right="1418" w:bottom="1418" w:left="1418" w:header="709" w:footer="709" w:gutter="0"/></w:sectPr></w:body></w:document>`
+  return { xml, links, images }
+}
+
+// Bytes de cada imagen para Word: PNG, JPEG y GIF tal cual; el resto (WebP…) se convierte a
+// PNG con un canvas, porque Word no lo abre. Deja { ext, bytes, width, height } en t.docxImage.
+const DOCX_IMAGE_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpeg', 'image/gif': 'gif' }
+async function prepareDocxImages(topics) {
+  const decode = url => Uint8Array.from(atob(url.split(',')[1]), ch => ch.charCodeAt(0))
+  for (const t of topics) {
+    if (!t.image) continue
+    const mime = (t.image.url.match(/^data:([\w/.+-]+);/i) || [])[1].toLowerCase()
+    let ext = DOCX_IMAGE_TYPES[mime]
+    let url = t.image.url
+    if (!ext) {
+      try {
+        url = await convertImageToPng(url)
+        ext = 'png'
+      } catch {
+        continue // una imagen que el navegador no sabe pintar se queda fuera
+      }
+    }
+    t.docxImage = { ext, bytes: decode(url), width: t.image.width, height: t.image.height }
+  }
+  return topics
+}
+
+function convertImageToPng(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      canvas.getContext('2d').drawImage(img, 0, 0)
+      resolve(canvas.toDataURL('image/png'))
+    }
+    img.onerror = () => reject(new Error('imagen no válida'))
+    img.src = url
+  })
 }
 
 // Estilos con los nombres de Word (Title, Heading1…): así el índice y el panel de
@@ -174,11 +273,13 @@ function buildDocxStyles() {
 
 // Archivos del paquete .docx: [{ name, text }]
 function buildDocxFiles(topics, { title = '' } = {}) {
-  const { xml, links } = buildDocxDocument(topics)
+  const { xml, links, images } = buildDocxDocument(topics)
   const now = new Date().toISOString().replace(/\.\d+Z$/, 'Z')
+  const imageTypes = [...new Set(images.map(i => i.ext))]
   return [
     { name: '[Content_Types].xml', text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+      imageTypes.map(ext => `<Default Extension="${ext}" ContentType="image/${ext}"/>`).join('') +
       '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
       '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
       '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>' },
@@ -192,9 +293,11 @@ function buildDocxFiles(topics, { title = '' } = {}) {
     { name: 'word/_rels/document.xml.rels', text: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
       '<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
       links.map((url, i) => `<Relationship Id="rIdLink${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${xmlText(url)}" TargetMode="External"/>`).join('') +
+      images.map((img, i) => `<Relationship Id="rIdImg${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${img.name}"/>`).join('') +
       '</Relationships>' },
     { name: 'word/document.xml', text: xml },
-    { name: 'word/styles.xml', text: buildDocxStyles() }
+    { name: 'word/styles.xml', text: buildDocxStyles() },
+    ...images.map(img => ({ name: `word/media/${img.name}`, data: img.bytes }))
   ]
 }
 
@@ -279,10 +382,12 @@ const DOC_FORMATS = {
 }
 
 // Genera el documento del mapa y lo descarga. Devuelve el tamaño en bytes
-function exportDocument(mindMap, format, { title, iconLabel } = {}) {
+async function exportDocument(mindMap, format, { title, iconLabel, options } = {}) {
   const spec = DOC_FORMATS[format]
   if (!spec) throw new Error(`Formato desconocido: ${format}`)
-  const topics = mapDocument(mindMap.getData(false), { iconLabel })
+  const topics = mapDocument(mindMap.getData(false), { iconLabel, options })
+  // Markdown no lleva imágenes (serían enormes como texto); Word sí
+  if (format === 'docx') await prepareDocxImages(topics)
   const content = format === 'docx'
     ? buildZip(buildDocxFiles(topics, { title: title || (topics[0] && topics[0].lines.join(' ')) || '' }))
     : buildMarkdown(topics)

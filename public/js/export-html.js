@@ -73,6 +73,14 @@ function buildInteractiveHtml({ title, data, librarySource, scripts, exportedAt 
   #mindMapContainer { flex: 1; min-height: 0; position: relative; overflow: hidden; }
   #viewerStatus { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #5b6b80; font-size: 14px; }
   .smm-callout { cursor: default !important; }
+  /* Presentación: barra flotante por encima del recorrido */
+  .viewer-present-bar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 10000;
+    display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px;
+    background: rgba(30, 42, 58, .88); color: #fff; font-size: 13px; }
+  .viewer-present-bar[hidden] { display: none; }
+  .viewer-present-bar button { font: inherit; color: #fff; background: transparent; border: 1px solid rgba(255,255,255,.4);
+    border-radius: 3px; padding: 2px 9px; cursor: pointer; }
+  .viewer-present-status { min-width: 56px; text-align: center; }
 </style>
 </head>
 <body>
@@ -84,8 +92,15 @@ function buildInteractiveHtml({ title, data, librarySource, scripts, exportedAt 
   <button type="button" data-viewer="fit">Ajustar</button>
   <button type="button" data-viewer="zoom-out" aria-label="Alejar">−</button>
   <button type="button" data-viewer="zoom-in" aria-label="Acercar">+</button>
+  <button type="button" data-viewer="present" title="Recorrer el mapa tema a tema (← → para avanzar, Esc para salir)">Presentación</button>
 </header>
 <main id="mindMapContainer"><div id="viewerStatus">Cargando el mapa…</div></main>
+<div class="viewer-present-bar" hidden>
+  <button type="button" data-present="prev" aria-label="Anterior">◀</button>
+  <span class="viewer-present-status" role="status"></span>
+  <button type="button" data-present="next" aria-label="Siguiente">▶</button>
+  <button type="button" data-present="exit">Salir</button>
+</div>
 <script type="application/json" id="map-data">${jsonForScript({ title: title || '', data })}</script>
 <script type="text/plain" id="smm-lib">${escapeScriptText(librarySource)}</script>
 ${scripts.map(code => `<script>\n${escapeScriptText(code)}\n</script>`).join('\n')}

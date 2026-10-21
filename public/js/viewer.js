@@ -32,6 +32,8 @@ async function startInteractiveViewer() {
       maxTag: 10,
       iconList: libraryIconList(),
       enableShortcutOnlyWhenMouseInSvg: true,
+      // Presentación: sin el "modo rellenar huecos" (ocultaría el texto subrayado)
+      demonstrateConfig: { openBlankMode: false },
       // Notas con formato en el tooltip (rich-notes.js)
       customNoteContentShow: createNoteTooltip(),
       // Un vínculo a otro tema salta a él; a otro mapa no se puede (no está en el archivo)
@@ -76,6 +78,35 @@ function bindViewerToolbar(mindMap) {
   on('zoom-in', () => mindMap.view.enlarge())
   on('zoom-out', () => mindMap.view.narrow())
   window.addEventListener('resize', () => mindMap.resize())
+  bindViewerPresentation(mindMap)
+}
+
+// Presentación con el plugin Demonstrate de la librería (como en la app): ← → y Esc los
+// atiende el plugin; la barra muestra "n / total" y tiene sus propios botones
+function bindViewerPresentation(mindMap) {
+  const plugin = mindMap.demonstrate
+  const button = document.querySelector('[data-viewer="present"]')
+  const bar = document.querySelector('.viewer-present-bar')
+  const status = bar && bar.querySelector('.viewer-present-status')
+  if (!button || !bar) return
+  if (!plugin) { button.hidden = true; return }
+  const show = visible => { bar.hidden = !visible }
+  mindMap.on('demonstrate_jump', (index, total) => { status.textContent = `${index + 1} / ${total}` })
+  mindMap.on('exit_demonstrate', () => show(false))
+  button.addEventListener('click', () => {
+    status.textContent = ''
+    show(true)
+    // _enter() arranca el recorrido sin pedir la pantalla completa del lienzo
+    plugin._enter()
+  })
+  bar.addEventListener('click', e => {
+    const action = e.target.closest('[data-present]')
+    if (!action || !plugin.isInDemonstrate) return
+    const name = action.getAttribute('data-present')
+    if (name === 'next') plugin.next()
+    else if (name === 'prev') plugin.prev()
+    else plugin.exit()
+  })
 }
 
 startInteractiveViewer()

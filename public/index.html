@@ -681,6 +681,29 @@
       </template>
 
       <!-- Guardar el mapa abierto como plantilla propia -->
+      <!-- Opciones de exportación a Word o Markdown (export-doc.js); se recuerdan -->
+      <template x-if="dialog && dialog.kind === 'exportOptions'">
+        <form class="dialog-form" @submit.prevent="confirmExportOptions()">
+          <h2 id="appDialogTitle" class="dialog-title" x-text="dialog.format === 'md' ? 'Exportar a Markdown' : 'Exportar a Word'"></h2>
+          <fieldset class="dialog-choice export-options">
+            <legend>Incluir</legend>
+            <label class="task-check"><input type="checkbox" name="expNotes" x-model="dialog.options.notes" /> <span>Notas</span></label>
+            <label class="task-check"><input type="checkbox" name="expMarkers" x-model="dialog.options.markers" /> <span>Marcadores (iconos y de texto)</span></label>
+            <label class="task-check"><input type="checkbox" name="expTask" x-model="dialog.options.task" /> <span>Información de tarea (prioridad, progreso, fechas, recursos)</span></label>
+            <label class="task-check"><input type="checkbox" name="expLinks" x-model="dialog.options.links" /> <span>Vínculos</span></label>
+            <label class="task-check"><input type="checkbox" name="expCallouts" x-model="dialog.options.callouts" /> <span>Llamadas</span></label>
+            <label class="task-check"><input type="checkbox" name="expExtras" x-model="dialog.options.extras" /> <span>Nombres de adjuntos y resúmenes</span></label>
+            <label class="task-check" x-show="dialog.format === 'docx'"><input type="checkbox" name="expImages" x-model="dialog.options.images" /> <span>Imágenes de los temas</span></label>
+          </fieldset>
+          <label class="task-check"><input type="checkbox" name="expNumbering" x-model="dialog.options.numbering" /> <span>Numerar los títulos (1., 1.1., …)</span></label>
+          <div class="dialog-actions">
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary">Exportar</button>
+            <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+      </template>
+
       <!-- Avisos al abrir un archivo: el mapa se abrió, pero algo no se pudo usar -->
       <template x-if="dialog && dialog.kind === 'fileReport'">
         <form class="dialog-form" @submit.prevent="closeDialog()">

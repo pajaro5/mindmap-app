@@ -150,7 +150,13 @@ const RIBBON_TABS = [
     groups: [
       { label: 'Archivo', items: [{ cmd: 'map.saveFile' }, { cmd: 'map.openFile' }] },
       { label: 'Exportar', items: [{ cmd: 'export.png' }, { cmd: 'export.pdf' }, { cmd: 'export.html' }] },
-      { label: 'Documento', items: [{ cmd: 'export.word' }, { cmd: 'export.markdown' }] },
+      {
+        label: 'Documento',
+        items: [
+          { cmd: 'export.word', menu: ['export.word', 'export.options'] },
+          { cmd: 'export.markdown', menu: ['export.markdown', 'export.options'] }
+        ]
+      },
       { label: 'Plantillas', items: [{ cmd: 'map.saveAsTemplate' }, { cmd: 'map.newFromTemplate' }] }
     ]
   }

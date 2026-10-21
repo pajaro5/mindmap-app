@@ -646,6 +646,12 @@ const COMMANDS = {
     icon: 'exportWord', enabled: hasMap,
     run: app => app.exportDocument('docx')
   },
+  // En el menú de Word y en el de Markdown: el formato es el del botón del menú
+  'export.options': {
+    label: 'Opciones de exportación', menuLabel: 'Opciones…', icon: 'exportOptions', enabled: hasMap,
+    tooltip: 'Elegir qué incluir (notas, marcadores, tareas, vínculos, llamadas, imágenes) y numerar los títulos',
+    run: app => app.openExportOptions(app.lastMenuOwner === 'export.markdown' ? 'md' : 'docx')
+  },
   'export.markdown': {
     label: 'Markdown', tooltip: 'Exportar a Markdown (.md): un título por tema, con sus notas, marcadores y tareas',
     icon: 'exportMarkdown', enabled: hasMap,

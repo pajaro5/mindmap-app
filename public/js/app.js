@@ -26,6 +26,10 @@ function mindMapApp() {
     iconQuery: '',
     // Exportación a HTML interactivo en curso
     exporting: false,
+    // Qué incluir al exportar a Word o Markdown (se recuerda en este navegador)
+    exportOptions: loadExportOptions(),
+    // Botón dueño del último menú desplegable usado (p. ej. "Opciones…" de Word o de Markdown)
+    lastMenuOwner: null,
     // Abrir / guardar como archivo en curso (map-file.js) y arrastre de un archivo sobre la app
     fileBusy: '',
     fileDragOver: false,
@@ -322,6 +326,7 @@ function mindMapApp() {
     },
 
     runCommand(id, value) {
+      this.lastMenuOwner = this.menu ? this.menu.owner : null
       this.menu = null
       this.syncSelection()
       try {
@@ -2055,14 +2060,35 @@ function mindMapApp() {
       }
     },
 
-    // Word o Markdown: el mapa entero como documento (ver export-doc.js)
-    exportDocument(format) {
+    // Word o Markdown: el mapa entero como documento (ver export-doc.js), con las opciones
+    // elegidas la última vez en "Opciones de exportación"
+    async exportDocument(format) {
       if (!this.mindMap) return
       const labels = this.iconById
-      exportDocument(Alpine.raw(this.mindMap), format, {
-        title: this.currentTitle,
-        iconLabel: id => (labels[id] && labels[id].label) || id
-      })
+      try {
+        await exportDocument(Alpine.raw(this.mindMap), format, {
+          title: this.currentTitle,
+          iconLabel: id => (labels[id] && labels[id].label) || id,
+          options: this.exportOptions
+        })
+      } catch (err) {
+        console.error(err)
+        this.errorMsg = `No se pudo exportar: ${err.message || err}`
+      }
+    },
+
+    // Diálogo de opciones; el formato es el del botón desde cuyo menú se abrió
+    openExportOptions(format) {
+      if (!this.mindMap) return
+      this.showDialog({ kind: 'exportOptions', format, options: { ...this.exportOptions } })
+    },
+
+    async confirmExportOptions() {
+      const { format, options } = this.dialog
+      this.exportOptions = normalizeDocOptions(options)
+      try { localStorage.setItem(EXPORT_OPTIONS_STORAGE_KEY, JSON.stringify(this.exportOptions)) } catch { /* sin almacenamiento: solo esta sesión */ }
+      this.closeDialog()
+      await this.exportDocument(format)
     },
 
     exportMap(type) {
