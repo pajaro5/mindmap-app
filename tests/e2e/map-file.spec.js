@@ -85,7 +85,7 @@ test('el ejemplo de howToCreateAMindmap.md se abre completo desde un .zip de su 
   expect(example).toBeTruthy()
   // El ejemplo cumple sus propias reglas: ningún campo de la lista "NO debes generar" y textos
   // de una línea
-  const forbidden = ['image', 'imageSize', 'attachmentUrl', '_noteHtml', 'customLeft', 'customTop', '_diagram', '_diagramRule', '_mapFormat', 'richText']
+  const forbidden = ['image', 'imageSize', 'attachmentUrl', 'customLeft', 'customTop', '_diagram', '_diagramRule', '_mapFormat', 'richText']
   const walk = node => {
     expect(Object.keys(node.data).filter(k => forbidden.includes(k)), node.data.text).toEqual([])
     expect(node.data.text, 'text sin saltos de línea').not.toContain('\n')
@@ -121,6 +121,8 @@ test('el ejemplo de howToCreateAMindmap.md se abre completo desde un .zip de su 
   expect(await app.nodeData('Instalar Git', 'hyperlink')).toBe('https://git-scm.com/downloads')
   expect(await app.nodeData('Identidad', 'icon')).toEqual(['symbol_warning'])
   expect(await app.nodeData('Commit', 'note')).toContain('git add .')
+  // La nota con formato del ejemplo llega intacta (ya saneada: no tenía nada que quitar)
+  expect(await app.nodeData('Commit', '_noteHtml')).toBe('<p><b>Dos pasos:</b></p><ol><li>git add .</li><li>git commit -m "Mensaje"</li></ol>')
   // La rama 3 viene plegada: su adjunto se comprueba en los datos guardados
   const saved = await maps.get((await appState(page)).id)
   const ramas = saved.data.root.children[2]

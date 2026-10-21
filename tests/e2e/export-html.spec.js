@@ -103,6 +103,20 @@ test.describe('el archivo abierto en el navegador', () => {
     expect(errors).toEqual([])
   })
 
+  test('las notas con formato se ven con su formato al pasar por el icono de nota', async ({ page, maps }, testInfo) => {
+    const data = clone(SAMPLE_TREE)
+    Object.assign(data.root.children[1].data, { note: 'Pasos\n1. uno', _noteHtml: '<p><b>Pasos</b></p><ol><li>uno</li></ol>' })
+    const { app } = await setupMap(page, maps, { data })
+    const { file } = await exportHtml(page, app, testInfo)
+    const { viewer, errors } = await openExported(page, file)
+    await viewerNode(viewer, 'Beta').locator('.smm-node-note').hover()
+    const tip = viewer.locator('.note-tooltip')
+    await expect(tip).toBeVisible()
+    await expect(tip.locator('b')).toHaveText('Pasos')
+    await expect(tip.locator('ol li')).toHaveText('uno')
+    expect(errors).toEqual([])
+  })
+
   test('es de solo lectura: ni doble clic ni teclas editan el mapa', async ({ page, maps }, testInfo) => {
     const { app } = await setupMap(page, maps)
     const { file } = await exportHtml(page, app, testInfo)

@@ -218,10 +218,10 @@ test.describe('Limpiar', () => {
     const { app } = await setupMap(page, maps, { data: RICH() })
     await app.selectNode('Beta')
     await cmd(app, 'element.notes').click()
-    await expect(page.locator('.notes-editor')).toHaveValue('Nota de Beta')
+    await expect(page.locator('.notes-editor')).toHaveText('Nota de Beta')
 
     await app.chooseFromMenu('home', 'clear.format', 'clear.notes')
-    await expect(page.locator('.notes-editor')).toHaveValue('')
+    await expect(page.locator('.notes-editor')).toHaveText('')
     await app.selectNode('Gamma')
     await app.selectNode('Beta')
     await page.waitForTimeout(700)

@@ -466,8 +466,24 @@ button { font-family: inherit; }
   background: #fffdf3;
   border: 1px solid #e3d9a8;
   border-radius: 3px;
+  overflow: auto;
+  overflow-wrap: anywhere;
 }
 .notes-editor:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.notes-editor:empty::before { content: attr(data-placeholder); color: #9a9070; pointer-events: none; }
+.notes-editor p { margin: 0 0 4px; }
+.notes-editor ul, .notes-editor ol { margin: 0 0 4px; padding-left: 22px; }
+.notes-editor a { color: #1c62b9; }
+.notes-toolbar { display: flex; gap: 2px; flex-wrap: wrap; }
+.notes-tool {
+  width: 26px; height: 24px; padding: 3px; border: 1px solid transparent; border-radius: 3px;
+  background: transparent; cursor: pointer;
+}
+.notes-tool:hover { background: var(--hover-1); border-color: var(--hover-border); }
+.notes-tool svg { display: block; width: 100%; height: 100%; }
+.notes-link-fields { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.notes-link-fields input { flex: 1 1 140px; min-width: 0; padding: 3px 6px; }
+.notes-link-fields .dialog-error { flex-basis: 100%; margin: 0; }
 
 /* Cursor de "copiar formato" mientras está activo */
 body.painter-active #mindMapContainer { cursor: copy; }

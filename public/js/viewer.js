@@ -31,6 +31,8 @@ async function startInteractiveViewer() {
       maxTag: 10,
       iconList: libraryIconList(),
       enableShortcutOnlyWhenMouseInSvg: true,
+      // Notas con formato en el tooltip (rich-notes.js)
+      customNoteContentShow: createNoteTooltip(),
       // Un vínculo a otro tema salta a él; a otro mapa no se puede (no está en el archivo)
       customHyperlinkJump: url => {
         const internal = internalLinkOf(url)

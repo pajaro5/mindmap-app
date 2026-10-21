@@ -560,13 +560,41 @@
           </form>
         </div>
 
-        <!-- Notas del tema seleccionado (texto plano; se guarda al pausar la escritura) -->
+        <!-- Notas del tema seleccionado, con formato (rich-notes.js; se guarda al pausar la escritura) -->
         <div class="task-pane-body notes-pane" x-show="pane === 'notes'">
           <template x-if="activeNodeList.length === 1">
             <div class="notes-wrap">
               <div class="notes-topic" x-text="activeNodeList[0] ? activeNodeList[0].getData('text').replace(/<[^>]+>/g, '') : ''"></div>
-              <textarea class="notes-editor" x-model="noteDraft" @input="onNoteInput()" @blur="flushNote()"
-                        placeholder="Escribe aquí las notas de este tema…" aria-label="Notas del tema"></textarea>
+              <!-- mousedown.prevent: el botón no se lleva el foco ni la selección del editor -->
+              <div class="notes-toolbar" role="toolbar" aria-label="Formato de la nota">
+                <template x-for="b in [
+                    { cmd: 'bold', label: 'Negrita (Ctrl+B)', icon: 'bold' },
+                    { cmd: 'italic', label: 'Cursiva (Ctrl+I)', icon: 'italic' },
+                    { cmd: 'underline', label: 'Subrayado (Ctrl+U)', icon: 'underline' },
+                    { cmd: 'strike', label: 'Tachado', icon: 'strike' },
+                    { cmd: 'ul', label: 'Lista con viñetas', icon: 'noteBullets' },
+                    { cmd: 'ol', label: 'Lista numerada', icon: 'noteNumbers' },
+                    { cmd: 'link', label: 'Vínculo', icon: 'hyperlink' },
+                    { cmd: 'clear', label: 'Quitar formato', icon: 'clearFormat' }
+                  ]" :key="b.cmd">
+                  <button type="button" class="notes-tool" :data-note-cmd="b.cmd" :title="b.label" :aria-label="b.label"
+                          @mousedown.prevent @click="b.cmd === 'link' ? openNoteLink() : noteFormat(b.cmd)" x-html="icon(b.icon)"></button>
+                </template>
+              </div>
+              <form class="notes-link-row" x-show="noteLink" @submit.prevent="applyNoteLink()" novalidate>
+                <template x-if="noteLink">
+                  <div class="notes-link-fields">
+                    <input type="text" name="noteLink" x-model="noteLink.url" placeholder="ejemplo.com o correo@ejemplo.com" aria-label="Dirección del vínculo"
+                           :disabled="!noteLinkRange" @input="noteLink.error = ''" @keydown.escape.prevent="noteLink = null" />
+                    <button type="submit" class="btn" :disabled="!noteLinkRange">Vincular</button>
+                    <button type="button" class="btn" @click="noteLink = null">Cancelar</button>
+                    <p class="dialog-error" role="alert" x-show="noteLink.error" x-text="noteLink.error"></p>
+                  </div>
+                </template>
+              </form>
+              <div class="notes-editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Notas del tema"
+                   data-placeholder="Escribe aquí las notas de este tema…"
+                   x-init="$el.innerHTML = noteDraft" @input="onNoteInput()" @blur="flushNote()" @paste="onNotePaste($event)"></div>
             </div>
           </template>
           <div class="icon-sidebar-hint" x-show="activeNodeList.length !== 1"
@@ -912,6 +940,7 @@
   <script src="/js/search-filter.js"></script>
   <script src="/js/views.js"></script>
   <script src="/js/elements.js"></script>
+  <script src="/js/rich-notes.js"></script>
   <script src="/js/mindmap-extensions.js"></script>
   <script src="/js/theme.js"></script>
 <script src="/js/map-format.js"></script>

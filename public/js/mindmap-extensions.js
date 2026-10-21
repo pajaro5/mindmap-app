@@ -279,11 +279,11 @@ function demoteTopics(mindMap) {
 const CLEAR_PARTS = {
   format: { format: true, keys: [] },
   markers: { keys: ['icon', 'tag'] },
-  notes: { keys: ['note'] },
+  notes: { keys: ['note', NOTE_HTML_KEY] },
   links: { keys: ['hyperlink', 'hyperlinkTitle'] },
   // Información de tarea: sus datos y los iconos de prioridad y progreso (el resto se queda)
   task: { keys: [TASK_KEY], taskIcons: true },
-  all: { format: true, keys: ['icon', 'tag', 'note', 'hyperlink', 'hyperlinkTitle', 'attachmentUrl', 'attachmentName', 'image', 'imageTitle', 'imageSize', TASK_KEY, CALLOUTS_KEY] }
+  all: { format: true, keys: ['icon', 'tag', 'note', NOTE_HTML_KEY, 'hyperlink', 'hyperlinkTitle', 'attachmentUrl', 'attachmentName', 'image', 'imageTitle', 'imageSize', TASK_KEY, CALLOUTS_KEY] }
 }
 
 function clearTopics(mindMap, part) {

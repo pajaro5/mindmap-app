@@ -95,6 +95,15 @@ function sanitizeMapTree(root) {
       if (d[key] !== undefined && !isEscapedXml(d[key])) { d[key] = escapeXml(d[key]); fixed++ }
     }
     if (d.attachmentUrl !== undefined && !isAttachmentUrl(d.attachmentUrl)) { delete d.attachmentUrl; delete d.attachmentName; fixed++ }
+    // Nota con formato: solo la lista blanca de etiquetas (rich-notes.js); sin texto plano no vale
+    if (d[NOTE_HTML_KEY] !== undefined) {
+      const html = typeof d[NOTE_HTML_KEY] === 'string' && typeof d.note === 'string' && d.note ? sanitizeNoteHtml(d[NOTE_HTML_KEY]) : ''
+      if (html !== d[NOTE_HTML_KEY]) {
+        if (html) d[NOTE_HTML_KEY] = html
+        else delete d[NOTE_HTML_KEY]
+        fixed++
+      }
+    }
     if (d.image !== undefined && !isValidImage(d)) { delete d.image; delete d.imageTitle; delete d.imageSize; fixed++ }
     // Marcadores: un icono o una etiqueta con un tipo inesperado hace fallar el render
     if (d.icon !== undefined) {

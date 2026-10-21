@@ -8,9 +8,9 @@
 // (playwright.config.js) salvo con QUARANTINE=off. Al retomar una fase:
 //   git checkout wip/fases-pendientes -- <archivos de la fase>
 // y se quita de aquí, añadiendo sus módulos a IMPACT.
-const QUARANTINE = ['diagram-edit', 'callouts-extras', 'format-extras', 'rich-notes', 'view-extras', 'export-options', 'gantt']
+const QUARANTINE = ['diagram-edit', 'callouts-extras', 'format-extras', 'view-extras', 'export-options', 'gantt']
 // Módulos de esas fases (aún no se cargan en index.html)
-const QUARANTINE_MODULES = ['public/js/gantt.js', 'public/js/rich-notes.js', 'public/js/view-extras.js']
+const QUARANTINE_MODULES = ['public/js/gantt.js', 'public/js/view-extras.js']
 
 // Batería de humo: se ejecuta siempre en la regresión selectiva
 const SMOKE = ['smoke', 'globals', 'ribbon', 'maps', 'editing']
@@ -37,6 +37,7 @@ const IMPACT = {
   'public/js/markers.js': ['markers', 'task-info', 'find-filter'],
   'public/js/mindmap-extensions.js': ['editing', 'edit-group', 'topic-menu', 'clipboard', 'format'],
   'public/js/paste-special.js': ['home-extras', 'clipboard'],
+  'public/js/rich-notes.js': ['rich-notes', 'elements', 'edit-group', 'export-doc', 'find-filter', 'export-html'],
   'public/js/relation-format.js': ['relation-format', 'relationship-boundary', 'export-html'],
   'public/js/ribbon.js': ['ribbon'],
   'public/js/search-filter.js': ['find-filter'],

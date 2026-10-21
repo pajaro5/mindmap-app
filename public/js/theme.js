@@ -88,7 +88,17 @@ const MAP_CONTENT_CSS = `
 .smm-richtext-node-wrap h3, .smm-richtext-node-wrap ul, .smm-richtext-node-wrap ol, .smm-richtext-node-wrap blockquote {
   margin: 0;
   padding: 0;
-}`
+}
+/* Tooltip de las notas con formato (rich-notes.js) */
+.note-tooltip {
+  position: fixed; z-index: 3000; display: none; max-width: 340px; max-height: 300px; overflow: auto;
+  padding: 8px 12px; border: 1px solid #c9d6e6; border-radius: 6px; background: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .15); font: 13px/1.45 'Segoe UI', Arial, sans-serif; color: #1e2a3a;
+  pointer-events: none; overflow-wrap: anywhere;
+}
+.note-tooltip p { margin: 0 0 4px; }
+.note-tooltip ul, .note-tooltip ol { margin: 0 0 4px; padding-left: 20px; }
+.note-tooltip a { color: #1c62b9; }`
 
 function injectMapContentCss(doc = document) {
   if (doc.getElementById('mm-map-content-css')) return

@@ -131,7 +131,7 @@ test.describe('Notas', () => {
     await page.locator('.notes-editor').fill('Nota de Beta')
     // Cambiar enseguida, antes de que venza el retardo de guardado
     await app.selectNode('Gamma')
-    await expect(page.locator('.notes-editor')).toHaveValue('Nota de Gamma')
+    await expect(page.locator('.notes-editor')).toHaveText('Nota de Gamma')
     await expect(page.locator('.notes-topic')).toHaveText('Gamma')
     expect(await app.nodeData('Beta', 'note')).toBe('Nota de Beta')
   })
@@ -142,7 +142,7 @@ test.describe('Notas', () => {
     const { app } = await setupMap(page, maps, { data })
     await app.node('Alfa').locator('.smm-node-note').click()
     await expect(page.locator('.task-pane-header')).toHaveText(/Notas/)
-    await expect(page.locator('.notes-editor')).toHaveValue('Contexto de Alfa')
+    await expect(page.locator('.notes-editor')).toHaveText('Contexto de Alfa')
   })
 
   test('con varios temas seleccionados se pide elegir uno', async ({ page, maps }) => {

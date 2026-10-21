@@ -68,12 +68,18 @@ function mindMapApp() {
     filter: emptyFilter(),
     // Diálogo modal abierto: { kind: 'hyperlink', url, title, error, canRemove } o null
     dialog: null,
-    // Texto de la nota del tema seleccionado en el panel Notas
+    // HTML de la nota del tema seleccionado en el editor del panel Notas (rich-notes.js)
     noteDraft: '',
+    // HTML que se cargó o se guardó por última vez: si los datos del tema cambian fuera del
+    // editor (Deshacer, Limpiar…) dejan de coincidir y el editor se recarga
+    noteLoaded: '',
     noteNodeUid: null,
     noteTimer: null,
     // Hay texto escrito en el editor de notas que aún no se ha guardado en el tema
     noteDirty: false,
+    // Fila para escribir el vínculo de la nota: { url, error } o null; y la selección a enlazar
+    noteLink: null,
+    noteLinkRange: null,
     // Vista del documento: 'map' (lienzo) u 'outline' (Esquema). Es de la sesión, no del mapa
     viewMode: 'map',
     // Esquema: tema cuyo texto se está editando, su borrador y, tras insertar un tema, los
@@ -280,6 +286,8 @@ function mindMapApp() {
     menuLabelOf(id) { return CommandRegistry.menuLabel(id) },
     shortcutOf(id) { return CommandRegistry.shortcut(id) },
     iconOf(id) { return CommandRegistry.icon(id) },
+    // Icono por nombre (para controles que no son comandos, como la barra del editor de notas)
+    icon(name) { return ICONS[name] || '' },
     controlOf(id) { return CommandRegistry.get(id).control || null },
     optionsOf(id) { return CommandRegistry.options(id, this.selection) },
     currentValueOf(id) { return CommandRegistry.value(id, this.selection) },
@@ -1236,13 +1244,13 @@ function mindMapApp() {
       }
     },
 
-    // ---- Notas ----
+    // ---- Notas (con formato: rich-notes.js) ----
     openNotes() {
       this.pane = 'notes'
       this.loadNoteDraft()
       this.$nextTick(() => {
-        const area = document.querySelector('.notes-editor')
-        if (area) area.focus()
+        const editor = document.querySelector('.notes-editor')
+        if (editor) editor.focus()
       })
     },
 
@@ -1251,7 +1259,18 @@ function mindMapApp() {
       this.flushNote()
       const node = this.activeNodeList.length === 1 ? Alpine.raw(this.activeNodeList[0]) : null
       this.noteNodeUid = node ? node.uid : null
-      this.noteDraft = node ? (node.getData('note') || '') : ''
+      this.noteDraft = this.noteLoaded = node ? noteDisplayHtml(node.getData()) : ''
+      this.noteLink = null
+      this.renderNoteEditor()
+    },
+
+    // El editor es contenteditable: su HTML se pone a mano (con x-html el cursor saltaría al
+    // principio en cada tecla). Si el editor aún no existe, lo rellena su x-init.
+    renderNoteEditor() {
+      this.$nextTick(() => {
+        const editor = document.querySelector('.notes-editor')
+        if (editor && editor.innerHTML !== this.noteDraft) editor.innerHTML = this.noteDraft
+      })
     },
 
     // Si la nota cambió fuera del editor (Deshacer, Limpiar…) y no hay nada pendiente de
@@ -1260,13 +1279,17 @@ function mindMapApp() {
     refreshNoteDraft() {
       if (this.pane !== 'notes' || this.noteDirty || !this.mindMap || !this.noteNodeUid) return
       const node = this.mindMap.renderer.findNodeByUid(this.noteNodeUid)
-      const current = (node && node.getData('note')) || ''
-      if (current !== this.noteDraft) this.noteDraft = current
+      const current = node ? noteDisplayHtml(node.getData()) : ''
+      if (current === this.noteLoaded) return
+      this.noteDraft = this.noteLoaded = current
+      this.renderNoteEditor()
     },
 
     // Guarda la nota con un pequeño retardo mientras se escribe (una entrada de historial
     // por pausa, no por tecla)
     onNoteInput() {
+      const editor = document.querySelector('.notes-editor')
+      if (editor) this.noteDraft = editor.innerHTML
       this.noteDirty = true
       clearTimeout(this.noteTimer)
       this.noteTimer = setTimeout(() => this.flushNote(), 500)
@@ -1281,10 +1304,67 @@ function mindMapApp() {
       if (!this.mindMap || !this.noteNodeUid) return
       const node = this.mindMap.renderer.findNodeByUid(this.noteNodeUid)
       if (!node) return
-      const current = node.getData('note') || ''
-      const next = this.noteDraft
-      if (current === next) return
-      this.mindMap.execCommand('SET_NODE_NOTE', node, next || undefined)
+      // Texto plano (note) y, si tiene formato, el HTML saneado (_noteHtml), en un solo paso
+      const next = noteDataFromHtml(this.noteDraft)
+      if (next.note === node.getData('note') && next[NOTE_HTML_KEY] === node.getData(NOTE_HTML_KEY)) return
+      this.mindMap.renderer.setNodeDataRender(node, next)
+      this.noteLoaded = noteDisplayHtml(node.getData())
+    },
+
+    // Barra del editor: negrita, cursiva, subrayado, tachado, listas, quitar formato
+    noteFormat(cmd) {
+      const editor = document.querySelector('.notes-editor')
+      if (!editor) return
+      editor.focus()
+      // Párrafos como <p> (no <div>) también en Firefox
+      document.execCommand('defaultParagraphSeparator', false, 'p')
+      const commands = { bold: 'bold', italic: 'italic', underline: 'underline', strike: 'strikeThrough', ul: 'insertUnorderedList', ol: 'insertOrderedList', clear: 'removeFormat' }
+      document.execCommand(commands[cmd], false, null)
+      if (cmd === 'clear') document.execCommand('unlink', false, null)
+      this.onNoteInput()
+    },
+
+    // Vínculo: guarda la selección del editor y abre la fila para escribir la dirección
+    openNoteLink() {
+      const selection = window.getSelection()
+      const editor = document.querySelector('.notes-editor')
+      const range = selection.rangeCount ? selection.getRangeAt(0) : null
+      this.noteLinkRange = range && editor && editor.contains(range.commonAncestorContainer) && !range.collapsed ? range.cloneRange() : null
+      if (!this.noteLinkRange) {
+        this.noteLink = { url: '', error: 'Selecciona en la nota el texto del vínculo.' }
+        return
+      }
+      this.noteLink = { url: '', error: '' }
+      this.$nextTick(() => {
+        const input = document.querySelector('.notes-link-row [name="noteLink"]')
+        if (input) input.focus()
+      })
+    },
+
+    applyNoteLink() {
+      if (!this.noteLink) return
+      if (!this.noteLinkRange) { this.noteLink = null; return }
+      const result = normalizeHyperlink(this.noteLink.url)
+      if (!result.ok) { this.noteLink.error = result.error; return }
+      const editor = document.querySelector('.notes-editor')
+      editor.focus()
+      const selection = window.getSelection()
+      selection.removeAllRanges()
+      selection.addRange(this.noteLinkRange)
+      document.execCommand('createLink', false, result.url)
+      this.noteLink = null
+      this.noteLinkRange = null
+      this.onNoteInput()
+    },
+
+    // Pegar en la nota: solo lo permitido (sin imágenes, estilos ni scripts de la página de origen)
+    onNotePaste(e) {
+      const data = e.clipboardData
+      if (!data) return
+      e.preventDefault()
+      const html = data.getData('text/html')
+      document.execCommand('insertHTML', false, html ? sanitizeNoteHtml(html) : noteTextToHtml(data.getData('text/plain')))
+      this.onNoteInput()
     },
 
     // Botón principal de un color: vuelve a aplicar el último color elegido
@@ -1393,7 +1473,8 @@ function mindMapApp() {
       if (!res.ok) return
       const map = await res.json()
       this.noteNodeUid = null
-      this.noteDraft = ''
+      this.noteDraft = this.noteLoaded = ''
+      this.noteLink = null
       // Búsqueda y filtro son de la vista del mapa anterior
       this.find = { ...this.find, open: false, query: '', replacement: '', matches: [], index: -1 }
       this.filter = emptyFilter()
@@ -1453,6 +1534,8 @@ function mindMapApp() {
           // siempre que el foco no esté en un campo (la librería ya ignora inputs y selects).
           enableShortcutOnlyWhenMouseInSvg: false,
           customHyperlinkJump: url => this.followHyperlink(url),
+          // Tooltip de la nota con su formato (el de la librería solo muestra texto plano)
+          customNoteContentShow: this.noteTooltip || (this.noteTooltip = createNoteTooltip()),
           // Presentación: sin el "modo rellenar huecos" (ocultaría el texto subrayado)
           demonstrateConfig: { openBlankMode: false },
           // Diagramas: título fijo encima del diagrama y temas que se sueltan donde se dejan

@@ -40,6 +40,8 @@ function mapDocument(root, { iconLabel = id => id } = {}) {
       link,
       attachment: data.attachmentName ? unescapeXml(data.attachmentName) : '',
       note: typeof data.note === 'string' ? data.note.replace(/\r\n?/g, '\n').trim() : '',
+      // Nota con formato (rich-notes.js): Markdown la conserva; Word usa el texto plano
+      noteHtml: typeof data.note === 'string' && data.note && typeof data[NOTE_HTML_KEY] === 'string' ? data[NOTE_HTML_KEY] : '',
       callouts: (normalizeCallouts(data[CALLOUTS_KEY]) || []).map(c => c.text),
       summaries: generalization.map(g => topicPlainText(g)).filter(Boolean)
     })
@@ -88,8 +90,10 @@ function buildMarkdown(topics) {
     else if (t.link) body.push(`[${escapeMarkdown(t.link.title || t.link.url)}](<${t.link.url.replace(/[<>\s]/g, encodeURIComponent)}>)`)
     if (t.attachment) body.push(`Adjunto: ${escapeMarkdown(t.attachment)}`)
     if (t.summaries.length) body.push(`Resumen: ${t.summaries.map(escapeMarkdown).join(' · ')}`)
-    // Notas: un párrafo por bloque de líneas; los saltos de línea se respetan
-    if (t.note) t.note.split(/\n{2,}/).forEach(p => body.push(p.split('\n').map(escapeMarkdown).join('  \n')))
+    // Notas: con formato, su Markdown; sin él, un párrafo por bloque de líneas (con los saltos)
+    const noteMd = t.noteHtml ? noteHtmlToMarkdown(t.noteHtml, escapeMarkdown) : ''
+    if (noteMd) body.push(noteMd)
+    else if (t.note) t.note.split(/\n{2,}/).forEach(p => body.push(p.split('\n').map(escapeMarkdown).join('  \n')))
     t.callouts.forEach(c => body.push(`> **Llamada:** ${escapeMarkdown(c)}`))
     body.forEach(b => out.push(indent && level > MD_MAX_HEADING ? b.split('\n').map(l => `${indent}  ${l}`).join('\n') : b))
   })

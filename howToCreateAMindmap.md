@@ -61,9 +61,30 @@ Cada **nodo** tiene siempre esta forma:
 | `expand` | boolean | `true`  | `false` = rama plegada al abrir. Por defecto `true`. |
 | `note`   | string  | `"Una variable guarda un valor.\n\nEjemplo: x = 5"` | Nota del tema (texto plano). Aquí va la **explicación larga** del tutorial. `\n\n` separa párrafos. |
 
-Las notas son **texto plano**: no uses Markdown ni HTML (se verían los símbolos). Para estructurar,
-usa saltos de línea, guiones al inicio de línea (`- paso`) o numeración (`1. paso`). El formato
-enriquecido en las notas (negrita, listas, vínculos) todavía no está disponible.
+`note` es **texto plano**: no uses Markdown ni HTML dentro de `note` (se verían los símbolos).
+
+### Nota con formato (opcional) — `_noteHtml`
+
+Para negritas, listas o vínculos en la explicación, añade **además** de `note`:
+
+| Campo       | Tipo   | Notas |
+|-------------|--------|-------|
+| `_noteHtml` | string | HTML con **solo** estas etiquetas: `p br b i u s ul ol li a`. En `<a>`, solo `href` con `https://`, `http://` o `mailto:`. Cualquier otra etiqueta o atributo se elimina (su texto se conserva). |
+
+Reglas:
+- `note` es obligatoria si hay `_noteHtml` y debe tener **el mismo texto sin formato** (se usa
+  para buscar y para exportar a Word): un párrafo o elemento de lista por línea, con `- ` delante
+  de cada viñeta y `1. `, `2. `… en las listas numeradas.
+- Un párrafo por `<p>`; no metas listas dentro de `<p>`.
+- Si la nota no necesita formato, no pongas `_noteHtml`.
+
+```json
+"note": "Pasos:\n1. Abrir el editor\n2. Escribir el código",
+"_noteHtml": "<p><b>Pasos:</b></p><ol><li>Abrir el editor</li><li>Escribir el código</li></ol>"
+```
+
+Se ve con formato en el panel Notas, en el globo que aparece al pasar el ratón por el icono de
+nota, en el HTML interactivo exportado y en Markdown.
 
 ### Iconos (marcadores) — `icon`
 
@@ -194,7 +215,7 @@ necesitas un símbolo visual que no está, usa una etiqueta (`tag`) o una imagen
 ### Campos que NO debes generar
 
 `image`, `imageSize`, `attachmentUrl` (los rellena la app a partir de `imageFile` y
-`attachmentFile`), `_noteHtml`, `customLeft`, `customTop`, `_diagram`, `_diagramRule`, `_mapFormat`,
+`attachmentFile`), `customLeft`, `customTop`, `_diagram`, `_diagramRule`, `_mapFormat`,
 `richText`, y cualquier estilo visual (colores, fuentes, formas). Dependen del servidor o de la
 maquetación interna; la app los ignora o los gestiona ella misma.
 
@@ -207,7 +228,7 @@ maquetación interna; la app los ignora o los gestiona ella misma.
    Usa `priority_1`, `priority_2`… para indicar el orden de lectura.
 3. **Subtemas** (nivel 2–3) = conceptos concretos. No pases de 4 niveles de profundidad.
 4. **Texto del tema corto**; la explicación va en `note`. Un tema = una idea.
-5. Ejemplos, código y detalles largos → `note` (texto plano; código en líneas propias).
+5. Ejemplos, código y detalles largos → `note` (y `_noteHtml` si conviene resaltar o listar).
 6. Consejos → `symbol_idea`; errores frecuentes → `symbol_warning`; ejercicios → `symbol_question`
    (y la solución en su nota); recursos externos → `hyperlink`.
 7. Usa relaciones (§2) solo cuando aporten algo (p. ej. “requiere”, “se usa en”).
@@ -275,7 +296,8 @@ maquetación interna; la app los ignora o los gestiona ella misma.
               "data": {
                 "text": "Commit",
                 "uid": "7f1c2e10-0000-4000-8000-000000000001",
-                "note": "Dos pasos:\n1. git add .\n2. git commit -m \"Mensaje\""
+                "note": "Dos pasos:\n1. git add .\n2. git commit -m \"Mensaje\"",
+                "_noteHtml": "<p><b>Dos pasos:</b></p><ol><li>git add .</li><li>git commit -m \"Mensaje\"</li></ol>"
               },
               "children": []
             }
@@ -327,7 +349,8 @@ maquetación interna; la app los ignora o los gestiona ella misma.
 - [ ] Los colores son `#rrggbb`; las fechas, `AAAA-MM-DD`; los vínculos, `https://`/`mailto:`.
 - [ ] Cada `uid` usado en `associativeLineTargets` existe en algún tema y es único.
 - [ ] Ningún campo de la lista “NO debes generar”.
-- [ ] Ningún `text` lleva `\n`; las notas son texto plano (sin Markdown ni HTML).
+- [ ] Ningún `text` lleva `\n`; `note` es texto plano (sin Markdown ni HTML).
+- [ ] Cada `_noteHtml` usa solo `p br b i u s ul ol li a` y su tema tiene `note` con el mismo texto.
 - [ ] Cada `imageFile` / `attachmentFile` existe en la ruta indicada (relativa al JSON).
 - [ ] El archivo se guarda con extensión `.json` y codificación UTF-8.
 
