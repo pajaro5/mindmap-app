@@ -564,6 +564,26 @@ const COMMANDS = {
   },
 
   // ---- Buscar y filtrar ----
+  // Mostrar hasta un nivel y enfoque en un tema (view-extras.js); cada uno, un paso de deshacer
+  'view.showLevels': {
+    label: 'Mostrar nivel', tooltip: 'Desplegar el mapa hasta un nivel de temas (el botón despliega todo)', icon: 'showLevels',
+    enabled: hasMap,
+    run: app => app.showLevel(null)
+  },
+  ...Object.fromEntries(SHOW_LEVELS.map(level => [`view.level.${level}`, {
+    label: `Nivel ${level}`, menuLabel: level === 1 ? 'Nivel 1 (solo temas principales)' : `Hasta el nivel ${level}`,
+    icon: 'showLevels', enabled: hasMap,
+    run: app => app.showLevel(level)
+  }])),
+  'view.level.all': {
+    label: 'Todos', menuLabel: 'Todos los niveles', icon: 'showLevels', enabled: hasMap,
+    run: app => app.showLevel(null)
+  },
+  'view.focus': {
+    label: 'Enfocar tema', tooltip: 'Contraer las demás ramas y desplegar la del tema seleccionado', icon: 'focusTopic',
+    enabled: s => s.hasMap && s.activeCount === 1,
+    run: app => app.focusSelectedTopic()
+  },
   'view.find': {
     label: 'Buscar', tooltip: 'Buscar texto en los temas', shortcut: 'Ctrl+F', icon: 'find', enabled: hasMap,
     pressed: s => s.findOpen && !s.findReplace,

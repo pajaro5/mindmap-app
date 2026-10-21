@@ -326,6 +326,8 @@
                     :aria-pressed="find.matchCase" @click="find.matchCase = !find.matchCase; onFindInput()">Aa</button>
             <button type="button" class="find-btn find-toggle" data-action="include-notes" title="Buscar también en las notas"
                     :aria-pressed="find.includeNotes" @click="find.includeNotes = !find.includeNotes; onFindInput()">Notas</button>
+            <button type="button" class="find-btn find-toggle" data-action="include-markers" title="Buscar también en los marcadores de texto y en el nombre de los iconos"
+                    :aria-pressed="find.includeMarkers" @click="find.includeMarkers = !find.includeMarkers; onFindInput()">Marcadores</button>
             <button type="button" class="find-btn" data-action="find-close" title="Cerrar (Esc)" aria-label="Cerrar" @click="closeFind()">✕</button>
           </div>
           <div class="find-row" x-show="find.replace">
@@ -557,6 +559,25 @@
             <p class="filter-summary" role="status" x-show="isFilterActive(filter)"
                x-text="`Cumplen ${filterSummary.matched} de ${filterSummary.total} temas`"></p>
             <button type="button" class="btn" data-action="clear-filter" :disabled="!isFilterActive(filter)" @click="clearFilter()">Quitar filtro</button>
+          </form>
+          <!-- Filtros guardados con nombre: viajan con el mapa (view-extras.js) -->
+          <form class="saved-filters" @submit.prevent="saveCurrentFilter()">
+            <span class="saved-filters-title">Filtros guardados</span>
+            <ul class="saved-filter-list" x-show="savedFilters.length">
+              <template x-for="f in savedFilters" :key="f.name">
+                <li>
+                  <button type="button" class="saved-filter" :title="`Aplicar el filtro «${f.name}»`" @click="applySavedFilter(f.name)" x-text="f.name"></button>
+                  <button type="button" class="saved-filter-delete" data-action="delete-saved-filter" :title="`Borrar el filtro «${f.name}»`"
+                          :aria-label="`Borrar el filtro ${f.name}`" @click="deleteSavedFilter(f.name)">✕</button>
+                </li>
+              </template>
+            </ul>
+            <div class="saved-filter-new">
+              <input type="text" name="filterName" x-model="filterName" maxlength="60" autocomplete="off"
+                     placeholder="Nombre del filtro actual" aria-label="Nombre del filtro" />
+              <button type="submit" class="btn" data-action="save-filter" :disabled="!isFilterActive(filter) || !filterName.trim()"
+                      title="Guardar el filtro actual con este nombre (si ya existe, se sustituye)">Guardar</button>
+            </div>
           </form>
         </div>
 
@@ -938,6 +959,7 @@
   <script src="/js/callouts.js"></script>
   <script src="/js/diagrams.js"></script>
   <script src="/js/search-filter.js"></script>
+  <script src="/js/view-extras.js"></script>
   <script src="/js/views.js"></script>
   <script src="/js/migrations.js"></script>
   <script src="/js/elements.js"></script>

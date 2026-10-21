@@ -149,6 +149,15 @@ function sanitizeMapTree(root) {
   // Definiciones de los marcadores de texto (solo en el tema central)
   if (root && root.data) {
     const rd = root.data
+    // Filtros guardados con nombre (view-extras.js): solo los válidos
+    if (rd[SAVED_FILTERS_KEY] !== undefined) {
+      const list = normalizeSavedFilters(rd[SAVED_FILTERS_KEY])
+      if (JSON.stringify(list) !== JSON.stringify(rd[SAVED_FILTERS_KEY])) {
+        if (list.length) rd[SAVED_FILTERS_KEY] = list
+        else delete rd[SAVED_FILTERS_KEY]
+        fixed++
+      }
+    }
     // (la clave antigua textMarkers la convierte la migración a la versión 1: migrations.js)
     if (rd[TEXT_MARKERS_KEY] !== undefined) {
       const defs = normalizeMarkerDefs(rd[TEXT_MARKERS_KEY])

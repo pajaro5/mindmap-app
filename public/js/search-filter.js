@@ -71,9 +71,16 @@ function replaceInText(text, query, replacement, options) {
   return out + source.slice(last)
 }
 
-function topicMatchesQuery(data, query, { matchCase = false, includeNotes = false } = {}) {
+// `includeMarkers`: también los marcadores de texto y el nombre de los iconos (`iconLabel(id)`)
+function topicMatchesQuery(data, query, { matchCase = false, includeNotes = false, includeMarkers = false, iconLabel = id => id } = {}) {
   if (findRanges(topicPlainText(data), query, { matchCase }).length) return true
-  return !!(includeNotes && data.note && findRanges(String(data.note), query, { matchCase }).length)
+  if (includeNotes && data.note && findRanges(String(data.note), query, { matchCase }).length) return true
+  if (!includeMarkers) return false
+  const markers = [
+    ...(Array.isArray(data.tag) ? data.tag : []).map(tagText),
+    ...(Array.isArray(data.icon) ? data.icon : []).map(iconLabel)
+  ]
+  return markers.some(text => text && findRanges(String(text), query, { matchCase }).length)
 }
 
 // uids de los temas que coinciden, en orden de lectura (también en ramas contraídas)

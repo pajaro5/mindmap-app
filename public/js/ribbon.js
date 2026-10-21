@@ -131,6 +131,13 @@ const RIBBON_TABS = [
     groups: [
       { label: 'Vistas', items: [{ cmd: 'view.map' }, { cmd: 'view.outline' }] },
       { label: 'Presentación', items: [{ cmd: 'view.presentation' }] },
+      {
+        label: 'Mostrar',
+        items: [
+          { cmd: 'view.showLevels', menu: [...SHOW_LEVELS.map(l => `view.level.${l}`), 'view.level.all'] },
+          { cmd: 'view.focus' }
+        ]
+      },
       { label: 'Zoom', items: [{ cmd: 'view.zoomIn' }, { cmd: 'view.zoomOut' }, { cmd: 'view.fit' }, { cmd: 'view.actualSize' }] },
       { label: 'Buscar', items: [{ cmd: 'view.find' }, { cmd: 'view.replace' }] },
       { label: 'Filtro', items: [{ cmd: 'pane.filter' }, { cmd: 'view.filter.clear' }] },

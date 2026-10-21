@@ -64,7 +64,10 @@ function mindMapApp() {
     // Llamada seleccionada: { uid del tema, id de la llamada } o null
     calloutActive: null,
     // Barra Buscar/Reemplazar. matches: uids de los temas que coinciden; index: el actual
-    find: { open: false, replace: false, query: '', replacement: '', matchCase: false, includeNotes: false, matches: [], index: -1 },
+    find: { open: false, replace: false, query: '', replacement: '', matchCase: false, includeNotes: false, includeMarkers: false, matches: [], index: -1 },
+    // Filtros guardados con nombre del mapa abierto (view-extras.js) y nombre para guardar el actual
+    savedFilters: [],
+    filterName: '',
     // Criterios del filtro (estado de la vista: no se guarda en el mapa)
     filter: emptyFilter(),
     // Diálogo modal abierto: { kind: 'hyperlink', url, title, error, canRemove } o null
@@ -417,7 +420,13 @@ function mindMapApp() {
 
     // ---- Buscar y reemplazar ----
     get findOptions() {
-      return { matchCase: this.find.matchCase, includeNotes: this.find.includeNotes }
+      const icons = this.iconById
+      return {
+        matchCase: this.find.matchCase,
+        includeNotes: this.find.includeNotes,
+        includeMarkers: this.find.includeMarkers,
+        iconLabel: id => (icons[id] && icons[id].label) || id
+      }
     },
 
     // "2 de 5", "Sin resultados" o nada
@@ -532,6 +541,47 @@ function mindMapApp() {
 
     clearFilter() {
       this.filter = emptyFilter()
+    },
+
+    // ---- Filtros guardados (view-extras.js): viajan con el mapa, en el tema central ----
+    refreshSavedFilters() {
+      const root = this.mindMap && Alpine.raw(this.mindMap).renderer.root
+      const list = normalizeSavedFilters(root ? root.getData(SAVED_FILTERS_KEY) : [])
+      if (JSON.stringify(list) !== JSON.stringify(this.savedFilters)) this.savedFilters = list
+    },
+
+    saveCurrentFilter(name = this.filterName) {
+      if (!this.mindMap || !isFilterActive(this.filter) || !String(name || '').trim()) return
+      Alpine.raw(this.mindMap).execCommand('SET_SAVED_FILTERS', withSavedFilter(this.savedFilters, name, JSON.parse(JSON.stringify(this.filter))))
+      this.filterName = ''
+      this.refreshSavedFilters()
+    },
+
+    applySavedFilter(name) {
+      const saved = this.savedFilters.find(f => f.name === name)
+      if (saved) this.filter = normalizeFilter(saved.filter)
+    },
+
+    deleteSavedFilter(name) {
+      if (!this.mindMap) return
+      Alpine.raw(this.mindMap).execCommand('SET_SAVED_FILTERS', this.savedFilters.filter(f => f.name !== name))
+      this.refreshSavedFilters()
+    },
+
+    // ---- Mostrar nivel y enfoque (view-extras.js); un paso de deshacer cada uno ----
+    // `level`: 1 = solo los temas principales; null = todos los niveles
+    showLevel(level) {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      if (!mindMap) return
+      if (level) mindMap.execCommand('UNEXPAND_TO_LEVEL', level)
+      else mindMap.execCommand('EXPAND_ALL')
+    },
+
+    focusSelectedTopic() {
+      const mindMap = this.mindMap && Alpine.raw(this.mindMap)
+      const node = this.activeNodeList.length === 1 ? Alpine.raw(this.activeNodeList[0]) : null
+      if (!mindMap || !node) return
+      mindMap.execCommand('FOCUS_TOPIC', node.uid)
     },
 
     // Resaltado de búsqueda y atenuado del filtro sobre los temas pintados
@@ -1556,6 +1606,10 @@ function mindMapApp() {
         })
         this.mindMapId = map.id
         extendMindMap(this.mindMap)
+        installViewExtras(Alpine.raw(this.mindMap))
+        this.savedFilters = []
+        this.filterName = ''
+        this.refreshSavedFilters()
         installMapFormat(Alpine.raw(this.mindMap), savedTheme)
         installRelationFormat(Alpine.raw(this.mindMap))
         attachDiagram(Alpine.raw(this.mindMap), {
@@ -1610,6 +1664,7 @@ function mindMapApp() {
         this.mindMap.on('node_tree_render_end', () => {
           this.renderTick++
           this.refreshNoteDraft()
+          this.refreshSavedFilters()
           this.editInsertedOutlineTopic()
           // Si la llamada seleccionada ya no existe (Deshacer, Limpiar…) se deselecciona
           if (this.calloutActive) {
