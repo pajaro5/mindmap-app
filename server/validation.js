@@ -26,6 +26,8 @@ function isValidMapData(data) {
   if (!isNode(data.root, 0)) return false
   if (data.layout !== undefined && typeof data.layout !== 'string') return false
   if (data.theme !== undefined && (typeof data.theme !== 'object' || data.theme === null)) return false
+  // Versión del formato (public/js/migrations.js): entero no negativo
+  if (data.schemaVersion !== undefined && !(Number.isInteger(data.schemaVersion) && data.schemaVersion >= 0)) return false
   return true
 }
 

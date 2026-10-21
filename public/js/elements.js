@@ -149,11 +149,7 @@ function sanitizeMapTree(root) {
   // Definiciones de los marcadores de texto (solo en el tema central)
   if (root && root.data) {
     const rd = root.data
-    if (rd[LEGACY_TEXT_MARKERS_KEY] !== undefined) {
-      if (rd[TEXT_MARKERS_KEY] === undefined) rd[TEXT_MARKERS_KEY] = rd[LEGACY_TEXT_MARKERS_KEY]
-      delete rd[LEGACY_TEXT_MARKERS_KEY]
-      fixed++
-    }
+    // (la clave antigua textMarkers la convierte la migración a la versión 1: migrations.js)
     if (rd[TEXT_MARKERS_KEY] !== undefined) {
       const defs = normalizeMarkerDefs(rd[TEXT_MARKERS_KEY])
       if (JSON.stringify(defs) !== JSON.stringify(rd[TEXT_MARKERS_KEY])) { rd[TEXT_MARKERS_KEY] = defs; fixed++ }

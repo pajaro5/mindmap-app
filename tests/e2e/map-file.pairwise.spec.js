@@ -300,6 +300,8 @@ test.describe('pairwise: guardar como archivo y volver a abrirlo', () => {
         saved = JSON.parse(buffer.toString('utf8'))
       }
       expect({ format: saved.format, version: saved.version, title: saved.title }, label).toEqual({ format: 'mindmap-app', version: 1, title })
+      // El archivo lleva la versión del formato de los datos (migrations.js)
+      expect(saved.data.schemaVersion, label).toBe(1)
       expect(JSON.stringify(saved), label).not.toContain('/api/files/')
 
       // Volver a abrirlo: un mapa nuevo idéntico al original

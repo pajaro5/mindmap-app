@@ -1067,6 +1067,7 @@ function instantiateTemplate(template, today = todayIso()) {
     return { data, children: (node.children || []).map((child, i) => build({ ...child, __level: isRoot ? 1 : 2 }, false, i)) }
   }
   return {
+    schemaVersion: SCHEMA_VERSION,
     layout: diagram ? DIAGRAM_LAYOUT : (template.layout || 'mindMap'),
     root: build(template.root, true, 0),
     theme: { template: THEME_NAME, config: {} },

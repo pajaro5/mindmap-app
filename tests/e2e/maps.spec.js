@@ -68,6 +68,40 @@ test('un mapa antiguo (tema "default") se abre con el tema nuevo', async ({ page
   expect(theme).toEqual({ second: '#7dc142', line: 'curve' })
   // Conserva su diseño original
   expect((await app.state()).layout).toBe('logicalStructure')
+  // Al guardarlo queda migrado: versión 1 del formato y el tema con su nombre actual
+  await app.selectRoot()
+  await page.keyboard.press('Tab')
+  await expect.poll(async () => {
+    const saved = (await maps.get(legacy.id)).data
+    return [saved.schemaVersion, saved.theme.template]
+  }).toEqual([1, 'mindmanager'])
+})
+
+test('un mapa de una versión más nueva se abre con un aviso y conserva su versión al guardarse', async ({ page, maps, app }) => {
+  const future = await maps.create({
+    data: { schemaVersion: 7, layout: 'mindMap', root: { data: { text: 'Futuro', campoNuevo: { x: 1 } }, children: [] }, theme: { template: 'mindmanager', config: {} }, view: {} }
+  })
+  await app.goto()
+  await app.openMapByTitle(future.title)
+  await expect(app.errorBanner).toContainText('versión más nueva')
+  await app.selectRoot()
+  await page.keyboard.press('Tab')
+  await expect.poll(async () => (await maps.get(future.id)).data.root.children.length).toBe(1)
+  const saved = (await maps.get(future.id)).data
+  expect(saved.schemaVersion).toBe(7)
+  // Lo que esta versión no conoce no se toca
+  expect(saved.root.data.campoNuevo).toEqual({ x: 1 })
+})
+
+test('la API rechaza una versión de formato que no es un entero no negativo', async ({ request }) => {
+  for (const schemaVersion of [-1, 1.5, '1', null]) {
+    const res = await request.post('/api/maps', { data: { title: 'x', data: { schemaVersion, root: { data: { text: 'R' } } } } })
+    expect(res.status(), String(schemaVersion)).toBe(400)
+  }
+  const ok = await request.post('/api/maps', { data: { title: 'Versión válida' } })
+  const created = await ok.json()
+  expect(created.data.schemaVersion).toBe(1)
+  await request.delete(`/api/maps/${created.id}`)
 })
 
 // Regresión: el autoguardado (800 ms tras el último cambio) iba a currentId, que cambia al abrir

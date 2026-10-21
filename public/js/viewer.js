@@ -16,7 +16,8 @@ async function startInteractiveViewer() {
 
     const payload = JSON.parse(document.getElementById('map-data').textContent)
     const data = payload.data
-    // El archivo pudo editarse a mano: se sanea igual que al abrir un mapa en la app
+    // El archivo pudo editarse a mano: se migra y se sanea igual que al abrir un mapa en la app
+    migrateMapData(data)
     sanitizeMapTree(data.root)
 
     const savedTheme = data.theme || {}

@@ -35,6 +35,7 @@ const IMPACT = {
   'public/js/map-file.js': ['map-file'],
   'public/js/map-format.js': ['map-format', 'export-html'],
   'public/js/markers.js': ['markers', 'task-info', 'find-filter'],
+  'public/js/migrations.js': ['maps', 'markers', 'map-file', 'templates', 'export-html'],
   'public/js/mindmap-extensions.js': ['editing', 'edit-group', 'topic-menu', 'clipboard', 'format'],
   'public/js/paste-special.js': ['home-extras', 'clipboard'],
   'public/js/rich-notes.js': ['rich-notes', 'elements', 'edit-group', 'export-doc', 'find-filter', 'export-html'],

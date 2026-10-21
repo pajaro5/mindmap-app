@@ -7,14 +7,13 @@
 //     El "_" es obligatorio: simple-mind-map trata como ESTILO cualquier campo del tema que
 //     no conozca, salvo los que empiezan por "_" (Quitar formato lo borraría y Copiar
 //     formato lo copiaría a otros temas). La Fase 5 lo guardaba como `textMarkers`; esos
-//     mapas se migran al abrirlos (sanitizeMapTree).
+//     mapas se migran al abrirlos (migración a la versión 1, migrations.js).
 //   - En cada tema: data.tag = [{ text, style: { fill } }], el formato nativo de
 //     simple-mind-map (lo pinta sin configuración). El color se copia de la categoría;
 //     renombrar, recolorear o borrar en las definiciones actualiza todos los temas a la vez.
 // Los nombres de marcador son únicos en el mapa (sin distinguir mayúsculas).
 
 const TEXT_MARKERS_KEY = '_textMarkers'
-const LEGACY_TEXT_MARKERS_KEY = 'textMarkers'
 const TEXT_MARKER_COLORS =['#2b6fbd', '#57962a', '#c55a11', '#7030a0', '#c00000', '#1f7f7f', '#7f6000', '#595959']
 const TEXT_MARKER_MAX_LENGTH = 40
 const UNCATEGORIZED_COLOR = '#7f7f7f'

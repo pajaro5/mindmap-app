@@ -12,7 +12,9 @@ app.use(files.router)
 app.use(express.json({ limit: '20mb' }))
 app.use(express.static(require('path').join(__dirname, '..', 'public')))
 
+// schemaVersion: versión del formato de los datos (public/js/migrations.js)
 const defaultMapData = () => ({
+  schemaVersion: 1,
   layout: 'mindMap',
   root: {
     data: { text: 'Tema central', expand: true },

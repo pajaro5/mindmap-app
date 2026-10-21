@@ -15,6 +15,7 @@ function mindMapApp() {
     currentTitle: '',
     mindMap: null,
     mindMapId: null, // id del mapa cargado en el lienzo (el autoguardado va a este)
+    mapSchemaVersion: 0, // versión del formato del mapa cargado, tras migrarlo (migrations.js)
     saveStatus: '',
     saveTimer: null,
     errorMsg: '',
@@ -1507,6 +1508,13 @@ function mindMapApp() {
           throw new Error(`El contenedor del mapa tiene tamaño 0 (${rect.width}x${rect.height}), no se puede renderizar`)
         }
 
+        // Formato de una versión anterior: se migra a la actual (migrations.js). Uno de una
+        // versión posterior se abre tal cual, con un aviso, y conserva su versión al guardarse.
+        const migration = migrateMapData(map.data)
+        this.mapSchemaVersion = migration.to
+        if (migration.newer) {
+          this.errorMsg = 'Este mapa se guardó con una versión más nueva de la aplicación: puede que algo no se vea y, si lo cambias, se pierda.'
+        }
         // Los datos pueden venir de fuera de la app (importados o editados a mano): se sanean
         // antes de que la librería los pinte (ver elements.js)
         const fixed = sanitizeMapTree(map.data.root)
@@ -1644,6 +1652,11 @@ function mindMapApp() {
       await this.saveCurrentMap()
     },
 
+    // Datos completos del mapa del lienzo, con la versión de su formato (migrations.js)
+    currentMapData() {
+      return stampSchemaVersion(Alpine.raw(this.mindMap).getData(true), this.mapSchemaVersion)
+    },
+
     // Se guarda en el mapa que está cargado en el lienzo (mindMapId), no en currentId: al
     // cambiar de mapa currentId cambia antes de que se cargue el mapa nuevo
     async saveCurrentMap() {
@@ -1655,7 +1668,7 @@ function mindMapApp() {
         this.saveAfterPresentation = true
         return
       }
-      const data = this.mindMap.getData(true)
+      const data = this.currentMapData()
       let res
       try {
         res = await fetch(`/api/maps/${id}`, {
@@ -1957,7 +1970,7 @@ function mindMapApp() {
         this.dialog.error = 'Escribe un nombre para la plantilla.'
         return
       }
-      const data = templateDataFromMap(Alpine.raw(this.mindMap).getData(true), { stripTasks: this.dialog.stripTasks })
+      const data = templateDataFromMap(this.currentMapData(), { stripTasks: this.dialog.stripTasks })
       const res = await fetch('/api/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2060,7 +2073,7 @@ function mindMapApp() {
       this.fileBusy = 'Preparando archivo…'
       try {
         await this.flushPendingSave()
-        const file = await buildMapFile(Alpine.raw(this.mindMap).getData(true), this.currentTitle, async url => {
+        const file = await buildMapFile(this.currentMapData(), this.currentTitle, async url => {
           const res = await fetch(url)
           if (!res.ok) throw new Error(`no se pudo leer el adjunto (HTTP ${res.status})`)
           return new Uint8Array(await res.arrayBuffer())
