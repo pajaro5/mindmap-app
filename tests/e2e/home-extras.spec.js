@@ -129,14 +129,17 @@ test.describe('Prioridad y progreso con clic en el icono', () => {
         mm.emit('node_icon_click', node, id, new MouseEvent('click'), null)
       }, [text, id])
     }
+    // Cada clic con su propia entrada de historial: la librería funde los cambios que caen en
+    // 100 ms, y en una máquina rápida (CI) dos clics seguidos acababan en una sola entrada
     await app.recordsHistory(() => clickIcon('Beta', 'priority_8'))
     await expect.poll(async () => [...((await app.nodeData('Beta', 'icon')) || [])].sort()).toEqual(['priority_9', 'progress_6'].sort())
-    await clickIcon('Beta', 'priority_9')
+    await app.recordsHistory(() => clickIcon('Beta', 'priority_9'))
     await expect.poll(async () => [...((await app.nodeData('Beta', 'icon')) || [])].sort()).toEqual(['priority_1', 'progress_6'].sort())
     // progress_6 = 75 % → 100 % (progress_8) → 25 % (progress_2)
-    await clickIcon('Beta', 'progress_6')
+    await app.recordsHistory(() => clickIcon('Beta', 'progress_6'))
     await expect.poll(async () => [...((await app.nodeData('Beta', 'icon')) || [])].sort()).toEqual(['priority_1', 'progress_8'].sort())
-    await clickIcon('Beta', 'progress_8')
+    await app.settleHistory()
+    await app.recordsHistory(() => clickIcon('Beta', 'progress_8'))
     await expect.poll(async () => [...((await app.nodeData('Beta', 'icon')) || [])].sort()).toEqual(['priority_1', 'progress_2'].sort())
     // Otros iconos no cambian
     await clickIcon('Gamma', 'flag_red')
