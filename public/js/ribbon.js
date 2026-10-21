@@ -92,13 +92,23 @@ const RIBBON_TABS = [
     groups: [
       {
         label: 'Temas',
-        items: [{ cmd: 'mapTheme.apply' }, { cmd: 'mapFormat.shadow', size: 'small' }, { cmd: 'mapFormat.reset', size: 'small' }]
+        items: [
+          { cmd: 'mapTheme.apply' }, { cmd: 'mapFormat.shadow', size: 'small' }, { cmd: 'mapFormat.reset', size: 'small' },
+          { cmd: 'mapTheme.save', size: 'small' }
+        ]
+      },
+      {
+        label: 'Fondo',
+        items: [{
+          cmd: 'mapFormat.backgroundImage',
+          menu: ['mapFormat.backgroundImage', 'mapFormat.backgroundFit.cover', 'mapFormat.backgroundFit.repeat', 'mapFormat.backgroundFit.center', 'mapFormat.backgroundImage.remove']
+        }]
       },
       {
         label: 'Diseño del mapa',
         items: [
           { cmd: 'layout.radial' }, { cmd: 'layout.tree' }, { cmd: 'layout.org' }, { cmd: 'layout.timeline' }, { cmd: 'layout.fishbone' },
-          { cmd: 'layout.more' }
+          { cmd: 'layout.more' }, { cmd: 'layout.balance' }
         ]
       },
       {

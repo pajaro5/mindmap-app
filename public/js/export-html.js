@@ -45,6 +45,12 @@ function prepareExportData(data) {
     ;(node.children || []).forEach(walk)
   }
   walk(copy.root)
+  // La imagen de fondo también es un archivo del servidor (el archivo exportado no tiene red)
+  const format = copy.root && copy.root.data && copy.root.data[MAP_FORMAT_KEY]
+  if (format) {
+    delete format.backgroundImage
+    delete format.backgroundFit
+  }
   return copy
 }
 

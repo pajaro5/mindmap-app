@@ -275,6 +275,8 @@ class AppPage {
   }
 
   async openMapByTitle(title) {
+    // La lista pudo cargarse antes de que la prueba creara el mapa
+    await this.page.evaluate(() => window.Alpine && window.Alpine.$data(document.body).loadMapList())
     await this.showMapsPane()
     await this.page.locator('.map-list li', { hasText: title }).click()
     // El tema central visible puede ser aún el del mapa anterior: esperar a que el mapa cargado

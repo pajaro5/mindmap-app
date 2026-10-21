@@ -405,6 +405,7 @@ function extendMindMap(mindMap) {
   mindMap.command.add('CLEAR_TOPICS', part => clearTopics(mindMap, part))
   mindMap.command.add('SET_TEXT_MARKERS', (defs, assignName) => setTextMarkers(mindMap, defs, assignName))
   mindMap.command.add('SET_MAP_FORMAT', format => setMapFormat(mindMap, format))
+  mindMap.command.add('BALANCE_MAP', () => balanceMap(mindMap))
   mindMap.command.add('PASTE_OUTLINE', items => pasteOutline(mindMap, items))
   mindMap.keyCommand.addShortcut('Shift+Enter', () => mindMap.execCommand('INSERT_NODE_BEFORE'))
   makePainterOneShot(mindMap)

@@ -8,7 +8,7 @@
 // (playwright.config.js) salvo con QUARANTINE=off. Al retomar una fase:
 //   git checkout wip/fases-pendientes -- <archivos de la fase>
 // y se quita de aquí, añadiendo sus módulos a IMPACT.
-const QUARANTINE = ['diagram-edit', 'callouts-extras', 'format-extras', 'gantt']
+const QUARANTINE = ['diagram-edit', 'callouts-extras', 'gantt']
 // Módulos de esas fases (aún no se cargan en index.html)
 const QUARANTINE_MODULES = ['public/js/gantt.js']
 
@@ -34,7 +34,7 @@ const IMPACT = {
   'public/js/icons.js': ['ribbon'],
   'public/js/import-formats.js': ['import-formats', 'map-file'],
   'public/js/map-file.js': ['map-file', 'import-formats'],
-  'public/js/map-format.js': ['map-format', 'export-html'],
+  'public/js/map-format.js': ['map-format', 'format-extras', 'export-html', 'map-file'],
   'public/js/markers.js': ['markers', 'task-info', 'find-filter'],
   'public/js/migrations.js': ['maps', 'markers', 'map-file', 'templates', 'export-html'],
   'public/js/mindmap-extensions.js': ['editing', 'edit-group', 'topic-menu', 'clipboard', 'format'],

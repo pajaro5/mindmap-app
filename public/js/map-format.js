@@ -8,7 +8,11 @@
 // librería se derivan de _mapFormat. Deshacer devuelve así también el aspecto del mapa.
 //
 // Formato guardado (todo opcional; lo que falta es "lo que diga el tema"):
-//   { theme, lineStyle, lineWidth, lineColor, rainbow, spacing, background, shadow }
+//   { theme, lineStyle, lineWidth, lineColor, rainbow, spacing, background, shadow,
+//     backgroundImage, backgroundFit }
+// backgroundImage es un archivo del mapa (/api/files/…) y backgroundFit, cómo se ajusta
+// ('cover' por defecto, 'repeat' o 'center'). La imagen es del mapa, no del tema: cambiar de
+// tema la conserva y los temas propios no la guardan.
 
 const MAP_FORMAT_KEY = '_mapFormat'
 // Valor del render de la librería que obliga a volver a pintar los estilos de todos los temas
@@ -162,8 +166,27 @@ function normalizeMapFormat(raw, base = null) {
     rainbow: src.rainbow === true,
     spacing: spacing === 'normal' ? null : spacing,
     background: isHexColor(src.background) ? src.background.toLowerCase() : null,
-    shadow: typeof src.shadow === 'boolean' ? src.shadow : null
+    shadow: typeof src.shadow === 'boolean' ? src.shadow : null,
+    // Solo un archivo de la app: una dirección externa cargaría contenido de fuera
+    backgroundImage: isAttachmentUrl(src.backgroundImage) ? src.backgroundImage : null,
+    backgroundFit: isAttachmentUrl(src.backgroundImage) && BACKGROUND_FITS.includes(src.backgroundFit) && src.backgroundFit !== 'cover' ? src.backgroundFit : null
   }
+}
+
+// Ajuste de la imagen de fondo → estilos CSS que aplica la librería al contenedor del mapa
+const BACKGROUND_FITS = ['cover', 'repeat', 'center']
+const BACKGROUND_FIT_STYLES = {
+  cover: { backgroundSize: 'cover', backgroundRepeat: 'no-repeat' },
+  repeat: { backgroundSize: 'auto', backgroundRepeat: 'repeat' },
+  center: { backgroundSize: 'auto', backgroundRepeat: 'no-repeat' }
+}
+
+// Lo que un tema propio guarda del formato: todo menos la imagen de fondo (es del mapa)
+function themeFormatOf(format) {
+  const out = compactMapFormat(normalizeMapFormat(format))
+  delete out.backgroundImage
+  delete out.backgroundFit
+  return out
 }
 
 // Lo que se guarda: solo lo que se aparta del tema
@@ -195,6 +218,11 @@ function mapFormatThemeConfig(format) {
   if (format.lineStyle) config.lineStyle = format.lineStyle
   if (format.lineColor) config.lineColor = format.lineColor
   if (format.background) config.backgroundColor = format.background
+  if (format.backgroundImage) {
+    config.backgroundImage = format.backgroundImage
+    config.backgroundPosition = 'center center'
+    Object.assign(config, BACKGROUND_FIT_STYLES[format.backgroundFit || 'cover'])
+  }
 
   const width = factorOf(LINE_WIDTHS, format.lineWidth)
   if (width !== 1) {
@@ -249,9 +277,60 @@ function describeMapFormat(mindMap) {
     spacing: format.spacing || 'normal',
     background: format.background || theme.backgroundColor,
     shadow: format.shadow !== null ? format.shadow : themeShadow(theme),
-    // Hay algo que "Restablecer" devolvería al tema
-    customized: Object.keys(compactMapFormat(format)).length > 1
+    backgroundImage: format.backgroundImage,
+    backgroundFit: format.backgroundImage ? (format.backgroundFit || 'cover') : null,
+    // Hay algo que "Restablecer" devolvería al tema (la imagen de fondo no: es del mapa)
+    customized: Object.keys(themeFormatOf(format)).length > 1
   }
+}
+
+// ---- Equilibrar el mapa (diseño radial) ----
+// En el diseño radial la librería pone cada rama principal a la derecha o a la izquierda
+// según su dato `dir` o, si no lo tiene, alternando (pares a la derecha). Equilibrar = elegir
+// el lado de cada rama para que los dos pesen (nº de temas) lo más parecido posible, con
+// ceil(n/2) ramas a la derecha; el orden de las ramas no cambia. Devuelve un lado por rama.
+// Exacto hasta 20 ramas; con más, voraz.
+const BALANCE_EXACT_MAX = 20
+function balancedSides(weights) {
+  const n = weights.length
+  const k = Math.ceil(n / 2)
+  const total = weights.reduce((a, b) => a + b, 0)
+  const right = new Set()
+  if (n <= BALANCE_EXACT_MAX) {
+    // Todas las formas de elegir k ramas (máscaras de bits); gana la de menor diferencia
+    let best = Infinity
+    let bestMask = 0
+    for (let mask = 0; mask < 1 << n; mask++) {
+      let count = 0
+      let sum = 0
+      for (let i = 0; i < n; i++) if (mask & (1 << i)) { count++; sum += weights[i] }
+      if (count === k && Math.abs(total - 2 * sum) < best) { best = Math.abs(total - 2 * sum); bestMask = mask }
+    }
+    for (let i = 0; i < n; i++) if (bestMask & (1 << i)) right.add(i)
+  } else {
+    // Voraz: de mayor a menor peso, al lado que pese menos y aún admita ramas
+    const sums = [0, 0]
+    const counts = [0, 0]
+    const caps = [k, n - k]
+    weights.map((w, i) => [w, i]).sort((a, b) => b[0] - a[0]).forEach(([w, i]) => {
+      const side = counts[0] < caps[0] && (sums[0] <= sums[1] || counts[1] >= caps[1]) ? 0 : 1
+      sums[side] += w
+      counts[side]++
+      if (side === 0) right.add(i)
+    })
+  }
+  return weights.map((_, i) => right.has(i) ? 'right' : 'left')
+}
+
+// Comando BALANCE_MAP: pone `dir` a cada rama principal (una entrada de historial). `dir` es
+// un dato de la librería, no un estilo: Quitar formato no lo borra
+function balanceMap(mindMap) {
+  const tree = mindMap.renderer.renderTree
+  const children = (tree && tree.children) || []
+  if (children.length < 2) return
+  const weight = node => 1 + (node.children || []).reduce((sum, child) => sum + weight(child), 0)
+  balancedSides(children.map(weight)).forEach((side, i) => { children[i].data.dir = side })
+  mindMap.render()
 }
 
 // ---- Aplicar ----

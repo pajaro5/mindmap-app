@@ -478,12 +478,44 @@ const COMMANDS = {
 
   // ---- Formato del mapa (tema visual, ramas, espaciado, fondo y sombras) ----
   // Se aplica a todo el mapa y queda en el historial (map-format.js)
+  // Temas de serie y, después, los propios ("user:<id>"); el nombre de un tema propio se
+  // muestra como texto (x-text) y su vista previa sale del tema de serie en que se basa
   'mapTheme.apply': {
     label: 'Temas', tooltip: 'Aplicar un tema visual al mapa (colores, ramas y fondo)', icon: 'mapTheme',
     control: 'gallery', enabled: hasMap,
-    options: () => MAP_THEMES.map(t => ({ value: t.id, label: t.label, preview: mapThemePreview(t.config) })),
-    value: s => s.mapFormat.theme,
-    run: (app, theme) => app.setMapFormat({ theme }, { reset: true })
+    options: s => [
+      ...MAP_THEMES.map(t => ({ value: t.id, label: t.label, preview: mapThemePreview(t.config) })),
+      ...((s && s.userThemes) || []).map(t => ({
+        value: `user:${t.id}`, label: t.title,
+        preview: mapThemePreview((mapThemeById(normalizeMapFormat(t.format).theme) || MAP_THEMES[0]).config)
+      }))
+    ],
+    value: s => s.mapThemeValue,
+    run: (app, value) => String(value).startsWith('user:') ? app.applyUserTheme(String(value).slice(5)) : app.setMapFormat({ theme: value }, { reset: true })
+  },
+  'mapTheme.save': {
+    label: 'Guardar tema', tooltip: 'Guardar el formato actual del mapa como un tema propio para usarlo en otros mapas', icon: 'saveTheme',
+    enabled: hasMap,
+    run: app => app.openSaveThemeDialog()
+  },
+  'mapFormat.backgroundImage': {
+    label: 'Imagen de fondo', tooltip: 'Poner una imagen de fondo en el mapa', icon: 'backgroundImage', enabled: hasMap,
+    pressed: s => s.hasMap && !!s.mapFormat.backgroundImage,
+    run: app => app.chooseBackgroundImage()
+  },
+  ...Object.fromEntries([['cover', 'Ajustar: cubrir todo el fondo'], ['repeat', 'Ajustar: en mosaico'], ['center', 'Ajustar: centrada']].map(([fit, label]) => [`mapFormat.backgroundFit.${fit}`, {
+    label, icon: 'backgroundImage', enabled: s => s.hasMap && !!s.mapFormat.backgroundImage,
+    pressed: s => s.hasMap && s.mapFormat.backgroundFit === fit,
+    run: app => app.setMapFormat({ backgroundFit: fit })
+  }])),
+  'mapFormat.backgroundImage.remove': {
+    label: 'Quitar imagen de fondo', icon: 'backgroundImage', enabled: s => s.hasMap && !!s.mapFormat.backgroundImage,
+    run: app => app.setMapFormat({ backgroundImage: null, backgroundFit: null })
+  },
+  'layout.balance': {
+    label: 'Equilibrar', tooltip: 'Repartir las ramas principales para que los dos lados del mapa radial pesen lo mismo', icon: 'balanceMap',
+    enabled: s => s.hasMap && s.layout === 'mindMap',
+    run: app => app.balanceMap()
   },
   'mapFormat.reset': {
     label: 'Restablecer', tooltip: 'Volver al formato del tema: quita los cambios de ramas, espaciado, fondo y sombras',

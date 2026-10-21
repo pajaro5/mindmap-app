@@ -26,6 +26,8 @@ function mindMapApp() {
     iconQuery: '',
     // Exportación a HTML interactivo en curso
     exporting: false,
+    // Temas propios guardados (formato del mapa con nombre; API /api/themes)
+    userThemes: [],
     // Qué incluir al exportar a Word o Markdown (se recuerda en este navegador)
     exportOptions: loadExportOptions(),
     // Botón dueño del último menú desplegable usado (p. ej. "Opciones…" de Word o de Markdown)
@@ -283,6 +285,8 @@ function mindMapApp() {
         painterActive: this.painterActive,
         layout: this.currentLayout,
         mapFormat: this.mapFormatState,
+        mapThemeValue: this.currentThemeOption(this.mapFormatState.format),
+        userThemes: this.userThemes,
         pane: this.pane
       }
     },
@@ -1501,6 +1505,7 @@ function mindMapApp() {
       this.resizeObserver.observe(el)
 
       await this.loadMapList()
+      await this.loadUserThemes()
     },
 
     async loadMapList() {
@@ -1801,11 +1806,88 @@ function mindMapApp() {
 
     // Cambia parte del formato del mapa (un paso de deshacer). Con `reset` se parte solo del
     // tema: aplicar un tema o "Restablecer" quitan los cambios de ramas, fondo, sombras…
+    // `reset`: partir solo del tema (quita los cambios de ramas, fondo y sombras); la imagen de
+    // fondo se conserva porque es del mapa, no del tema
     setMapFormat(change, { reset = false } = {}) {
       if (!this.mindMap) return
       const current = currentMapFormat(Alpine.raw(this.mindMap))
-      const from = reset ? { theme: current.theme } : current
+      const from = reset ? { theme: current.theme, backgroundImage: current.backgroundImage, backgroundFit: current.backgroundFit } : current
       this.mindMap.execCommand('SET_MAP_FORMAT', { ...from, ...change })
+    },
+
+    // ---- Temas propios (API /api/themes): un formato del mapa guardado con nombre ----
+    async loadUserThemes() {
+      try {
+        const res = await fetch('/api/themes')
+        this.userThemes = res.ok ? await res.json() : []
+      } catch {
+        this.userThemes = []
+      }
+    },
+
+    applyUserTheme(id) {
+      const theme = this.userThemes.find(t => t.id === id)
+      if (theme) this.setMapFormat(themeFormatOf(theme.format), { reset: true })
+    },
+
+    openSaveThemeDialog() {
+      if (!this.mindMap) return
+      this.showDialog({ kind: 'saveTheme', name: '', error: '' }, 'themeName')
+    },
+
+    async saveUserTheme() {
+      const name = this.dialog.name.trim()
+      if (!name) { this.dialog.error = 'Escribe un nombre para el tema.'; return }
+      const format = themeFormatOf(currentMapFormat(Alpine.raw(this.mindMap)))
+      const res = await fetch('/api/themes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: name, format })
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        this.dialog.error = body.error || `No se pudo guardar el tema (HTTP ${res.status}).`
+        return
+      }
+      await this.loadUserThemes()
+      this.closeDialog()
+    },
+
+    async deleteUserTheme(id) {
+      await fetch(`/api/themes/${id}`, { method: 'DELETE' })
+      await this.loadUserThemes()
+    },
+
+    // Valor de la galería de temas: el tema propio si el formato coincide con uno (y cambia
+    // algo del de serie); si no, el tema de serie
+    currentThemeOption(format) {
+      const mine = JSON.stringify(themeFormatOf(format))
+      if (Object.keys(themeFormatOf(format)).length > 1) {
+        const match = this.userThemes.find(t => JSON.stringify(themeFormatOf(t.format)) === mine)
+        if (match) return `user:${match.id}`
+      }
+      return format.theme
+    },
+
+    // ---- Imagen de fondo: un archivo del mapa (API de adjuntos) ----
+    async chooseBackgroundImage() {
+      if (!this.mindMap || !this.mindMapId) return
+      const file = await pickFile(ALLOWED_IMAGE_TYPES.join(','))
+      if (!file) return
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        this.errorMsg = 'La imagen de fondo tiene que ser una imagen PNG, JPEG, GIF o WebP.'
+        return
+      }
+      try {
+        const uploaded = await uploadAttachment(this.mindMapId, file)
+        this.setMapFormat({ backgroundImage: uploaded.url, backgroundFit: null })
+      } catch (err) {
+        this.errorMsg = `No se pudo usar la imagen de fondo: ${err.message || err}`
+      }
+    },
+
+    balanceMap() {
+      if (this.mindMap && this.currentLayout === 'mindMap') Alpine.raw(this.mindMap).execCommand('BALANCE_MAP')
     },
 
     // ---- Marcadores ----
@@ -2122,10 +2204,14 @@ function mindMapApp() {
         if (map.attachments.length) {
           for (const a of map.attachments) {
             try {
-              const type = (a.name.match(/\.(\w+)$/) || [])[1]
-              const uploaded = await uploadAttachment(body.id, new File([a.bytes], a.name, { type: IMAGE_FILE_TYPES[(type || '').toLowerCase()] || 'application/octet-stream' }))
-              a.data.attachmentUrl = uploaded.url
-              a.data.attachmentName = escapeXml(uploaded.name)
+              const type = a.type || IMAGE_FILE_TYPES[((a.name.match(/\.(\w+)$/) || [])[1] || '').toLowerCase()] || 'application/octet-stream'
+              const uploaded = await uploadAttachment(body.id, new File([a.bytes], a.name, { type }))
+              // La imagen de fondo dice dónde va su dirección (apply); un adjunto, en su tema
+              if (a.apply) a.apply(uploaded)
+              else {
+                a.data.attachmentUrl = uploaded.url
+                a.data.attachmentName = escapeXml(uploaded.name)
+              }
             } catch (err) {
               warnings.push(`No se pudo subir el adjunto "${a.name}": ${err.message}`)
             }

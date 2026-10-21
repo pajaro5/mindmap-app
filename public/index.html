@@ -681,6 +681,37 @@
       </template>
 
       <!-- Guardar el mapa abierto como plantilla propia -->
+      <!-- Guardar el formato actual como tema propio; también lista y borra los guardados -->
+      <template x-if="dialog && dialog.kind === 'saveTheme'">
+        <form class="dialog-form" @submit.prevent="saveUserTheme()" novalidate>
+          <h2 id="appDialogTitle" class="dialog-title">Guardar tema</h2>
+          <label class="dialog-field">
+            <span>Nombre del tema</span>
+            <input name="themeName" type="text" x-model="dialog.name" maxlength="60" autocomplete="off"
+                   :aria-invalid="!!dialog.error" @input="dialog.error = ''" />
+          </label>
+          <p class="dialog-hint">Guarda el tema, las ramas, el espaciado, el color de fondo y las sombras de este mapa. La imagen de fondo no: es de cada mapa.</p>
+          <p class="dialog-error" role="alert" x-show="dialog.error" x-text="dialog.error"></p>
+          <div class="dialog-field" x-show="userThemes.length">
+            <span>Mis temas</span>
+            <ul class="user-theme-list">
+              <template x-for="t in userThemes" :key="t.id">
+                <li class="user-theme">
+                  <span class="user-theme-name" x-text="t.title"></span>
+                  <button type="button" class="saved-filter-delete" data-action="delete-theme" :title="`Borrar el tema «${t.title}»`"
+                          :aria-label="`Borrar el tema ${t.title}`" @click="deleteUserTheme(t.id)">✕</button>
+                </li>
+              </template>
+            </ul>
+          </div>
+          <div class="dialog-actions">
+            <span class="dialog-spacer"></span>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <button type="button" class="btn" @click="closeDialog()">Cancelar</button>
+          </div>
+        </form>
+      </template>
+
       <!-- Opciones de exportación a Word o Markdown (export-doc.js); se recuerdan -->
       <template x-if="dialog && dialog.kind === 'exportOptions'">
         <form class="dialog-form" @submit.prevent="confirmExportOptions()">

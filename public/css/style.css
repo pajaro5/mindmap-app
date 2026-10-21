@@ -368,6 +368,9 @@ button { font-family: inherit; }
   background: #fafcff;
   border: 1px solid #8a9fbf;
   box-shadow: 2px 3px 8px rgba(0, 0, 0, .25);
+  /* Galerías largas (p. ej. muchos temas propios): el menú no pasa del borde de la ventana */
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
 }
 
 .ribbon-menu-item {
@@ -844,6 +847,12 @@ details.icon-category.classic > summary { color: var(--muted); font-weight: 400;
 .saved-filter-delete:hover { background: #fde8e8; border-color: #e5a3a3; }
 .saved-filter-new { display: flex; gap: 4px; }
 .saved-filter-new input { flex: 1; min-width: 0; padding: 3px 6px; }
+
+/* Temas propios (diálogo Guardar tema) */
+.user-theme-list { list-style: none; margin: 4px 0 0; padding: 0; max-height: 180px; overflow: auto; }
+.user-theme { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.user-theme-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dialog-hint { margin: 0; font-size: 12px; color: #5b6b80; }
 
 /* Abrir y guardar como archivo */
 .file-open { margin-top: 6px; }

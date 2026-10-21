@@ -55,7 +55,8 @@ test.describe('Temas del mapa', () => {
     const { app } = await setupMap(page, maps)
     await app.ribbonTab('format').click()
     await cmd(app, 'mapTheme.apply').click()
-    const options = app.menu.locator('[data-option]')
+    // Los 10 temas de serie (los propios, "user:…", pueden venir de otras pruebas en paralelo)
+    const options = app.menu.locator('[data-option]:not([data-option^="user:"])')
     await expect(options).toHaveCount(10)
     await expect(options.first().locator('svg')).toBeVisible()
     await expect(app.menu.locator('[data-option="mindmanager"]')).toHaveAttribute('aria-checked', 'true')
@@ -330,7 +331,7 @@ test.describe('Datos del formato', () => {
       config: mapFormatThemeConfig(normalizeMapFormat({ lineWidth: 'thick', spacing: 'wide', shadow: true, background: '#000000' })),
       options: mapFormatOptions({ _mapFormat: { theme: 'mm-mono', rainbow: true } }, { template: 'mindmanager' })
     }))
-    expect(r.empty).toEqual({ theme: 'mindmanager', lineStyle: null, lineWidth: null, lineColor: null, rainbow: false, spacing: null, background: null, shadow: null })
+    expect(r.empty).toEqual({ theme: 'mindmanager', lineStyle: null, lineWidth: null, lineColor: null, rainbow: false, spacing: null, background: null, shadow: null, backgroundImage: null, backgroundFit: null })
     expect(r.legacy.theme).toBe('mindmanager')
     expect(r.compact).toEqual({ theme: 'mm-night', lineColor: '#abcdef', shadow: false })
     expect(r.config.backgroundColor).toBe('#000000')

@@ -19,6 +19,17 @@ const MAP_FILE_VERSION = 1
 const MAP_FILE_MAX_BYTES = 200 * 1024 * 1024
 const MAP_JSON_MAX_BYTES = 20 * 1024 * 1024   // límite del cuerpo JSON en el servidor
 const MAP_FILE_ATTACHMENT_DIR = 'adjuntos'
+const MAP_FILE_BACKGROUND_DIR = 'fondo'
+
+// Extensión de una imagen por sus primeros bytes
+function imageExtensionOf(bytes) {
+  const b = bytes || []
+  if (b[0] === 0x89 && b[1] === 0x50) return 'png'
+  if (b[0] === 0xff && b[1] === 0xd8) return 'jpg'
+  if (b[0] === 0x47 && b[1] === 0x49) return 'gif'
+  if (b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return 'webp'
+  return 'png'
+}
 const IMAGE_FILE_TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp' }
 
 // Error con un mensaje para el usuario
@@ -146,6 +157,24 @@ async function resolveMapFiles(data, files, baseDir = '') {
     ;(node.children || []).forEach(collect)
   }
   collect(data.root)
+  // Imagen de fondo del mapa: backgroundImageFile (archivo del .zip) se sube como las de los
+  // adjuntos; una backgroundImage de otro mapa no existe aquí
+  const format = data.root.data && data.root.data[MAP_FORMAT_KEY]
+  if (format && typeof format === 'object') {
+    if (format.backgroundImage !== undefined) {
+      warnings.push('Se quitó la imagen de fondo: pertenece a otro mapa.')
+      delete format.backgroundImage
+    }
+    if (format.backgroundImageFile !== undefined) {
+      const ref = String(format.backgroundImageFile)
+      delete format.backgroundImageFile
+      const entry = files && findZipEntry(files, baseDir, ref)
+      const ext = (ref.split('.').pop() || '').toLowerCase()
+      if (!entry) warnings.push(`Falta la imagen de fondo "${ref}"${files ? '' : ': abre el .zip, no el .json'}.`)
+      else if (!IMAGE_FILE_TYPES[ext]) warnings.push(`La imagen de fondo "${ref}" no es PNG, JPEG, GIF o WebP.`)
+      else attachments.push({ name: entry.split('/').pop(), bytes: files.get(entry), type: IMAGE_FILE_TYPES[ext], apply: uploaded => { format.backgroundImage = uploaded.url } })
+    }
+  }
   for (const d of nodes) {
     // Un adjunto de otro mapa u otra instalación no existe aquí
     if (d.attachmentUrl !== undefined) {
@@ -266,6 +295,18 @@ async function buildMapFile(mapData, title, fetchFile) {
     for (const child of node.children || []) await walk(child)
   }
   await walk(data.root)
+  // La imagen de fondo (un archivo del mapa) va en fondo/ del .zip
+  const format = data.root.data && data.root.data[MAP_FORMAT_KEY]
+  if (format && format.backgroundImage !== undefined) {
+    const url = format.backgroundImage
+    delete format.backgroundImage
+    if (isAttachmentUrl(url)) {
+      const bytes = await fetchFile(url)
+      const path = `${MAP_FILE_BACKGROUND_DIR}/fondo.${imageExtensionOf(bytes)}`
+      extra.push({ name: path, data: bytes })
+      format.backgroundImageFile = path
+    }
+  }
   const json = JSON.stringify({ format: MAP_FILE_FORMAT, version: MAP_FILE_VERSION, title, data }, null, 2)
   const base = exportFileName(title).replace(/\.html$/, '')
   if (!extra.length) return { name: `${base}.json`, blob: new Blob([json], { type: 'application/json' }) }
