@@ -18,6 +18,7 @@ function mindMapApp() {
     mapSchemaVersion: 0, // versión del formato del mapa cargado, tras migrarlo (migrations.js)
     saveStatus: '',
     saveTimer: null,
+    saveInFlight: null, // promesa del último PUT del autoguardado (flushBeforeClose la espera)
     errorMsg: '',
     currentLayout: 'mindMap',
     activeNodeList: [],
@@ -1264,6 +1265,8 @@ function mindMapApp() {
       window.addEventListener('error', e => {
         this.errorMsg = 'Error JS: ' + e.message
       })
+      // La app de escritorio (desktop/main.js) lo llama antes de cerrar la ventana
+      window.mindmapFlushBeforeClose = () => this.flushBeforeClose()
       // Este manejador se registra antes que los de la librería (se crean al abrir un mapa):
       // así el esquema puede quedarse con sus teclas antes de que las atienda el lienzo
       window.addEventListener('keydown', e => {
@@ -1531,6 +1534,18 @@ function mindMapApp() {
       await this.saveCurrentMap()
     },
 
+    // Al cerrar la ventana: termina la edición de un texto (se conserva, como con Enter) y guarda
+    // el mapa tal como está. No basta con flushPendingSave: la librería avisa de los cambios
+    // (data_change) 100 ms después, así que un cambio recién hecho aún no ha programado el
+    // autoguardado. Antes espera al guardado en curso para que no llegue después y lo pise.
+    async flushBeforeClose() {
+      const textEdit = this.mindMap && Alpine.raw(this.mindMap).renderer.textEdit
+      if (textEdit && textEdit.isShowTextEdit()) textEdit.hideEditTextBox()
+      await this.saveInFlight
+      clearTimeout(this.saveTimer)
+      await this.saveCurrentMap()
+    },
+
     // Datos completos del mapa del lienzo, con la versión de su formato (migrations.js)
     currentMapData() {
       return stampSchemaVersion(Alpine.raw(this.mindMap).getData(true), this.mapSchemaVersion)
@@ -1550,11 +1565,13 @@ function mindMapApp() {
       const data = this.currentMapData()
       let res
       try {
-        res = await fetch(`/api/maps/${id}`, {
+        const request = fetch(`/api/maps/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data })
         })
+        this.saveInFlight = request.catch(() => {})
+        res = await request
       } catch (err) {
         this.saveStatus = 'Error al guardar: sin conexión con el servidor'
         return

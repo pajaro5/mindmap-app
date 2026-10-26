@@ -31,9 +31,23 @@ Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista,
 - Exportación a **PNG**, **PDF** y **HTML interactivo**: un único archivo que se abre en cualquier navegador sin conexión, de solo lectura, con ramas que se despliegan y contraen.
 - Exportación a **Word** (.docx) y **Markdown** (.md): el mapa como documento, con un título por tema (los estilos de título de Word, para su índice y panel de navegación) y, debajo, sus marcadores, la información de tarea, vínculos, notas y llamadas.
 
+## App de escritorio (Windows)
+
+La forma más sencilla de usarla: un instalador `.exe` que crea accesos directos en el escritorio y en el menú Inicio, y abre la app en su propia ventana (Electron), sin navegador ni Node.js.
+
+- **Descargar el instalador:** en GitHub, pestaña *Actions › Escritorio*, el artefacto `instalador-windows` de la última ejecución (se lanza con *Run workflow* o al subir una etiqueta `v*`).
+- **Generarlo en local:** `npm install` y `npm run dist` → `dist/MapasMentales-Setup-1.0.0.exe`.
+- **Probarla sin instalar:** `npm run desktop`.
+
+El instalador no está firmado, así que Windows SmartScreen avisa la primera vez ("Más información › Ejecutar de todas formas").
+
+Los mapas y adjuntos de la app de escritorio se guardan en `%APPDATA%\Mapas Mentales` (`mindmaps.db` y `files\`), separados de los de `npm start`. Desinstalar la app no los borra. Para llevarte un mapa de una a otra, usa *Exportar › Guardar como archivo* y *Abrir*.
+
+El servidor de la app solo escucha en `127.0.0.1` (no es accesible desde la red), los vínculos web se abren en tu navegador y la ventana solo concede los permisos de portapapeles y pantalla completa.
+
 ## Requisitos
 
-- [Node.js](https://nodejs.org/) 22 o superior (requerido por better-sqlite3).
+- [Node.js](https://nodejs.org/) 22.13 o superior (usa el SQLite integrado, `node:sqlite`).
 
 ## Instalación y uso
 
@@ -63,7 +77,11 @@ La base de datos se crea automáticamente en `data/mindmaps.db` la primera vez q
 ```
 server/
   index.js    Servidor Express y API REST
-  db.js       Conexión y esquema SQLite (better-sqlite3)
+  db.js       Conexión y esquema SQLite (node:sqlite)
+desktop/
+  main.js     App de escritorio (Electron): arranca el servidor y abre la ventana
+  policy.js   Reglas de seguridad de la ventana (vínculos y permisos)
+build/icon.png    Icono de la app y del instalador (scripts/make-icon.js lo genera desde el logo)
 public/
   index.html      Interfaz (Alpine.js); la cinta se genera desde ribbon.js
   js/commands.js  Registro de comandos: cada acción definida una sola vez
@@ -123,6 +141,7 @@ npx playwright install chromium firefox   # solo la primera vez
 npm test                                  # todas las pruebas, ambos navegadores
 npm run test:chromium                     # solo Chromium (más rápido)
 npm run test:report                       # ver el informe HTML de la última ejecución
+npm run test:desktop                      # app de escritorio (Electron), cada prueba con datos temporales
 ```
 
 En GitHub, el workflow `.github/workflows/e2e.yml` ejecuta las pruebas en cada push a `main` y en cada pull request.
@@ -131,6 +150,7 @@ Firefox se ejecuta con un solo worker: en paralelo, Playwright 1.63 falla de for
 
 ## Tecnologías
 
-- **Backend:** Node.js, Express 5, better-sqlite3
+- **Backend:** Node.js, Express 5, SQLite integrado (`node:sqlite`)
+- **Escritorio:** Electron + electron-builder (instalador NSIS)
 - **Frontend:** Alpine.js, simple-mind-map
 - **Pruebas:** @playwright/test (Chromium + Firefox), GitHub Actions

@@ -55,6 +55,11 @@ const IMPACT = {
   'public/js/viewer.js': ['export-html', 'export-options'],
   'public/js/view-extras.js': ['view-extras', 'find-filter', 'export-html'],
   'public/js/views.js': ['outline-presentation', 'view'],
+  // App de escritorio: sus pruebas van aparte (npm run test:desktop)
+  'desktop/': [],
+  'tests/desktop/': [],
+  'build/': [],
+  '.github/': [],
   'docs/': [],
   'scripts/': [],
   'tests/unit/': [],

@@ -1,0 +1,39 @@
+# App de escritorio: pruebas de Electron y el instalador de Windows (.exe), que queda como
+# artefacto descargable del workflow. Se lanza a mano (Actions › Escritorio › Run workflow)
+# o al subir una etiqueta de versión (git tag v1.2.0 && git push --tags).
+name: Escritorio
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  windows:
+    name: Instalador de Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+      - name: Pruebas de la app de escritorio
+        run: npm run test:desktop
+      - name: Generar el instalador
+        run: npm run dist
+        env:
+          # Sin certificado de firma: el instalador sale sin firmar
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Pruebas de la app empaquetada (código dentro del .asar)
+        run: npm run test:desktop
+        env:
+          MINDMAP_DESKTOP_EXE: dist/win-unpacked/Mapas Mentales.exe
+      - uses: actions/upload-artifact@v7
+        with:
+          name: instalador-windows
+          path: dist/*.exe
+          retention-days: 30

@@ -8,6 +8,7 @@ tests/downloads/
 tests/screenshots/
 test-results/
 playwright-report/
+dist/
 *.log
 server.pid
 

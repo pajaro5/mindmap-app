@@ -6,6 +6,9 @@ const { cleanTitle, cleanDescription, isValidMapData, isValidThemeFormat } = req
 
 const app = express()
 const PORT = process.env.PORT || 3001
+// HOST=127.0.0.1 limita el servidor a este equipo (app de escritorio); sin él escucha en todas
+// las interfaces. PORT=0 elige un puerto libre.
+const HOST = process.env.HOST
 
 // Adjuntos: van antes de express.json porque su cuerpo es binario
 app.use(files.router)
@@ -131,12 +134,18 @@ app.delete('/api/themes/:id', (req, res) => {
   res.status(204).end()
 })
 
-const server = app.listen(PORT, () => {
-  console.log(`Mindmap app corriendo en http://localhost:${PORT}`)
-})
+// Express 5 también llama aquí con el error si no puede escuchar (p. ej. puerto ocupado)
+const onListening = err => {
+  if (err) throw err
+  console.log(`Mindmap app corriendo en http://${HOST || 'localhost'}:${server.address().port}`)
+}
+const server = HOST ? app.listen(PORT, HOST, onListening) : app.listen(PORT, onListening)
 
 // Node cierra las conexiones keep-alive inactivas a los 5 s. Un cliente que reutiliza una
 // conexión justo cuando el servidor la cierra recibe ECONNRESET. Se amplía el margen para
 // que siempre cierre antes el cliente que el servidor.
 server.keepAliveTimeout = 65_000
 server.headersTimeout = 66_000
+
+// La app de escritorio (desktop/main.js) lo arranca con require y lee el puerto elegido
+module.exports = server

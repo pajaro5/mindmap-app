@@ -16,6 +16,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Estas pruebas no usan Electron: npm ci no descarga su binario (~100 MB). La app de
+# escritorio se prueba y empaqueta en desktop.yml.
+env:
+  ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
 jobs:
   unit:
     name: Unitarias

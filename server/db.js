@@ -1,13 +1,15 @@
 const fs = require('fs')
 const path = require('path')
-const Database = require('better-sqlite3')
+// SQLite integrado en Node, sin módulos nativos: un módulo nativo compilado para Node no carga
+// en Electron (y al revés), así el servidor y la app de escritorio comparten node_modules
+const { DatabaseSync } = require('node:sqlite')
 
 // DB_PATH permite aislar la base de datos (p. ej. ':memory:' en las pruebas e2e)
 const dbPath = process.env.DB_PATH || path.join(__dirname, '..', 'data', 'mindmaps.db')
 if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(dbPath), { recursive: true })
-const db = new Database(dbPath)
+const db = new DatabaseSync(dbPath)
 
-db.pragma('journal_mode = WAL')
+db.exec('PRAGMA journal_mode = WAL')
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS maps (
