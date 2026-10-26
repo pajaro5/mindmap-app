@@ -9,7 +9,8 @@ Interfaz inspirada en MindManager: cinta de opciones tipo Office (Inicio, Vista,
 - Crear, renombrar y eliminar mapas desde el panel **Mis mapas**.
 - **Plantillas**: 67 de serie inspiradas en las de MindManager (reuniones, proyectos, estrategia y análisis, personales, organigramas, cronologías, espinas de pez y diagramas), con buscador y fechas calculadas desde el día de creación, y plantillas propias con "Guardar como plantilla".
 - **Diagramas**: matrices (DAFO, urgencia/importancia, valor/esfuerzo, riesgo/beneficio, 3×3), Venn de 2 y 3 círculos, embudos, cebolla, cuarto de círculo, carriles horizontales y verticales y mapa conceptual. Los temas se colocan libremente sobre las zonas: arrastra un tema para moverlo (sobre otro tema pasa a ser su subtema), haz doble clic en un hueco para añadir uno y doble clic en el rótulo de una zona para cambiar su nombre y color. Las **reglas por zona** ponen solas un icono, un color de relleno o un tamaño de letra según dónde está el tema.
-- Diseños: radial, árbol, organigrama, línea de tiempo y espina de pez.
+- Diseños: radial, árbol, organigrama, línea de tiempo y espina de pez. En el radial, los temas principales van en el sentido de las agujas del reloj, como en MindManager: a la derecha de arriba abajo y a la izquierda de abajo arriba.
+- Abrir mapas de **MindManager** (.mmap) y **FreeMind** (.mm), con sus lados y los colores de las ramas.
 - Editor visual de nodos basado en [simple-mind-map](https://github.com/wanglin2/mind-map), con un tema propio (`mindmanager`): tema central azul, temas principales verdes y ramas curvas.
 - Insertar subtemas y temas (después, antes con Shift+Enter, o tema padre), eliminar, deshacer y rehacer desde la cinta o con el teclado.
 - Portapapeles: cortar, copiar, pegar (también texto de otras aplicaciones) y copiar formato.
@@ -94,6 +95,7 @@ public/
   js/search-filter.js Buscar / Reemplazar y Filtro
   js/views.js         Vista Esquema y Presentación
   js/theme.js         Tema visual y preparación de la librería (compartido con el HTML exportado)
+  js/clockwise.js     Diseño radial en el sentido de las agujas del reloj
   js/export-html.js   Exportar a HTML interactivo
   js/export-doc.js    Exportar a Word (.docx) y Markdown
   js/viewer.js        Visor que va dentro del HTML exportado

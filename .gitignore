@@ -9,6 +9,9 @@ tests/screenshots/
 test-results/
 playwright-report/
 dist/
+# Mapas reales para probar la importación: llevan datos personales de sus autores
+docs/*.mmap
+docs/*.mm
 *.log
 server.pid
 

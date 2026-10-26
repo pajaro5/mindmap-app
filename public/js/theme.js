@@ -121,6 +121,8 @@ function setupMindMapLibrary(MindMapCtor) {
   injectMapContentCss()
   if (typeof MindMapCtor.defineTheme === 'function') defineMapThemes(MindMapCtor)
   if (typeof MindMapCtor.usePlugin === 'function') MindMapCtor.usePlugin(TaskInfoPlugin)
+  // Temas principales en el sentido de las agujas del reloj (clockwise.js)
+  setupClockwise(MindMapCtor)
   patchLibraryBugs(MindMapCtor)
   // Flechas de las relaciones y límites en forma de nube (relation-format.js)
   patchRelationFormat(MindMapCtor)

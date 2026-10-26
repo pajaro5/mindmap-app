@@ -254,7 +254,10 @@ function mapFormatOptions(rootData, savedTheme) {
   return {
     theme: format.theme,
     themeConfig: mapFormatThemeConfig(format),
-    rainbowLinesConfig: { open: format.rainbow, colorsList: [] }
+    rainbowLinesConfig: { open: format.rainbow, colorsList: [] },
+    // Color de rama como en MindManager: el color de línea de un tema (p. ej. el de un tema
+    // principal importado de un .mmap) lo heredan las líneas de todos sus subtemas
+    enableInheritAncestorLineStyle: true
   }
 }
 
@@ -285,11 +288,10 @@ function describeMapFormat(mindMap) {
 }
 
 // ---- Equilibrar el mapa (diseño radial) ----
-// En el diseño radial la librería pone cada rama principal a la derecha o a la izquierda
-// según su dato `dir` o, si no lo tiene, alternando (pares a la derecha). Equilibrar = elegir
+// En el diseño radial cada rama principal va a la derecha o a la izquierda según su dato `dir`
+// o, si no lo tiene, en el sentido de las agujas del reloj (clockwise.js). Equilibrar = elegir
 // el lado de cada rama para que los dos pesen (nº de temas) lo más parecido posible, con
-// ceil(n/2) ramas a la derecha; el orden de las ramas no cambia. Devuelve un lado por rama.
-// Exacto hasta 20 ramas; con más, voraz.
+// ceil(n/2) ramas a la derecha. Devuelve un lado por rama. Exacto hasta 20 ramas; con más, voraz.
 const BALANCE_EXACT_MAX = 20
 function balancedSides(weights) {
   const n = weights.length
@@ -322,14 +324,23 @@ function balancedSides(weights) {
   return weights.map((_, i) => right.has(i) ? 'right' : 'left')
 }
 
-// Comando BALANCE_MAP: pone `dir` a cada rama principal (una entrada de historial). `dir` es
-// un dato de la librería, no un estilo: Quitar formato no lo borra
+// Orden de las ramas una vez elegidos los lados: primero las de la derecha y luego las de la
+// izquierda, cada grupo en su orden de antes, para que el orden se siga leyendo como el reloj
+function balancedOrder(sides) {
+  const indexes = sides.map((_, i) => i)
+  return [...indexes.filter(i => sides[i] === 'right'), ...indexes.filter(i => sides[i] === 'left')]
+}
+
+// Comando BALANCE_MAP: pone `dir` a cada rama principal y las ordena (una entrada de
+// historial). `dir` es un dato de la librería, no un estilo: Quitar formato no lo borra
 function balanceMap(mindMap) {
   const tree = mindMap.renderer.renderTree
   const children = (tree && tree.children) || []
   if (children.length < 2) return
   const weight = node => 1 + (node.children || []).reduce((sum, child) => sum + weight(child), 0)
-  balancedSides(children.map(weight)).forEach((side, i) => { children[i].data.dir = side })
+  const sides = balancedSides(children.map(weight))
+  sides.forEach((side, i) => { children[i].data.dir = side })
+  tree.children = balancedOrder(sides).map(i => children[i])
   mindMap.render()
 }
 

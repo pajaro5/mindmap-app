@@ -167,6 +167,10 @@ test.describe('Equilibrar el mapa', () => {
     await app.ribbonTab('format').click()
     await app.recordsHistory(() => cmd(app, 'layout.balance').click())
     await expect.poll(async () => { const s = await sides(page); return Math.abs(s.right - s.left) }).toBeLessThanOrEqual(1)
+    // El orden sigue el reloj (clockwise.js): primero todas las ramas de la derecha
+    const dirs = await page.evaluate(() => Alpine.raw(window.Alpine.$data(document.body).mindMap)
+      .getData(false).children.map(c => c.data.dir))
+    expect(dirs).toEqual(['right', 'right', 'left', 'left'])
     await app.qat('edit.undo').click()
     await expect.poll(() => sides(page)).toEqual(before)
   })

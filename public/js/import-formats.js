@@ -180,6 +180,28 @@ const mindManagerIcon = type => {
 // "mmarch://bin/abc.png" → "bin/abc.png" (archivo dentro del .mmap)
 const mmarchPath = uri => (String(uri || '').match(/^mmarch:\/\/(.+)$/) || [])[1] || null
 
+// Colores de MindManager: "AARRGGBB" → "#rrggbb"; transparentes (alfa 00) o inválidos → null
+const mindManagerColor = value => {
+  const m = /^([0-9a-f]{2})([0-9a-f]{6})$/i.exec(String(value || ''))
+  return m && m[1] !== '00' ? `#${m[2].toLowerCase()}` : null
+}
+const colorPair = el => el ? { fill: mindManagerColor(el.getAttribute('FillColor')), line: mindManagerColor(el.getAttribute('LineColor')) } : null
+
+// Colores de un tema: relleno (con texto legible y sin el degradado del tema), borde y, salvo
+// en el tema central, la línea de su rama, que heredan sus subtemas (enableInheritAncestorLineStyle)
+function applyMindManagerColors(data, colors, isRoot) {
+  if (!colors) return
+  if (colors.fill) {
+    data.fillColor = colors.fill
+    data.gradientStyle = false
+    data.color = ruleTextColor(colors.fill)
+  }
+  if (colors.line) {
+    data.borderColor = colors.line
+    if (!isRoot) data.lineColor = colors.line
+  }
+}
+
 function convertMindManager(text, fileName) {
   const doc = parseXml(text, 'El Document.xml del .mmap')
   const mapEl = doc.documentElement
@@ -194,11 +216,34 @@ function convertMindManager(text, fileName) {
     return cleanText(t ? (t.getAttribute('PlainText') || t.textContent) : '')
   }
 
-  const convert = (el, isRoot) => {
+  // Colores por defecto del estilo del mapa: tema central y temas principales (Level 0)
+  const styles = childNamed(mapEl, 'StyleGroup')
+  const rootDefault = colorPair(pathNamed(styles, 'RootTopicDefaultsGroup', 'DefaultColor'))
+  const mainDefault = colorPair(pathNamed(
+    childrenNamed(styles, 'RootSubTopicDefaultsGroup').find(g => (g.getAttribute('Level') || '0') === '0'), 'DefaultColor'))
+
+  // level: 0 el tema central, 1 los temas principales…
+  const convert = (el, level) => {
+    const isRoot = level === 0
     const data = { text: topicText(el) || '(sin texto)' }
     const uid = createUid()
     data.uid = uid
     if (el.getAttribute('OId')) uidByOid.set(el.getAttribute('OId'), uid)
+
+    // Colores: los propios del tema o, en el central y los principales, los del estilo del mapa
+    const own = colorPair(childNamed(el, 'Color'))
+    const fallback = isRoot ? rootDefault : level === 1 ? mainDefault : null
+    applyMindManagerColors(data, own || fallback ? {
+      fill: (own && own.fill) || (fallback && fallback.fill) || null,
+      line: (own && own.line) || (fallback && fallback.line) || null
+    } : null, isRoot)
+
+    // Lado de los temas principales: MindManager guarda su posición respecto al central
+    // (Offset CX negativo = a la izquierda). El orden del XML ya es el del reloj (clockwise.js).
+    const offset = childNamed(el, 'Offset')
+    if (level === 1 && offset && Number.isFinite(Number(offset.getAttribute('CX')))) {
+      data.dir = Number(offset.getAttribute('CX')) < 0 ? 'left' : 'right'
+    }
 
     // Plegado
     const collapsed = pathNamed(el, 'TopicViewGroup', 'Collapsed')
@@ -272,16 +317,16 @@ function convertMindManager(text, fileName) {
     if (callouts.length) data[CALLOUTS_KEY] = callouts.map(text => ({ text }))
 
     if (childNamed(el, 'Boundary')) skipped.add('Límites (no se importaron)')
-    const children = childrenNamed(childNamed(el, 'SubTopics'), 'Topic').map(child => convert(child, false))
+    const children = childrenNamed(childNamed(el, 'SubTopics'), 'Topic').map(child => convert(child, level + 1))
     // Temas flotantes: se añaden como temas principales (aquí no hay temas sueltos)
     const floating = childrenNamed(childNamed(el, 'FloatingTopics'), 'Topic')
     if (floating.length) {
-      if (isRoot) children.push(...floating.map(child => convert(child, false)))
+      if (isRoot) children.push(...floating.map(child => convert(child, 1)))
       skipped.add('Temas flotantes (se añadieron como temas principales)', floating.length)
     }
     return { data, children }
   }
-  const root = convert(rootEl, true)
+  const root = convert(rootEl, 0)
 
   // Relaciones entre temas: dos conexiones (índice 0 = origen, 1 = destino)
   const byUid = new Map()

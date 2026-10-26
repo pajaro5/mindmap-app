@@ -15,7 +15,7 @@ const EXPORT_LIBRARY_URL = '/vendor/simple-mind-map-0.14.0-fix.3.esm.min.js'
 const EXPORT_SCRIPT_URLS = [
   '/js/icon-library.js', '/js/markers.js', '/js/task-info.js', '/js/callouts.js', '/js/diagrams.js',
   '/js/search-filter.js', '/js/view-extras.js',
-  '/js/migrations.js', '/js/elements.js', '/js/rich-notes.js', '/js/mindmap-extensions.js', '/js/theme.js', '/js/map-format.js', '/js/relation-format.js', '/js/topic-links.js', '/js/viewer.js'
+  '/js/migrations.js', '/js/elements.js', '/js/rich-notes.js', '/js/mindmap-extensions.js', '/js/clockwise.js', '/js/theme.js', '/js/map-format.js', '/js/relation-format.js', '/js/topic-links.js', '/js/viewer.js'
 ]
 
 const EXPORT_CSP = "default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data:"
