@@ -23,6 +23,11 @@ const IMPACT = {
   'public/index.html': ['topic-menu', 'canvas-layout'],
   'public/css/': ['canvas-layout', 'view'],
   'public/js/app.js': ['topic-menu', 'clipboard', 'elements'],
+  // Métodos de la app por área (se mezclan en app.js)
+  'public/js/app-view.js': ['view-extras', 'find-filter'],
+  'public/js/app-notes.js': ['rich-notes', 'elements', 'edit-group'],
+  'public/js/app-format.js': ['format-extras', 'map-format'],
+  'public/js/app-files.js': ['map-file', 'import-formats', 'export-options', 'export-doc'],
   'public/js/callouts.js': ['callouts', 'export-doc'],
   'public/js/commands.js': ['topic-menu', 'edit-group'],
   'public/js/diagrams.js': ['diagrams', 'templates'],
